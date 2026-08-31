@@ -128,5 +128,29 @@ await page.evaluate(() => document.querySelector('.ct-scroll').scrollBy(0, 900))
 await page.waitForTimeout(300);
 await shot(page, '20-compare-splits');
 
+// The browser's own back button is wired to the app's screen stack, so a detail
+// returns to the Overview instead of leaving the app. Nothing to photograph here,
+// so this last part asserts.
+let failed = 0;
+const check = (label, passed) => {
+  console.log(`${passed ? 'ok  ' : 'FAIL'}: ${label}`);
+  if (!passed) failed++;
+};
+
+await page.goto(BASE);
+await page.waitForTimeout(500);
+await page.getByRole('button', { name: 'Streak detail' }).click();
+await page.waitForTimeout(400);
+await page.goBack();
+await page.waitForTimeout(400);
+check('back out of a stat detail lands on the Overview', await page.getByRole('button', { name: 'RECORD' }).isVisible());
+await page.goForward();
+await page.waitForTimeout(400);
+check('forward re-opens the detail', await page.getByRole('button', { name: 'Back to overview' }).isVisible());
+await page.getByRole('button', { name: 'Back to overview' }).click();
+await page.waitForTimeout(400);
+check('the in-app back button lands on the Overview too', await page.getByRole('button', { name: 'RECORD' }).isVisible());
+
 await browser.close();
-console.log('done');
+console.log(failed ? `done — ${failed} check(s) failed` : 'done');
+process.exitCode = failed ? 1 : 0;

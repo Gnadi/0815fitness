@@ -8,6 +8,7 @@ import { PreStart } from './screens/PreStart';
 import { RecordingSession, type ActivityDraft } from './screens/RecordingSession';
 import { SaveScreen } from './screens/Save';
 import { addActivity, loadActivities, loadSettings, saveActivities, saveSettings } from './lib/storage';
+import { useNavStack } from './hooks/useNavStack';
 import type { StatKey } from './lib/statDetails';
 import type { Activity, Settings, Sport } from './types';
 import {
@@ -18,7 +19,18 @@ import {
   type BleSensorApi,
 } from './hooks/useBleSensors';
 
-type Screen = 'ovw' | 'ana' | 'pre' | 'rec' | 'save' | 'stat' | 'cmp';
+/** A screen plus whatever it was opened with, so going back restores the view the
+ *  browser returns to rather than the last thing the app happened to hold. */
+type View =
+  | { screen: 'ovw' | 'ana' | 'pre' | 'rec' | 'save' }
+  | { screen: 'stat'; statKey: StatKey }
+  | { screen: 'cmp'; ids: string[] };
+
+const ROOT: View = { screen: 'ovw' };
+
+// Recording and saving own the screen until they are finished — there is no way out of
+// them but FINISH or DISCARD — so a browser back inside them must not drop the session.
+const holdsItsScreen = (view: View) => view.screen === 'rec' || view.screen === 'save';
 
 export interface SensorSet {
   hr: BleSensorApi;
@@ -27,16 +39,14 @@ export interface SensorSet {
 }
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('ovw');
+  // Screen state is a stack shared with the browser's history: back — the button or the
+  // gesture — pops it, so a detail returns to what it was opened from.
+  const { view, push, replace, back, resetToRoot } = useNavStack(ROOT, holdsItsScreen);
   const [sport, setSport] = useState<Sport>('run');
   const [activities, setActivities] = useState<Activity[]>(() => loadActivities());
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
   const [draft, setDraft] = useState<ActivityDraft | null>(null);
   const [sessionKey, setSessionKey] = useState(0);
-  const [statKey, setStatKey] = useState<StatKey>('runKm');
-  const [compareIds, setCompareIds] = useState<string[]>([]);
-  // A comparison opened from a stat detail returns to it, not past it to the Overview.
-  const [compareOrigin, setCompareOrigin] = useState<Screen>('ovw');
 
   // Sensor connections live above the screens so a strap paired on pre-start stays
   // paired through recording and save.
@@ -53,37 +63,38 @@ export default function App() {
     saveSettings(settings);
   }, [settings]);
 
-  const openStat = useCallback((key: StatKey) => {
-    setStatKey(key);
-    setScreen('stat');
-  }, []);
+  const openStat = useCallback((statKey: StatKey) => push({ screen: 'stat', statKey }), [push]);
 
-  const openCompare = useCallback((ids: string[], from: Screen) => {
-    setCompareIds(ids);
-    setCompareOrigin(from);
-    setScreen('cmp');
-  }, []);
+  const openCompare = useCallback((ids: string[]) => push({ screen: 'cmp', ids }), [push]);
 
+  // The record flow replaces rather than stacks: pre-start, recording and save are steps
+  // of one session, and none of them is a place back should land on.
   const handleStart = useCallback(() => {
     setSessionKey((k) => k + 1);
-    setScreen('rec');
-  }, []);
+    replace({ screen: 'rec' });
+  }, [replace]);
 
-  const handleFinish = useCallback((d: ActivityDraft) => {
-    setDraft(d);
-    setScreen('save');
-  }, []);
+  const handleFinish = useCallback(
+    (d: ActivityDraft) => {
+      setDraft(d);
+      replace({ screen: 'save' });
+    },
+    [replace],
+  );
 
-  const handleSave = useCallback((activity: Activity) => {
-    setActivities(addActivity(activity));
-    setDraft(null);
-    setScreen('ovw');
-  }, []);
+  const handleSave = useCallback(
+    (activity: Activity) => {
+      setActivities(addActivity(activity));
+      setDraft(null);
+      resetToRoot();
+    },
+    [resetToRoot],
+  );
 
   const handleDiscard = useCallback(() => {
     setDraft(null);
-    setScreen('ovw');
-  }, []);
+    resetToRoot();
+  }, [resetToRoot]);
 
   const replaceActivities = useCallback((next: Activity[]) => {
     saveActivities(next);
@@ -92,37 +103,29 @@ export default function App() {
 
   return (
     <PhoneFrame>
-      {screen === 'ovw' && (
+      {view.screen === 'ovw' && (
         <Overview
           activities={activities}
           settings={settings}
-          onRecord={() => setScreen('pre')}
-          onAnalyse={() => setScreen('ana')}
+          onRecord={() => push({ screen: 'pre' })}
+          onAnalyse={() => push({ screen: 'ana' })}
           onStat={openStat}
-          onCompare={(ids) => openCompare(ids, 'ovw')}
+          onCompare={openCompare}
           onReplaceActivities={replaceActivities}
         />
       )}
-      {screen === 'ana' && <Analyse activities={activities} settings={settings} onSettings={setSettings} onBack={() => setScreen('ovw')} />}
-      {screen === 'stat' && (
-        <StatDetail
-          statKey={statKey}
-          activities={activities}
-          settings={settings}
-          onBack={() => setScreen('ovw')}
-          onCompare={(ids) => openCompare(ids, 'stat')}
-        />
+      {view.screen === 'ana' && <Analyse activities={activities} settings={settings} onSettings={setSettings} onBack={back} />}
+      {view.screen === 'stat' && (
+        <StatDetail statKey={view.statKey} activities={activities} settings={settings} onBack={back} onCompare={openCompare} />
       )}
-      {screen === 'cmp' && (
-        <Compare activities={activities} initialIds={compareIds} onBack={() => setScreen(compareOrigin)} />
+      {view.screen === 'cmp' && <Compare activities={activities} initialIds={view.ids} onBack={back} />}
+      {view.screen === 'pre' && (
+        <PreStart sport={sport} onSport={setSport} sensors={sensors} onStart={handleStart} onBack={back} />
       )}
-      {screen === 'pre' && (
-        <PreStart sport={sport} onSport={setSport} sensors={sensors} onStart={handleStart} onBack={() => setScreen('ovw')} />
-      )}
-      {screen === 'rec' && (
+      {view.screen === 'rec' && (
         <RecordingSession key={sessionKey} sport={sport} sensors={sensors} settings={settings} onFinish={handleFinish} />
       )}
-      {screen === 'save' && draft && (
+      {view.screen === 'save' && draft && (
         <SaveScreen draft={draft} settings={settings} activities={activities} onSave={handleSave} onDiscard={handleDiscard} />
       )}
     </PhoneFrame>

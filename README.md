@@ -67,11 +67,21 @@ src/
     compare.ts      per-second traces, distance-axis series, splits, metric rows
     storage.ts      localStorage persistence
     demoSeed.ts     synthetic sample history behind the empty-state action
-  hooks/            useGpsFix, useRecorder, useBleSensors, useWakeLock
+  hooks/            useGpsFix, useRecorder, useBleSensors, useWakeLock, useNavStack
   components/       PhoneFrame, primitives (DataField, SensorChip, silhouette), charts
   screens/          Overview, Analyse (load/zones/records/plan), StatDetail, Compare,
                     PreStart, RecordingSession, Save
 ```
+
+## Getting back
+
+The app is one document, so the browser only knows the history entries it is given.
+`useNavStack` gives it one per screen the app opens: back — the button, the gesture or
+the hardware key — pops the app's own stack, so a stat detail returns to the Overview
+and a comparison opened from a detail returns to that detail. The in-app back buttons
+go through the same history, so the two never drift apart. Recording and Save are the
+exception: they are steps of one session with no way out but FINISH or DISCARD, so they
+replace rather than stack and hold their position against a back press.
 
 ## Reading a figure, comparing two sessions
 

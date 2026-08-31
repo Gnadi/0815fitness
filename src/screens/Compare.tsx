@@ -4,7 +4,6 @@ import { color, font } from '../theme';
 import * as S from '../styles';
 import { Label, RouteSilhouette, SectionHeader } from '../components/primitives';
 import { CompareSeriesChart } from '../components/charts';
-import { StatusStrip } from '../components/PhoneFrame';
 import { elevationProfile, fmtClock, fmtDayMonth, fmtEuroDate, fmtPace } from '../lib/stats';
 import {
   bestIndex,
@@ -64,7 +63,6 @@ export function Compare({
 
   return (
     <div style={S.screen}>
-      <StatusStrip />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px 10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button

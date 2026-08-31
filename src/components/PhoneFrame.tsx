@@ -33,35 +33,3 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
-/** Status-bar-height spacer plus the clock, matching the device chrome the prototype
- *  drew inside its iOS frame. Real browsers paint their own chrome, so this is a thin
- *  in-app header rather than a fake system bar. */
-export function StatusStrip({ dark = false }: { dark?: boolean }) {
-  const now = new Date();
-  const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: 44,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 20px',
-        fontFamily: "'IBM Plex Mono', monospace",
-        fontSize: 12,
-        letterSpacing: '.06em',
-        color: dark ? '#FFFFFF' : color.textFaint,
-        pointerEvents: 'none',
-        zIndex: 30,
-      }}
-    >
-      <span>{time}</span>
-      <span style={{ fontWeight: 600, letterSpacing: '.14em', color: color.accent }}>CONTOUR</span>
-    </div>
-  );
-}

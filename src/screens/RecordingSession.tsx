@@ -4,7 +4,6 @@ import { color, font, HR_ZONE_BOUNDS } from '../theme';
 import * as S from '../styles';
 import { Label } from '../components/primitives';
 import { TrackMap } from '../components/charts';
-import { StatusStrip } from '../components/PhoneFrame';
 import { useRecorder } from '../hooks/useRecorder';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { fmtClock, fmtPace } from '../lib/stats';
@@ -142,8 +141,7 @@ export function RecordingSession({
   const autoPauseSeconds = autoPausedSince.current ? Math.round((Date.now() - autoPausedSince.current) / 1000) : 0;
 
   return (
-    <div style={{ height: '100%', background: color.captureBase, display: 'flex', flexDirection: 'column', boxSizing: 'border-box', padding: '52px 0 40px', position: 'relative' }}>
-      <StatusStrip dark />
+    <div style={{ height: '100%', background: color.captureBase, display: 'flex', flexDirection: 'column', boxSizing: 'border-box', padding: 'max(20px, env(safe-area-inset-top)) 0 40px', position: 'relative' }}>
 
       {snapshot.status === 'autoPaused' && (
         <Banner text={`AUTO-PAUSED · NO MOVEMENT ${fmtClock(autoPauseSeconds)}`} />

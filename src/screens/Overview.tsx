@@ -4,7 +4,6 @@ import { color, font } from '../theme';
 import * as S from '../styles';
 import { Label, RouteSilhouette, SectionHeader } from '../components/primitives';
 import { VolumeBars, LoadRatioBar } from '../components/charts';
-import { StatusStrip } from '../components/PhoneFrame';
 import {
   computeStreak,
   elevationProfile,
@@ -134,7 +133,6 @@ export function Overview({
 
   return (
     <div style={S.screen}>
-      <StatusStrip />
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '0 16px 12px' }}>
         <span style={S.title}>Overview</span>
         <span style={{ fontFamily: font.mono, fontSize: 12, color: color.textFaint, fontFeatureSettings: "'tnum' 1, 'zero' 1" }}>{dateLine}</span>

@@ -4,7 +4,6 @@ import { color, font } from '../theme';
 import * as S from '../styles';
 import { Label } from '../components/primitives';
 import { ElevationProfile } from '../components/charts';
-import { StatusStrip } from '../components/PhoneFrame';
 import { fmtClock, fmtPace, elevationProfile } from '../lib/stats';
 import { haversineMeters } from '../lib/geo';
 import { makeId } from '../lib/storage';
@@ -123,7 +122,6 @@ export function SaveScreen({
 
   return (
     <div style={S.screen}>
-      <StatusStrip />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px 12px', borderBottom: `1px solid ${color.dividerHairline}` }}>
         <button onClick={onDiscard} style={{ background: 'none', border: 'none', padding: 0, fontSize: 15, color: color.textMuted, cursor: 'pointer' }}>
           Discard

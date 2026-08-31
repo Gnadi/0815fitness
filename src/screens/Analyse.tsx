@@ -4,7 +4,6 @@ import { color, font, zoneColors, HR_ZONE_BOUNDS, ZONE_NAMES } from '../theme';
 import * as S from '../styles';
 import { Label } from '../components/primitives';
 import { LoadChart, ZoneMixChart, PowerCurveChart } from '../components/charts';
-import { StatusStrip } from '../components/PhoneFrame';
 import {
   aggregateZoneSeconds,
   chronicSeries,
@@ -87,7 +86,6 @@ export function Analyse({
 
   return (
     <div style={S.screen}>
-      <StatusStrip />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px 10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button

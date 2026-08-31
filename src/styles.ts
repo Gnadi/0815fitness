@@ -48,7 +48,9 @@ export const screen: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   boxSizing: 'border-box',
-  paddingTop: 52,
+  // No status strip of our own any more: the browser paints its chrome above us,
+  // so this is only the clearance a notch or a rounded top edge needs.
+  paddingTop: 'max(20px, env(safe-area-inset-top))',
   overflow: 'hidden',
 };
 

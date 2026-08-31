@@ -2,7 +2,6 @@ import type { CSSProperties } from 'react';
 import { color, font } from '../theme';
 import * as S from '../styles';
 import { Label, SensorChip } from '../components/primitives';
-import { StatusStrip } from '../components/PhoneFrame';
 import { useGpsFix } from '../hooks/useGpsFix';
 import { isBluetoothSupported } from '../lib/ble';
 import type { Sport } from '../types';
@@ -79,7 +78,6 @@ export function PreStart({
 
   return (
     <div style={{ height: '100%', background: color.captureBase, display: 'flex', flexDirection: 'column', padding: '44px 16px 32px', boxSizing: 'border-box', gap: 14 }}>
-      <StatusStrip dark />
 
       <div style={{ display: 'flex', alignItems: 'center', height: 36, marginLeft: -10 }}>
         <button

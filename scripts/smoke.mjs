@@ -89,5 +89,44 @@ await page.getByRole('button', { name: 'Save', exact: true }).click();
 await page.waitForTimeout(600);
 await shot(page, '13-overview-after-save');
 
+// Stat details: every figure on the Overview opens one, and the streak and load
+// details each render their own extra element (day grid, ratio band).
+await page.getByRole('button', { name: 'Run distance detail' }).click();
+await page.waitForTimeout(500);
+await shot(page, '14-stat-run-distance');
+
+await page.getByRole('button', { name: 'Back to overview' }).click();
+await page.waitForTimeout(300);
+await page.getByRole('button', { name: 'Streak detail' }).click();
+await page.waitForTimeout(400);
+await shot(page, '15-stat-streak');
+
+await page.getByRole('button', { name: 'Back to overview' }).click();
+await page.waitForTimeout(300);
+await page.getByRole('button', { name: 'Load balance detail' }).click();
+await page.waitForTimeout(400);
+await shot(page, '16-stat-load');
+await page.getByRole('button', { name: 'Compare →' }).click();
+await page.waitForTimeout(600);
+await shot(page, '17-compare-from-detail');
+
+// Comparison: swap the just-recorded stub out for an older run, then read them
+// side by side.
+await page.getByRole('button', { name: 'Back to selection' }).click();
+await page.waitForTimeout(300);
+const pickRows = page.locator('.ct-scroll > button');
+await pickRows.nth(0).click();
+await pickRows.nth(3).click();
+await page.waitForTimeout(300);
+await shot(page, '18-compare-picker');
+await page.getByRole('button', { name: 'COMPARE 3' }).click();
+await page.waitForTimeout(600);
+await page.evaluate(() => document.querySelector('.ct-scroll').scrollBy(0, 700));
+await page.waitForTimeout(300);
+await shot(page, '19-compare-charts');
+await page.evaluate(() => document.querySelector('.ct-scroll').scrollBy(0, 900));
+await page.waitForTimeout(300);
+await shot(page, '20-compare-splits');
+
 await browser.close();
 console.log('done');

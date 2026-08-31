@@ -220,3 +220,161 @@ export function LoadRatioBar({ ratio }: { ratio: number }) {
     </div>
   );
 }
+
+// ── one weekly figure over twelve weeks, for the stat detail screens ──
+export function StatTrendBars({
+  points,
+  format,
+  height = 108,
+}: {
+  points: { weekStart: number; label: string; value: number }[];
+  format: (v: number) => string;
+  height?: number;
+}) {
+  const max = Math.max(...points.map((p) => p.value), 0);
+  const plotH = height - 34;
+  const mean = points.length > 0 ? points.reduce((s, p) => s + p.value, 0) / points.length : 0;
+  const scale = (v: number) => (max > 0 ? (v / max) * plotH : 0);
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'flex-end',
+        gap: 4,
+        height,
+        padding: '10px 12px 0',
+        background: color.surfaceSunk,
+        border: `1px solid ${color.dividerHairline}`,
+        borderRadius: 8,
+        boxSizing: 'border-box',
+      }}
+    >
+      {max > 0 && (
+        <span
+          style={{
+            position: 'absolute',
+            left: 12,
+            right: 12,
+            bottom: 24 + scale(mean),
+            borderTop: `1px dashed ${color.chartAxis}`,
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+      {points.map((p, i) => {
+        const isLast = i === points.length - 1;
+        return (
+          <div key={p.weekStart} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 5, height: '100%' }}>
+            {isLast && p.value > 0 && (
+              <span style={{ fontFamily: font.mono, fontSize: 10, textAlign: 'center', color: color.text }}>{format(p.value)}</span>
+            )}
+            <span
+              style={{
+                width: '100%',
+                borderRadius: '2px 2px 0 0',
+                background: isLast ? '#FFFFFF' : color.metricPace,
+                opacity: isLast ? 1 : 0.55,
+                height: Math.max(p.value > 0 ? 2 : 0, Math.round(scale(p.value))),
+              }}
+            />
+            <span style={{ fontFamily: font.mono, fontSize: 9, textAlign: 'center', color: isLast ? color.text : color.textFaint }}>
+              {i % 2 === 0 || isLast ? p.label : ''}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── two or three sessions overlaid on one distance axis ──────────────
+export function CompareSeriesChart({
+  series,
+  bucketM,
+  invertY,
+  fmtY,
+  minSpan = 0,
+  height = 150,
+}: {
+  series: { color: string; values: (number | null)[] }[];
+  bucketM: number;
+  /** Pace: a lower number is the better one, so it belongs higher up the axis. */
+  invertY?: boolean;
+  fmtY: (v: number) => string;
+  /** Floor on the y range, so two nearly identical sessions do not get zoomed into a
+   *  chart that dramatises a couple of seconds. */
+  minSpan?: number;
+  height?: number;
+}) {
+  const W = 390;
+  const X0 = 40;
+  const X1 = 380;
+  const Y0 = 12;
+  const Y1 = height - 24;
+  const count = Math.max(1, ...series.map((s) => s.values.length));
+  const flat = series.flatMap((s) => s.values).filter((v): v is number => v != null);
+  const rawLo = flat.length > 0 ? Math.min(...flat) : 0;
+  const rawHi = flat.length > 0 ? Math.max(...flat) : 1;
+  const grow = Math.max(0, minSpan - (rawHi - rawLo)) / 2;
+  const lo = rawLo - grow;
+  const hi = rawHi + grow;
+  const pad = Math.max(0.001, (hi - lo) * 0.12);
+  const min = lo - pad;
+  const max = hi + pad;
+
+  const px = (i: number) => X0 + ((X1 - X0) * (i + 0.5)) / count;
+  const py = (v: number) => {
+    const f = (v - min) / (max - min);
+    return invertY ? Y0 + f * (Y1 - Y0) : Y1 - f * (Y1 - Y0);
+  };
+
+  // Nulls are gaps in the data, not zeroes: lift the pen rather than drawing through them.
+  const linePath = (values: (number | null)[]) => {
+    let d = '';
+    let pen = false;
+    values.forEach((v, i) => {
+      if (v == null) {
+        pen = false;
+        return;
+      }
+      d += `${pen ? 'L' : 'M'}${px(i).toFixed(1)} ${py(v).toFixed(1)} `;
+      pen = true;
+    });
+    return d.trim();
+  };
+
+  const yTicks = [max - pad, (min + max) / 2, min + pad];
+  const totalKm = (count * bucketM) / 1000;
+  const xTicks = [0, 0.5, 1].map((f) => ({ f, km: totalKm * f }));
+
+  return (
+    <svg viewBox={`0 0 ${W} ${height}`} width="100%" height={height} style={{ display: 'block' }}>
+      {yTicks.map((v, i) => (
+        <g key={i}>
+          <line x1={X0} x2={X1} y1={py(v)} y2={py(v)} stroke={color.chartGrid} strokeWidth={1} />
+          <text x={4} y={py(v) + 3} fill={color.textFaint} fontFamily={font.mono} fontSize={10}>
+            {fmtY(v)}
+          </text>
+        </g>
+      ))}
+      {series.map((s, i) => (
+        <path key={i} d={linePath(s.values)} fill="none" stroke={s.color} strokeWidth={i === 0 ? 2 : 1.8} strokeLinejoin="round" strokeLinecap="round" />
+      ))}
+      {xTicks.map((t) => (
+        <text
+          key={t.f}
+          x={X0 + (X1 - X0) * t.f}
+          y={height - 6}
+          fill={color.textFaint}
+          fontFamily={font.mono}
+          fontSize={10}
+          textAnchor={t.f === 0 ? 'start' : t.f === 1 ? 'end' : 'middle'}
+        >
+          {t.km.toFixed(t.km >= 10 ? 0 : 1)} km
+        </text>
+      ))}
+    </svg>
+  );
+}

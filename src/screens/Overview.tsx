@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { color, font } from '../theme';
 import * as S from '../styles';
 import { Label, RouteSilhouette, SectionHeader } from '../components/primitives';
@@ -15,22 +16,68 @@ import {
   loadBalance,
   rollupWeeks,
 } from '../lib/stats';
+import type { StatKey } from '../lib/statDetails';
+import { MAX_COMPARE } from '../lib/compare';
 import { generateDemoHistory } from '../lib/demoSeed';
 import type { Activity, Settings } from '../types';
 
 const WEEKDAYS = ['MO', 'DI', 'MI', 'DO', 'FR', 'SA', 'SO'];
+
+/** Every figure on this screen opens its own detail, so each block is a button that
+ *  keeps the layout it had as a div — no chrome added, just the chevron in its label. */
+function StatBlock({
+  onOpen,
+  label,
+  style,
+  children,
+}: {
+  onOpen: () => void;
+  label: string;
+  style?: CSSProperties;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      onClick={onOpen}
+      aria-label={`${label} detail`}
+      style={{
+        display: 'block',
+        width: '100%',
+        textAlign: 'left',
+        background: 'none',
+        border: 'none',
+        padding: 0,
+        margin: 0,
+        font: 'inherit',
+        color: 'inherit',
+        cursor: 'pointer',
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Chevron() {
+  return <span style={{ color: color.textFaint, fontSize: 14, lineHeight: 1 }}>›</span>;
+}
 
 export function Overview({
   activities,
   settings,
   onRecord,
   onAnalyse,
+  onStat,
+  onCompare,
   onReplaceActivities,
 }: {
   activities: Activity[];
   settings: Settings;
   onRecord: () => void;
   onAnalyse: () => void;
+  onStat: (key: StatKey) => void;
+  onCompare: (ids: string[]) => void;
   onReplaceActivities: (next: Activity[]) => void;
 }) {
   // One stable reference time per mount, so memoised aggregates don't churn.
@@ -51,13 +98,22 @@ export function Overview({
   const latest = activities.slice(0, 3);
   const empty = activities.length === 0;
 
+  // The three newest sessions of one sport are what a comparison would open with.
+  const compareSeed = useMemo(() => {
+    const sport = latest[0]?.sport;
+    return activities
+      .filter((a) => a.sport === sport)
+      .slice(0, MAX_COMPARE)
+      .map((a) => a.id);
+  }, [activities, latest]);
+
   const daysElapsedThisWeek = Math.floor((now - thisWeek.weekStart) / 86400000) + 1;
   const restDaysThisWeek = Math.max(0, daysElapsedThisWeek - thisWeek.activeDays.size);
-  const weekStats = [
-    { label: 'Time', value: hoursMinutes(thisWeek.timeS), unit: 'hours' },
-    { label: 'Ascent', value: String(Math.round(thisWeek.ascentM)), unit: 'metres' },
-    { label: 'Ride', value: thisWeek.rideKm.toFixed(0), unit: 'km' },
-    { label: 'Sessions', value: String(thisWeek.sessions), unit: `${restDaysThisWeek} rest` },
+  const weekStats: { key: StatKey; label: string; value: string; unit: string }[] = [
+    { key: 'time', label: 'Time', value: hoursMinutes(thisWeek.timeS), unit: 'hours' },
+    { key: 'ascent', label: 'Ascent', value: String(Math.round(thisWeek.ascentM)), unit: 'metres' },
+    { key: 'rideKm', label: 'Ride', value: thisWeek.rideKm.toFixed(0), unit: 'km' },
+    { key: 'sessions', label: 'Sessions', value: String(thisWeek.sessions), unit: `${restDaysThisWeek} rest` },
   ];
 
   const ratioNote =
@@ -88,81 +144,100 @@ export function Overview({
         ) : (
           <>
             <div style={{ padding: '0 16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <Label>
-                  This week · {fmtDayMonth(weekStarts[weekStarts.length - 1])}–{fmtDayMonth(weekStarts[weekStarts.length - 1] + 6 * 86400000)}
-                </Label>
-                <span
-                  style={{
-                    fontFamily: font.mono,
-                    fontSize: 11,
-                    fontFeatureSettings: "'tnum' 1",
-                    color: delta >= 0 ? color.positive : color.textMuted,
-                  }}
-                >
-                  {delta >= 0 ? '+' : '−'}
-                  {Math.abs(delta).toFixed(1)} km vs last
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                <span style={{ ...S.metricHero, color: color.text }}>{thisWeek.runKm.toFixed(2)}</span>
-                <span style={{ fontFamily: font.mono, fontSize: 20, color: color.textMuted }}>km run</span>
-              </div>
-              <div style={{ ...S.cardGrid, marginTop: 14 }}>
-                {weekStats.map((w) => (
-                  <div key={w.label} style={S.cardCell}>
-                    <Label>{w.label}</Label>
-                    <span style={{ ...S.metric, fontWeight: 600, color: color.text }}>{w.value}</span>
-                    <span style={{ fontFamily: font.mono, fontSize: 11, color: color.textFaint }}>{w.unit}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                <Label>Consecutive days trained</Label>
-                <span style={{ fontFamily: font.mono, fontSize: 11, color: color.textFaint, fontFeatureSettings: "'tnum' 1" }}>longest {streak.longest}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
-                <span style={{ ...S.metricLarge, color: color.text }}>{streak.current}</span>
-                <span style={{ fontSize: 13, color: color.textMuted, paddingBottom: 3 }}>
-                  days · {streak.restDaysLast21} rest days in the last 21
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: 5, alignItems: 'flex-end', height: 50 }}>
-                {streak.last14.map((day) => (
-                  <div key={day.dayKey} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 5 }}>
+              <StatBlock onOpen={() => onStat('runKm')} label="Run distance">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <Label>
+                    This week · {fmtDayMonth(weekStarts[weekStarts.length - 1])}–{fmtDayMonth(weekStarts[weekStarts.length - 1] + 6 * 86400000)}
+                  </Label>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span
                       style={{
-                        width: '100%',
-                        height: day.trained ? 30 : 10,
-                        borderRadius: 2,
-                        background: day.isToday ? 'rgba(139,132,247,0.5)' : day.trained ? color.metricPace : color.dividerHairline,
-                        boxShadow: day.isToday ? `inset 0 0 0 1px ${color.accent}` : undefined,
+                        fontFamily: font.mono,
+                        fontSize: 11,
+                        fontFeatureSettings: "'tnum' 1",
+                        color: delta >= 0 ? color.positive : color.textMuted,
                       }}
-                    />
-                    <span style={{ fontFamily: font.mono, fontSize: 10, color: day.isToday ? color.accent : color.textFaint }}>{day.letter}</span>
-                  </div>
+                    >
+                      {delta >= 0 ? '+' : '−'}
+                      {Math.abs(delta).toFixed(1)} km vs last
+                    </span>
+                    <Chevron />
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                  <span style={{ ...S.metricHero, color: color.text }}>{thisWeek.runKm.toFixed(2)}</span>
+                  <span style={{ fontFamily: font.mono, fontSize: 20, color: color.textMuted }}>km run</span>
+                </div>
+              </StatBlock>
+              <div style={{ ...S.cardGrid, marginTop: 14 }}>
+                {weekStats.map((w) => (
+                  <StatBlock key={w.key} onOpen={() => onStat(w.key)} label={w.label} style={S.cardCell}>
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                      <Label>{w.label}</Label>
+                      <Chevron />
+                    </span>
+                    <span style={{ ...S.metric, fontWeight: 600, color: color.text }}>{w.value}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 11, color: color.textFaint }}>{w.unit}</span>
+                  </StatBlock>
                 ))}
               </div>
-              <span style={{ fontSize: 12, lineHeight: 1.35, color: color.textFaint }}>Recorded days, not a target. A rest day is not a broken anything.</span>
+              <span style={{ display: 'block', marginTop: 10, fontSize: 12, color: color.textFaint }}>Tap any figure for the weeks behind it.</span>
             </div>
 
-            <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <Label>Volume · last 8 weeks</Label>
-              <VolumeBars weeks={rollups.map((r) => ({ label: isoWeekLabel(r.weekStart).slice(1), runKm: r.runKm, rideKm: r.rideKm }))} />
-              <div style={{ display: 'flex', gap: 16 }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: color.textMuted }}>
-                  <span style={{ width: 14, height: 2, background: color.metricPace }} />
-                  run km
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: color.textMuted }}>
-                  <span style={{ width: 14, height: 2, background: color.metricSpeed }} />
-                  ride km ÷ 3
-                </span>
+            <StatBlock onOpen={() => onStat('streak')} label="Streak" style={{ padding: '0 16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                  <Label>Consecutive days trained</Label>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 11, color: color.textFaint, fontFeatureSettings: "'tnum' 1" }}>longest {streak.longest}</span>
+                    <Chevron />
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+                  <span style={{ ...S.metricLarge, color: color.text }}>{streak.current}</span>
+                  <span style={{ fontSize: 13, color: color.textMuted, paddingBottom: 3 }}>
+                    days · {streak.restDaysLast21} rest days in the last 21
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 5, alignItems: 'flex-end', height: 50 }}>
+                  {streak.last14.map((day) => (
+                    <div key={day.dayKey} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 5 }}>
+                      <span
+                        style={{
+                          width: '100%',
+                          height: day.trained ? 30 : 10,
+                          borderRadius: 2,
+                          background: day.isToday ? 'rgba(139,132,247,0.5)' : day.trained ? color.metricPace : color.dividerHairline,
+                          boxShadow: day.isToday ? `inset 0 0 0 1px ${color.accent}` : undefined,
+                        }}
+                      />
+                      <span style={{ fontFamily: font.mono, fontSize: 10, color: day.isToday ? color.accent : color.textFaint }}>{day.letter}</span>
+                    </div>
+                  ))}
+                </div>
+                <span style={{ fontSize: 12, lineHeight: 1.35, color: color.textFaint }}>Recorded days, not a target. A rest day is not a broken anything.</span>
               </div>
-            </div>
+            </StatBlock>
+
+            <StatBlock onOpen={() => onStat('volume')} label="Volume" style={{ padding: '0 16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Label>Volume · last 8 weeks</Label>
+                  <Chevron />
+                </div>
+                <VolumeBars weeks={rollups.map((r) => ({ label: isoWeekLabel(r.weekStart).slice(1), runKm: r.runKm, rideKm: r.rideKm }))} />
+                <div style={{ display: 'flex', gap: 16 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: color.textMuted }}>
+                    <span style={{ width: 14, height: 2, background: color.metricPace }} />
+                    run km
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: color.textMuted }}>
+                    <span style={{ width: 14, height: 2, background: color.metricSpeed }} />
+                    ride km ÷ 3
+                  </span>
+                </div>
+              </div>
+            </StatBlock>
 
             <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
@@ -171,22 +246,39 @@ export function Overview({
                   Analyse →
                 </button>
               </div>
-              <div style={{ padding: 12, background: color.surface, border: `1px solid ${color.border}`, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                  <span style={{ ...S.metricLarge, color: color.text }}>{ratio.toFixed(2)}</span>
-                  <span style={{ fontSize: 13, color: color.textMuted }}>{ratioNote}</span>
+              <StatBlock
+                onOpen={() => onStat('load')}
+                label="Load balance"
+                style={{ padding: 12, background: color.surface, border: `1px solid ${color.border}`, borderRadius: 8 }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                    <span style={{ ...S.metricLarge, color: color.text }}>{ratio.toFixed(2)}</span>
+                    <span style={{ flex: 1, fontSize: 13, color: color.textMuted }}>{ratioNote}</span>
+                    <Chevron />
+                  </div>
+                  <LoadRatioBar ratio={ratio} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: font.mono, fontSize: 10, color: color.textFaint }}>
+                    <span>0.6 detraining</span>
+                    <span>0.8–1.3 steady</span>
+                    <span>1.6 spike</span>
+                  </div>
                 </div>
-                <LoadRatioBar ratio={ratio} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: font.mono, fontSize: 10, color: color.textFaint }}>
-                  <span>0.6 detraining</span>
-                  <span>0.8–1.3 steady</span>
-                  <span>1.6 spike</span>
-                </div>
-              </div>
+              </StatBlock>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <SectionHeader>Latest</SectionHeader>
+              <SectionHeader
+                right={
+                  compareSeed.length >= 2 ? (
+                    <button onClick={() => onCompare(compareSeed)} style={S.linkButton}>
+                      Compare →
+                    </button>
+                  ) : undefined
+                }
+              >
+                Latest
+              </SectionHeader>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {latest.map((a) => {
                   const durationS = (a.endedAt - a.startedAt) / 1000;
@@ -196,15 +288,20 @@ export function Overview({
                       ? `${(a.distance / 1000).toFixed(1)} km · ${avgSpeed > 0.2 ? fmtPace(1000 / avgSpeed) : '—:—'}`
                       : `${(a.distance / 1000).toFixed(1)} km · ${a.power.length > 1 ? `${Math.round(a.power.reduce((s, p) => s + p.watts, 0) / a.power.length)} W` : `${(avgSpeed * 3.6).toFixed(1)} km/h`}`;
                   return (
-                    <div key={a.id} style={S.listRow}>
+                    <button
+                      key={a.id}
+                      onClick={() => onCompare([a.id])}
+                      style={{ ...S.listRow, width: '100%', background: 'none', border: 'none', borderTop: `1px solid ${color.dividerHairline}`, cursor: 'pointer', textAlign: 'left' }}
+                    >
                       <span style={{ fontFamily: font.mono, fontSize: 11, color: color.textFaint, width: 34, fontFeatureSettings: "'tnum' 1" }}>{fmtDayMonth(a.startedAt)}</span>
                       <RouteSilhouette elevations={elevationProfile(a)} />
                       <span style={{ flex: 1, fontSize: 13, color: color.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</span>
                       <span style={{ ...S.tableNum, color: color.textMuted }}>{metric}</span>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
+              <span style={{ padding: '0 16px', fontSize: 12, color: color.textFaint }}>Tap a session to compare it against another.</span>
             </div>
           </>
         )}

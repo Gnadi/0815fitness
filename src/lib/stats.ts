@@ -1,5 +1,6 @@
 import type { Activity, Sport } from '../types';
 import { haversineMeters, resample } from './geo';
+import { MAX_PLAUSIBLE_SPEED_MPS } from './recorder';
 import { HR_ZONE_BOUNDS } from '../theme';
 
 const DAY_MS = 86400000;
@@ -201,7 +202,10 @@ function cumulativeDistanceSeries(activity: Activity): { t: number; d: number }[
   const out: { t: number; d: number }[] = [{ t: pts[0].t, d: 0 }];
   let d = 0;
   for (let i = 1; i < pts.length; i++) {
-    d += haversineMeters(pts[i - 1], pts[i]);
+    // A GPS jump the recorder refused to count must not hand out a personal best either.
+    const dtS = (pts[i].t - pts[i - 1].t) / 1000;
+    const dM = haversineMeters(pts[i - 1], pts[i]);
+    if (dtS > 0 && dM / dtS <= MAX_PLAUSIBLE_SPEED_MPS) d += dM;
     out.push({ t: pts[i].t, d });
   }
   return out;
@@ -440,4 +444,68 @@ export function elevationProfile(activity: Activity): number[] {
   const raw = activity.points.map((p) => p.ele ?? 0);
   if (raw.every((e) => e === 0)) return [0, 0];
   return raw;
+}
+
+// ── streak history ──────────────────────────────────────────────────
+export interface StreakSegment {
+  startDay: number;
+  endDay: number;
+  days: number;
+  /** Still running as of the reference day, so it can be marked rather than sorted apart. */
+  current: boolean;
+}
+
+/** Every run of consecutive trained days, most recent first. */
+export function streakSegments(activities: Activity[], reference = Date.now()): StreakSegment[] {
+  const days = [...new Set(activities.map((a) => startOfDay(a.startedAt)))].sort((a, b) => a - b);
+  if (days.length === 0) return [];
+  const today = startOfDay(reference);
+  const segments: StreakSegment[] = [];
+  let start = days[0];
+  let prev = days[0];
+  for (let i = 1; i <= days.length; i++) {
+    const day = days[i];
+    if (day != null && day - prev === DAY_MS) {
+      prev = day;
+      continue;
+    }
+    segments.push({
+      startDay: start,
+      endDay: prev,
+      days: Math.round((prev - start) / DAY_MS) + 1,
+      current: prev === today || prev === today - DAY_MS,
+    });
+    if (day == null) break;
+    start = day;
+    prev = day;
+  }
+  return segments.reverse();
+}
+
+export interface TrainedDay {
+  day: number;
+  trained: boolean;
+  sessions: number;
+  loadKm: number;
+  isToday: boolean;
+}
+
+/** The last `days` calendar days, oldest first — the source for the day grids. */
+export function trainedDayGrid(activities: Activity[], days: number, reference = Date.now()): TrainedDay[] {
+  const today = startOfDay(reference);
+  const byDay = new Map<number, { sessions: number; loadKm: number }>();
+  for (const a of activities) {
+    const key = startOfDay(a.startedAt);
+    const entry = byDay.get(key) ?? { sessions: 0, loadKm: 0 };
+    entry.sessions += 1;
+    entry.loadKm += a.sport === 'run' ? a.distance / 1000 : a.distance / 3000;
+    byDay.set(key, entry);
+  }
+  const out: TrainedDay[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const day = today - i * DAY_MS;
+    const entry = byDay.get(day);
+    out.push({ day, trained: entry != null, sessions: entry?.sessions ?? 0, loadKm: entry?.loadKm ?? 0, isToday: i === 0 });
+  }
+  return out;
 }

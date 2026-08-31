@@ -6,7 +6,7 @@ export type RecorderStatus = 'idle' | 'recording' | 'paused' | 'autoPaused' | 'f
 const AUTO_PAUSE_SPEED_MPS = 0.5;
 const AUTO_PAUSE_AFTER_S = 8;
 const RESUME_SPEED_MPS = 0.9;
-const MAX_PLAUSIBLE_SPEED_MPS = 14; // ~50 km/h — beyond this a GPS jump is treated as noise
+export const MAX_PLAUSIBLE_SPEED_MPS = 14; // ~50 km/h — beyond this a GPS jump is treated as noise
 const MAX_ACCEPT_ACCURACY_M = 50;
 const PACE_WINDOW_S = 25;
 

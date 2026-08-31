@@ -32,6 +32,8 @@ The prototype simulated its sensor data. This implementation reads the actual ha
 | Bike cadence | Web Bluetooth, CSC `0x1816` / `0x2A5B`, RPM derived from crank revolutions |
 | Running cadence | Web Bluetooth, RSC `0x1814` / `0x2A53` |
 | Week volume, streak, load ratio, zones, PBs, power curve, decoupling | Computed from stored activities in `src/lib/stats.ts` |
+| Stat details behind each Overview figure | Twelve-week rollups in `src/lib/statDetails.ts` |
+| Session comparison: metrics, pace/elevation/HR overlays, splits | Per-second traces off the recorded track in `src/lib/compare.ts` |
 
 Two honest deviations from the prototype's copy:
 
@@ -61,20 +63,41 @@ src/
     recorder.ts     recording state machine: distance, laps, auto-pause, elapsed
     ble.ts          GATT parsing + connection for HR, power, CSC, RSC
     stats.ts        weekly rollups, streaks, load balance, zones, PBs, power curve
+    statDetails.ts  the model behind each Overview figure's detail screen
+    compare.ts      per-second traces, distance-axis series, splits, metric rows
     storage.ts      localStorage persistence
     demoSeed.ts     synthetic sample history behind the empty-state action
   hooks/            useGpsFix, useRecorder, useBleSensors, useWakeLock
   components/       PhoneFrame, primitives (DataField, SensorChip, silhouette), charts
-  screens/          Overview, Analyse (load/zones/records/plan), PreStart, RecordingSession, Save
+  screens/          Overview, Analyse (load/zones/records/plan), StatDetail, Compare,
+                    PreStart, RecordingSession, Save
 ```
+
+## Reading a figure, comparing two sessions
+
+Every number on the Overview opens its own detail: the week distance, the four cards
+(time, ascent, ride, sessions), the streak, the volume bars and the load ratio. Each
+detail shows the figure in its window, the twelve weeks behind it, a table of the last
+eight, and the sessions that add up to it — plus a note on how it is computed, because
+a number nobody can account for is not worth showing.
+
+Two or three sessions of the same sport can be read side by side, from the Overview's
+*Compare*, from any session row, or from a stat detail's contributors. The first one
+picked is the reference every difference is measured against. The comparison puts them
+on one distance axis — pace (or speed), elevation and heart rate overlaid — with a
+metric table and per-kilometre splits under it. Pace comes from the time it took to
+cross each bucket of the track, not an instantaneous speed, so a stop reads as the slow
+kilometre it was; a GPS jump the recorder refused to count is discarded here too.
+Sports are never mixed: pace against speed is not a comparison.
 
 ## Scope
 
 This build covers the screens in the handed-off design: Overview, Analyse (Load, Zones,
 Records, Plan), Pre-start, Recording (live, auto-paused, paused, screen-locked, ride
-without a power meter) and Save. Screens 4–8 of the original brief — activity list, run
-and ride detail, trends, route repeats — were not part of this design file and are not
-built.
+without a power meter) and Save, plus the stat details and the session comparison above.
+Screens 4–8 of the original brief — activity list, single-activity detail, trends, route
+repeats — were not part of that design file; the comparison covers what two sessions
+read like together rather than what one reads like alone.
 
 ## Sample history
 

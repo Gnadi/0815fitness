@@ -4,7 +4,6 @@ import { color, font } from '../theme';
 import * as S from '../styles';
 import { Label, RouteSilhouette, SectionHeader } from '../components/primitives';
 import { VolumeBars, LoadRatioBar } from '../components/charts';
-import { StatusStrip } from '../components/PhoneFrame';
 import {
   computeStreak,
   elevationProfile,
@@ -23,44 +22,55 @@ import type { Activity, Settings } from '../types';
 
 const WEEKDAYS = ['MO', 'DI', 'MI', 'DO', 'FR', 'SA', 'SO'];
 
-/** Every figure on this screen opens its own detail, so each block is a button that
- *  keeps the layout it had as a div — no chrome added, just the chevron in its label. */
-function StatBlock({
+/** The cue that marks a block as an entry into its own detail: an optional word and
+ *  the chevron badge, both lit by the card they sit in (see .ct-card in index.css). */
+function Cue({ text }: { text?: string }) {
+  return (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 'none' }}>
+      {text && (
+        <span className="ct-cue" style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase' }}>
+          {text}
+        </span>
+      )}
+      <span className="ct-cue-dot" style={{ fontSize: 13, lineHeight: 1, paddingBottom: 1 }}>
+        ›
+      </span>
+    </span>
+  );
+}
+
+/** Every figure on this screen opens its own detail, so each one is a card: its own
+ *  surface, its label and cue on the header line, the figure below. */
+function StatCard({
   onOpen,
+  name,
   label,
+  meta,
+  cue,
   style,
   children,
 }: {
   onOpen: () => void;
-  label: string;
+  /** Names the detail this card opens — used verbatim for the accessible name. */
+  name: string;
+  label: ReactNode;
+  meta?: ReactNode;
+  cue?: string;
   style?: CSSProperties;
   children: ReactNode;
 }) {
   return (
-    <button
-      onClick={onOpen}
-      aria-label={`${label} detail`}
-      style={{
-        display: 'block',
-        width: '100%',
-        textAlign: 'left',
-        background: 'none',
-        border: 'none',
-        padding: 0,
-        margin: 0,
-        font: 'inherit',
-        color: 'inherit',
-        cursor: 'pointer',
-        ...style,
-      }}
-    >
+    <button className="ct-card" onClick={onOpen} aria-label={`${name} detail`} style={{ ...S.cardBody, ...style }}>
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <Label>{label}</Label>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          {meta}
+          <Cue text={cue} />
+        </span>
+      </span>
       {children}
     </button>
   );
-}
-
-function Chevron() {
-  return <span style={{ color: color.textFaint, fontSize: 14, lineHeight: 1 }}>›</span>;
 }
 
 export function Overview({
@@ -109,19 +119,20 @@ export function Overview({
 
   const daysElapsedThisWeek = Math.floor((now - thisWeek.weekStart) / 86400000) + 1;
   const restDaysThisWeek = Math.max(0, daysElapsedThisWeek - thisWeek.activeDays.size);
-  const weekStats: { key: StatKey; label: string; value: string; unit: string }[] = [
-    { key: 'time', label: 'Time', value: hoursMinutes(thisWeek.timeS), unit: 'hours' },
-    { key: 'ascent', label: 'Ascent', value: String(Math.round(thisWeek.ascentM)), unit: 'metres' },
-    { key: 'rideKm', label: 'Ride', value: thisWeek.rideKm.toFixed(0), unit: 'km' },
-    { key: 'sessions', label: 'Sessions', value: String(thisWeek.sessions), unit: `${restDaysThisWeek} rest` },
+  const weekStats: { key: StatKey; name: string; label: string; value: string; unit: string }[] = [
+    { key: 'time', name: 'Training time', label: 'Time', value: hoursMinutes(thisWeek.timeS), unit: 'hours' },
+    { key: 'ascent', name: 'Ascent', label: 'Ascent', value: String(Math.round(thisWeek.ascentM)), unit: 'metres' },
+    { key: 'rideKm', name: 'Ride distance', label: 'Ride', value: thisWeek.rideKm.toFixed(0), unit: 'km' },
+    { key: 'sessions', name: 'Sessions', label: 'Sessions', value: String(thisWeek.sessions), unit: `${restDaysThisWeek} rest` },
   ];
 
   const ratioNote =
     ratio === 0 ? 'no load recorded yet' : ratio > 1.3 ? 'ratio · above the steady band' : ratio < 0.8 ? 'ratio · below the steady band' : 'ratio · inside the steady band';
 
+  const weekRange = `${fmtDayMonth(weekStarts[weekStarts.length - 1])}–${fmtDayMonth(weekStarts[weekStarts.length - 1] + 6 * 86400000)}`;
+
   return (
     <div style={S.screen}>
-      <StatusStrip />
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '0 16px 12px' }}>
         <span style={S.title}>Overview</span>
         <span style={{ fontFamily: font.mono, fontSize: 12, color: color.textFaint, fontFeatureSettings: "'tnum' 1, 'zero' 1" }}>{dateLine}</span>
@@ -143,128 +154,116 @@ export function Overview({
           </div>
         ) : (
           <>
-            <div style={{ padding: '0 16px' }}>
-              <StatBlock onOpen={() => onStat('runKm')} label="Run distance">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <Label>
-                    This week · {fmtDayMonth(weekStarts[weekStarts.length - 1])}–{fmtDayMonth(weekStarts[weekStarts.length - 1] + 6 * 86400000)}
-                  </Label>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span
-                      style={{
-                        fontFamily: font.mono,
-                        fontSize: 11,
-                        fontFeatureSettings: "'tnum' 1",
-                        color: delta >= 0 ? color.positive : color.textMuted,
-                      }}
-                    >
-                      {delta >= 0 ? '+' : '−'}
-                      {Math.abs(delta).toFixed(1)} km vs last
-                    </span>
-                    <Chevron />
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                  <span style={{ ...S.metricHero, color: color.text }}>{thisWeek.runKm.toFixed(2)}</span>
-                  <span style={{ fontFamily: font.mono, fontSize: 20, color: color.textMuted }}>km run</span>
-                </div>
-              </StatBlock>
-              <div style={{ ...S.cardGrid, marginTop: 14 }}>
-                {weekStats.map((w) => (
-                  <StatBlock key={w.key} onOpen={() => onStat(w.key)} label={w.label} style={S.cardCell}>
-                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
-                      <Label>{w.label}</Label>
-                      <Chevron />
-                    </span>
-                    <span style={{ ...S.metric, fontWeight: 600, color: color.text }}>{w.value}</span>
-                    <span style={{ fontFamily: font.mono, fontSize: 11, color: color.textFaint }}>{w.unit}</span>
-                  </StatBlock>
-                ))}
-              </div>
-              <span style={{ display: 'block', marginTop: 10, fontSize: 12, color: color.textFaint }}>Tap any figure for the weeks behind it.</span>
-            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <SectionHeader right={<span style={{ ...S.caption, color: color.textFaint }}>every card opens its detail</span>}>This week · {weekRange}</SectionHeader>
 
-            <StatBlock onOpen={() => onStat('streak')} label="Streak" style={{ padding: '0 16px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                  <Label>Consecutive days trained</Label>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontFamily: font.mono, fontSize: 11, color: color.textFaint, fontFeatureSettings: "'tnum' 1" }}>longest {streak.longest}</span>
-                    <Chevron />
+              <div style={S.cardStack}>
+                <StatCard onOpen={() => onStat('runKm')} name="Run distance" label="Run distance" cue="Details">
+                  <span style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                    <span style={{ ...S.metricHero, color: color.text }}>{thisWeek.runKm.toFixed(2)}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 20, color: color.textMuted }}>km run</span>
                   </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
-                  <span style={{ ...S.metricLarge, color: color.text }}>{streak.current}</span>
-                  <span style={{ fontSize: 13, color: color.textMuted, paddingBottom: 3 }}>
-                    days · {streak.restDaysLast21} rest days in the last 21
+                  <span
+                    style={{
+                      alignSelf: 'flex-start',
+                      padding: '3px 8px',
+                      borderRadius: 999,
+                      background: delta >= 0 ? 'rgba(79,158,106,0.14)' : color.surfaceSunk,
+                      border: `1px solid ${delta >= 0 ? 'rgba(79,158,106,0.4)' : color.border}`,
+                      fontFamily: font.mono,
+                      fontSize: 11,
+                      fontFeatureSettings: "'tnum' 1",
+                      color: delta >= 0 ? color.positive : color.textMuted,
+                    }}
+                  >
+                    {delta >= 0 ? '+' : '−'}
+                    {Math.abs(delta).toFixed(1)} km vs last week
                   </span>
-                </div>
-                <div style={{ display: 'flex', gap: 5, alignItems: 'flex-end', height: 50 }}>
-                  {streak.last14.map((day) => (
-                    <div key={day.dayKey} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 5 }}>
-                      <span
-                        style={{
-                          width: '100%',
-                          height: day.trained ? 30 : 10,
-                          borderRadius: 2,
-                          background: day.isToday ? 'rgba(139,132,247,0.5)' : day.trained ? color.metricPace : color.dividerHairline,
-                          boxShadow: day.isToday ? `inset 0 0 0 1px ${color.accent}` : undefined,
-                        }}
-                      />
-                      <span style={{ fontFamily: font.mono, fontSize: 10, color: day.isToday ? color.accent : color.textFaint }}>{day.letter}</span>
-                    </div>
+                </StatCard>
+
+                <div style={S.tileGrid}>
+                  {weekStats.map((w) => (
+                    <StatCard key={w.key} onOpen={() => onStat(w.key)} name={w.name} label={w.label} style={S.tileBody}>
+                      <span style={{ ...S.metric, fontWeight: 600, color: color.text }}>{w.value}</span>
+                      <span style={{ fontFamily: font.mono, fontSize: 11, color: color.textFaint }}>{w.unit}</span>
+                    </StatCard>
                   ))}
                 </div>
-                <span style={{ fontSize: 12, lineHeight: 1.35, color: color.textFaint }}>Recorded days, not a target. A rest day is not a broken anything.</span>
               </div>
-            </StatBlock>
+            </div>
 
-            <StatBlock onOpen={() => onStat('volume')} label="Volume" style={{ padding: '0 16px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Label>Volume · last 8 weeks</Label>
-                  <Chevron />
-                </div>
-                <VolumeBars weeks={rollups.map((r) => ({ label: isoWeekLabel(r.weekStart).slice(1), runKm: r.runKm, rideKm: r.rideKm }))} />
-                <div style={{ display: 'flex', gap: 16 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: color.textMuted }}>
-                    <span style={{ width: 14, height: 2, background: color.metricPace }} />
-                    run km
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: color.textMuted }}>
-                    <span style={{ width: 14, height: 2, background: color.metricSpeed }} />
-                    ride km ÷ 3
-                  </span>
-                </div>
-              </div>
-            </StatBlock>
-
-            <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                <Label>Load · 7 day vs 28 day</Label>
-                <button onClick={onAnalyse} style={S.linkButton}>
-                  Analyse →
-                </button>
-              </div>
-              <StatBlock
-                onOpen={() => onStat('load')}
-                label="Load balance"
-                style={{ padding: 12, background: color.surface, border: `1px solid ${color.border}`, borderRadius: 8 }}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <SectionHeader
+                right={
+                  <button onClick={onAnalyse} style={S.linkButton}>
+                    Analyse →
+                  </button>
+                }
               >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                Trends
+              </SectionHeader>
+
+              <div style={S.cardStack}>
+                <StatCard
+                  onOpen={() => onStat('streak')}
+                  name="Streak"
+                  label="Streak · days trained"
+                  cue="Details"
+                >
+                  <span style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+                    <span style={{ ...S.metricLarge, color: color.text }}>{streak.current}</span>
+                    <span style={{ fontSize: 13, color: color.textMuted, paddingBottom: 3 }}>
+                      days · longest {streak.longest}
+                    </span>
+                  </span>
+                  <span style={{ display: 'flex', gap: 5, alignItems: 'flex-end', height: 50 }}>
+                    {streak.last14.map((day) => (
+                      <span key={day.dayKey} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 5 }}>
+                        <span
+                          style={{
+                            width: '100%',
+                            height: day.trained ? 30 : 10,
+                            borderRadius: 2,
+                            background: day.isToday ? 'rgba(139,132,247,0.5)' : day.trained ? color.metricPace : color.dividerHairline,
+                            boxShadow: day.isToday ? `inset 0 0 0 1px ${color.accent}` : undefined,
+                          }}
+                        />
+                        <span style={{ fontFamily: font.mono, fontSize: 10, color: day.isToday ? color.accent : color.textFaint }}>{day.letter}</span>
+                      </span>
+                    ))}
+                  </span>
+                  <span style={{ fontSize: 12, lineHeight: 1.35, color: color.textFaint }}>
+                    {streak.restDaysLast21} rest days in the last 21 — recorded days, not a target.
+                  </span>
+                </StatCard>
+
+                <StatCard onOpen={() => onStat('volume')} name="Volume" label="Volume · last 8 weeks" cue="Details">
+                  <VolumeBars weeks={rollups.map((r) => ({ label: isoWeekLabel(r.weekStart).slice(1), runKm: r.runKm, rideKm: r.rideKm }))} />
+                  <span style={{ display: 'flex', gap: 16 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: color.textMuted }}>
+                      <span style={{ width: 14, height: 2, background: color.metricPace }} />
+                      run km
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: color.textMuted }}>
+                      <span style={{ width: 14, height: 2, background: color.metricSpeed }} />
+                      ride km ÷ 3
+                    </span>
+                  </span>
+                </StatCard>
+
+                <StatCard onOpen={() => onStat('load')} name="Load balance" label="Load · 7 day vs 28 day" cue="Details">
+                  <span style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
                     <span style={{ ...S.metricLarge, color: color.text }}>{ratio.toFixed(2)}</span>
                     <span style={{ flex: 1, fontSize: 13, color: color.textMuted }}>{ratioNote}</span>
-                    <Chevron />
-                  </div>
+                  </span>
                   <LoadRatioBar ratio={ratio} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: font.mono, fontSize: 10, color: color.textFaint }}>
+                  <span style={{ display: 'flex', justifyContent: 'space-between', fontFamily: font.mono, fontSize: 10, color: color.textFaint }}>
                     <span>0.6 detraining</span>
                     <span>0.8–1.3 steady</span>
                     <span>1.6 spike</span>
-                  </div>
-                </div>
-              </StatBlock>
+                  </span>
+                </StatCard>
+              </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -290,13 +289,17 @@ export function Overview({
                   return (
                     <button
                       key={a.id}
+                      className="ct-row"
                       onClick={() => onCompare([a.id])}
-                      style={{ ...S.listRow, width: '100%', background: 'none', border: 'none', borderTop: `1px solid ${color.dividerHairline}`, cursor: 'pointer', textAlign: 'left' }}
+                      style={{ ...S.listRow, width: '100%', gap: 10, border: 'none', borderTop: `1px solid ${color.dividerHairline}`, cursor: 'pointer', textAlign: 'left' }}
                     >
                       <span style={{ fontFamily: font.mono, fontSize: 11, color: color.textFaint, width: 34, fontFeatureSettings: "'tnum' 1" }}>{fmtDayMonth(a.startedAt)}</span>
-                      <RouteSilhouette elevations={elevationProfile(a)} />
+                      <RouteSilhouette elevations={elevationProfile(a)} width={56} />
                       <span style={{ flex: 1, fontSize: 13, color: color.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</span>
                       <span style={{ ...S.tableNum, color: color.textMuted }}>{metric}</span>
+                      <span className="ct-cue-dot" style={{ fontSize: 13, lineHeight: 1, paddingBottom: 1 }}>
+                        ›
+                      </span>
                     </button>
                   );
                 })}

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { color, zoneColors, font } from '../theme';
 import { projectTrackToViewBox, pathFromPoints, silhouettePath, resample } from '../lib/geo';
 import type { GeoSample } from '../types';
@@ -168,11 +169,32 @@ export function PowerCurveChart({
 }
 
 // ── live track from the real recorded GPS points ──────────────────
+
+/** The map is 358 units wide, so a path with more vertices than that has nothing left
+ *  to say — but a two-hour ride hands it seven thousand, re-projected and re-rasterised
+ *  every second the session runs. Striding keeps the newest fix, which is the one the
+ *  current-position marker sits on. */
+const MAX_TRACK_POINTS = 400;
+
+function thinTrack(points: GeoSample[]): GeoSample[] {
+  if (points.length <= MAX_TRACK_POINTS) return points;
+  const stride = Math.ceil(points.length / MAX_TRACK_POINTS);
+  const out: GeoSample[] = [];
+  for (let i = 0; i < points.length; i += stride) out.push(points[i]);
+  if ((points.length - 1) % stride !== 0) out.push(points[points.length - 1]);
+  return out;
+}
+
 export function TrackMap({ points, height }: { points: GeoSample[]; height: number }) {
   const W = 358;
   const H = 260;
-  const projected = projectTrackToViewBox(points, W, H, 18);
-  const path = pathFromPoints(projected);
+  // The recorder pushes into one array it keeps for the whole session, so its identity
+  // never changes and its length is the only thing that says a fix has landed. The rule
+  // reads that as a redundant dependency because it cannot see the mutation; without it
+  // the track would be projected once and never again.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const projected = useMemo(() => projectTrackToViewBox(thinTrack(points), W, H, 18), [points, points.length]);
+  const path = useMemo(() => pathFromPoints(projected), [projected]);
   const start = projected[0];
   const current = projected[projected.length - 1];
 

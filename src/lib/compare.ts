@@ -93,19 +93,35 @@ function mean(values: number[]): number | null {
   return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
+/** Mean of one field across a sample series, without the intermediate array a
+ *  `.map(...)` would build — these series run to thousands of samples an hour. */
+function meanOf<T>(samples: T[], pick: (s: T) => number): number | null {
+  if (samples.length === 0) return null;
+  let sum = 0;
+  for (const s of samples) sum += pick(s);
+  return sum / samples.length;
+}
+
 export function metricsFor(activity: Activity): Metrics {
   const durationS = Math.max(0, (activity.endedAt - activity.startedAt) / 1000);
   const speed = durationS > 0 ? activity.distance / durationS : 0;
+
+  // Scanned rather than spread into Math.max: a strap sampling every second through a
+  // long ride is tens of thousands of arguments, which is slower than a loop and
+  // eventually more than the engine will take at all.
+  let peakHr: number | null = null;
+  for (const h of activity.hr) if (peakHr == null || h.bpm > peakHr) peakHr = h.bpm;
+
   return {
     distanceKm: activity.distance / 1000,
     durationS,
     paceS: speed > 0.2 ? 1000 / speed : null,
     speedKmh: speed * 3.6,
     ascentM: activity.ascent,
-    avgHr: mean(activity.hr.map((h) => h.bpm)),
-    peakHr: activity.hr.length > 0 ? Math.max(...activity.hr.map((h) => h.bpm)) : null,
-    avgCadence: mean(activity.cadence.map((c) => c.rpm)),
-    avgPower: mean(activity.power.map((p) => p.watts)),
+    avgHr: meanOf(activity.hr, (h) => h.bpm),
+    peakHr,
+    avgCadence: meanOf(activity.cadence, (c) => c.rpm),
+    avgPower: meanOf(activity.power, (p) => p.watts),
     best1kS: bestEffortSeconds(activity, 1000),
     decouplingPct: aerobicDecoupling(activity),
     effort: activity.effort,

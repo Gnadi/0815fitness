@@ -55,12 +55,16 @@ export function useRecorder(sport: Sport, armed: boolean) {
       lock: () => recorder.lock(),
       unlock: () => recorder.unlock(),
       addLap: () => recorder.addLap(),
-      finish: () => {
+      /** Ends the session and hands back its final state. The caller files the activity
+       *  from what is returned rather than from `snapshot`, which is a render behind
+       *  until React has processed the stop. */
+      finish: (): RecorderSnapshot => {
         if (watchId.current != null) {
           navigator.geolocation.clearWatch(watchId.current);
           watchId.current = null;
         }
         recorder.stop();
+        return recorder.snapshot();
       },
       feedHr: (bpm: number) => recorder.addHr(bpm),
       feedPower: (watts: number) => recorder.addPower(watts),

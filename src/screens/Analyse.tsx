@@ -60,8 +60,10 @@ export function Analyse({
   const [now] = useState(() => Date.now());
   const weekStarts = useMemo(() => lastNWeekStarts(12, now), [now]);
   const rollups = useMemo(() => rollupWeeks(activities, weekStarts), [activities, weekStarts]);
-  const acute = rollups.map(loadKm);
-  const chronic = chronicSeries(acute);
+  // Memoised because the load table below is keyed on them: a series rebuilt on every
+  // repaint would defeat the memo that keeps decoupling off the render path.
+  const acute = useMemo(() => rollups.map(loadKm), [rollups]);
+  const chronic = useMemo(() => chronicSeries(acute), [acute]);
   const balance = useMemo(() => loadBalance(activities, now), [activities, now]);
 
   const inRange = useMemo(
@@ -174,7 +176,25 @@ function LoadTab({
     { label: '28-day', value: balance.chronic.toFixed(1), note: 'km per week', color: color.text },
   ];
 
-  const tableWeeks = [...rollups].reverse().slice(0, 6);
+  // Decoupling walks every GPS and heart-rate sample of every session in the week, so
+  // the six rows below are built once per set of activities rather than on every
+  // repaint of this tab — switching the range used to recompute all six.
+  const tableWeeks = useMemo(
+    () =>
+      [...rollups]
+        .reverse()
+        .slice(0, 6)
+        .map((w, i) => {
+          const idx = rollups.indexOf(w);
+          return {
+            week: w,
+            first: i === 0,
+            ratio: chronic[idx] > 0 ? acute[idx] / chronic[idx] : 0,
+            decoupling: weeklyDecoupling(activities, w.weekStart),
+          };
+        }),
+    [rollups, acute, chronic, activities],
+  );
 
   return (
     <>
@@ -211,12 +231,9 @@ function LoadTab({
           <span style={{ ...S.monoTick, flex: 'none', width: 48, textAlign: 'right' }}>RATIO</span>
           <span style={{ ...S.monoTick, flex: 'none', width: 48, textAlign: 'right' }}>DEC</span>
         </div>
-        {tableWeeks.map((w, i) => {
-          const idx = rollups.indexOf(w);
-          const r = chronic[idx] > 0 ? acute[idx] / chronic[idx] : 0;
-          const dec = weeklyDecoupling(activities, w.weekStart);
+        {tableWeeks.map(({ week: w, first, ratio: r, decoupling: dec }) => {
           return (
-            <div key={w.weekStart} style={{ ...S.tableRow, background: i === 0 ? 'rgba(139,132,247,0.08)' : undefined }}>
+            <div key={w.weekStart} style={{ ...S.tableRow, background: first ? 'rgba(139,132,247,0.08)' : undefined }}>
               <span style={{ ...S.tableNum, flex: 'none', width: 48, textAlign: 'left', color: color.textMuted }}>{isoWeekLabel(w.weekStart)}</span>
               <span style={{ ...S.tableNum, flex: 1, textAlign: 'right', color: color.text }}>{loadKm(w).toFixed(1)}</span>
               <span style={{ ...S.tableNum, flex: 1, textAlign: 'right', color: color.text }}>{hoursMinutes(w.timeS)}</span>

@@ -77,7 +77,7 @@ export function PreStart({
       ];
 
   return (
-    <div style={{ height: '100%', background: color.captureBase, display: 'flex', flexDirection: 'column', padding: '44px 16px 32px', boxSizing: 'border-box', gap: 14 }}>
+    <div style={{ height: '100%', background: color.captureBase, display: 'flex', flexDirection: 'column', padding: 'max(44px, calc(env(safe-area-inset-top) + 14px)) 16px max(32px, env(safe-area-inset-bottom))', boxSizing: 'border-box', gap: 14 }}>
 
       <div style={{ display: 'flex', alignItems: 'center', height: 36, marginLeft: -10 }}>
         <button

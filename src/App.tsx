@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PhoneFrame } from './components/PhoneFrame';
 import { Overview } from './screens/Overview';
 import { Analyse } from './screens/Analyse';
@@ -62,6 +62,20 @@ export default function App() {
   useEffect(() => {
     saveSettings(settings);
   }, [settings]);
+
+  // The installed app's icon carries a "Record" shortcut, which opens the app at
+  // `?screen=record`. Push pre-start over the Overview rather than replacing it, so
+  // backing out of a shortcut launch still lands somewhere, and drop the query so a
+  // reload — or a later launch from the plain icon — opens the Overview.
+  const shortcutHandled = useRef(false);
+  useEffect(() => {
+    if (shortcutHandled.current) return;
+    shortcutHandled.current = true;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('screen') !== 'record') return;
+    window.history.replaceState(window.history.state, '', window.location.pathname);
+    push({ screen: 'pre' });
+  }, [push]);
 
   const openStat = useCallback((statKey: StatKey) => push({ screen: 'stat', statKey }), [push]);
 

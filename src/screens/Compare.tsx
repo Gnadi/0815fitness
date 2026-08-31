@@ -200,7 +200,7 @@ function PickList({
         )}
       </div>
 
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '12px 16px 24px', background: 'linear-gradient(to top,#0B0C0D 62%,rgba(11,12,13,0))' }}>
+      <div style={S.bottomBar}>
         <button
           onClick={onDone}
           disabled={selected.length < 2}

@@ -33,6 +33,9 @@ export interface RecorderSnapshot {
   liveHr: number | null;
   livePower: number | null;
   liveCadence: number | null;
+  /** Mean of every recorded power sample, kept as a running total rather than summed
+   *  out of `power` on each read — that array grows for the whole ride. */
+  avgPowerW: number | null;
 }
 
 type Listener = (s: RecorderSnapshot) => void;
@@ -54,6 +57,7 @@ export class Recorder {
   private prevLapDurationS: number | null = null;
   private hr: HrSample[] = [];
   private power: PowerSample[] = [];
+  private powerSumW = 0;
   private cadence: CadenceSample[] = [];
   private liveHr: number | null = null;
   private livePower: number | null = null;
@@ -79,6 +83,14 @@ export class Recorder {
     for (const l of this.listeners) l(s);
   }
 
+  /** A sample landed. A running session repaints from its own once-a-second tick — the
+   *  clock has to move between fixes anyway — so a strap, a power meter and a foot pod
+   *  all reporting inside the same second cost one render between them instead of
+   *  three. Outside a running session there is no tick, so the change goes out now. */
+  private sampled() {
+    if (!this.tickHandle) this.emit();
+  }
+
   private now() {
     return Date.now();
   }
@@ -96,6 +108,10 @@ export class Recorder {
     this.laps = [];
     this.lapNo = 1;
     this.prevLapDurationS = null;
+    this.hr = [];
+    this.power = [];
+    this.powerSumW = 0;
+    this.cadence = [];
     this.tickHandle = setInterval(() => this.emit(), 1000);
     this.emit();
   }
@@ -174,10 +190,11 @@ export class Recorder {
     }
 
     this.maybeAutoLap();
-    this.emit();
+    this.sampled();
   }
 
   private evaluateAutoPause(instSpeedMps: number) {
+    const was = this.status;
     if (this.status === 'recording') {
       if (instSpeedMps < AUTO_PAUSE_SPEED_MPS) {
         if (this.belowThresholdSinceT == null) this.belowThresholdSinceT = this.now();
@@ -193,25 +210,31 @@ export class Recorder {
         this.belowThresholdSinceT = null;
       }
     }
+    // Entering or leaving an auto-pause is a state change the banner has to show at
+    // once, not on the next tick with the rest of the second's samples.
+    if (this.status !== was) this.emit();
   }
 
   addHr(bpm: number) {
     const t = this.now();
     this.liveHr = bpm;
     if (this.status === 'recording' || this.status === 'autoPaused') this.hr.push({ t, bpm });
-    this.emit();
+    this.sampled();
   }
   addPower(watts: number) {
     const t = this.now();
     this.livePower = watts;
-    if (this.status === 'recording' || this.status === 'autoPaused') this.power.push({ t, watts });
-    this.emit();
+    if (this.status === 'recording' || this.status === 'autoPaused') {
+      this.power.push({ t, watts });
+      this.powerSumW += watts;
+    }
+    this.sampled();
   }
   addCadence(rpm: number) {
     const t = this.now();
     this.liveCadence = rpm;
     if (this.status === 'recording' || this.status === 'autoPaused') this.cadence.push({ t, rpm });
-    this.emit();
+    this.sampled();
   }
 
   private elapsedS(): number {
@@ -222,15 +245,23 @@ export class Recorder {
     return Math.max(0, (end - this.startedAt) / 1000 - pausedTotal);
   }
 
+  /** Speed over the last `PACE_WINDOW_S` of the track.
+   *
+   *  Walked back from the newest fix rather than filtered out of the whole track: this
+   *  runs on every snapshot, once a second, and the track only ever grows — the filter
+   *  it replaces re-copied two hours of a ride to read its last twenty-five seconds. */
   private liveSpeed(): number | null {
-    const now = this.now();
-    const windowPts = this.points.filter((p) => now - p.t <= PACE_WINDOW_S * 1000);
-    if (windowPts.length < 2) return null;
-    const first = windowPts[0];
-    const last = windowPts[windowPts.length - 1];
-    const dtS = (last.t - first.t) / 1000;
+    const pts = this.points;
+    const cutoff = this.now() - PACE_WINDOW_S * 1000;
+    let from = pts.length;
+    while (from > 0 && pts[from - 1].t >= cutoff) from--;
+    if (pts.length - from < 2) return null;
+
+    const dtS = (pts[pts.length - 1].t - pts[from].t) / 1000;
     if (dtS < 3) return null;
-    return cumulativeSegment(windowPts) / dtS;
+    let dist = 0;
+    for (let i = from + 1; i < pts.length; i++) dist += haversineMeters(pts[i - 1], pts[i]);
+    return dist / dtS;
   }
 
   snapshot(): RecorderSnapshot {
@@ -259,6 +290,7 @@ export class Recorder {
       liveHr: this.liveHr,
       livePower: this.livePower,
       liveCadence: this.liveCadence,
+      avgPowerW: this.power.length > 0 ? this.powerSumW / this.power.length : null,
     };
   }
 
@@ -268,10 +300,4 @@ export class Recorder {
     // under-counts a lap's duration by however long the app was paused mid-lap.
     return (now - t) / 1000;
   }
-}
-
-function cumulativeSegment(points: GeoSample[]): number {
-  let d = 0;
-  for (let i = 1; i < points.length; i++) d += haversineMeters(points[i - 1], points[i]);
-  return d;
 }

@@ -57,3 +57,65 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
     transition: none !important;
   }
 }
+
+/* Overview stat cards. The whole card is one tap target into that figure's detail,
+   so it needs the hover/press states an inline style can't express — and a cue in
+   its corner that lights up with the card it belongs to. */
+.ct-card {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: #141618;
+  border: 1px solid #26292D;
+  border-radius: 8px;
+  transition: background-color 120ms cubic-bezier(0.2, 0, 0, 1), border-color 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+.ct-card:hover {
+  background: #1C1F22;
+  border-color: #3A3E43;
+}
+.ct-card:active {
+  background: #1C1F22;
+  border-color: #8B84F7;
+}
+
+.ct-cue {
+  color: #6B7176;
+  transition: color 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+.ct-cue-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid #26292D;
+  color: #6B7176;
+  transition: color 120ms, border-color 120ms, background-color 120ms;
+}
+.ct-card:hover .ct-cue,
+.ct-card:active .ct-cue {
+  color: #8B84F7;
+}
+.ct-card:hover .ct-cue-dot,
+.ct-card:active .ct-cue-dot {
+  color: #8B84F7;
+  border-color: #8B84F7;
+  background: rgba(139, 132, 247, 0.14);
+}
+
+/* Session rows open a comparison, so they get the same press feedback at list weight. */
+.ct-row {
+  background: none;
+  transition: background-color 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+.ct-row:hover {
+  background: #141618;
+}
+.ct-row:hover .ct-cue-dot {
+  color: #8B84F7;
+  border-color: #8B84F7;
+}

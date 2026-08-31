@@ -124,3 +124,33 @@ export const listRow: CSSProperties = {
   borderTop: `1px solid ${color.dividerHairline}`,
   boxSizing: 'border-box',
 };
+
+// Overview stat cards. The chrome (surface, border, hover, press) lives in the
+// .ct-card class so the states CSS can express stay in CSS; these are the layouts
+// the cards are packed with.
+export const cardBody: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+  padding: '13px 14px',
+};
+
+export const tileBody: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+  padding: '11px 12px 12px',
+};
+
+export const tileGrid: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: 10,
+};
+
+export const cardStack: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+  padding: '0 16px',
+};

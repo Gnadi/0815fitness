@@ -109,13 +109,15 @@ export function Overview({
   const empty = activities.length === 0;
 
   // The three newest sessions of one sport are what a comparison would open with.
+  // Keyed on the log itself, not on `latest`: that is a fresh slice every render, and a
+  // dependency that is never the same twice is a memo that never holds.
   const compareSeed = useMemo(() => {
-    const sport = latest[0]?.sport;
+    const sport = activities[0]?.sport;
     return activities
       .filter((a) => a.sport === sport)
       .slice(0, MAX_COMPARE)
       .map((a) => a.id);
-  }, [activities, latest]);
+  }, [activities]);
 
   const daysElapsedThisWeek = Math.floor((now - thisWeek.weekStart) / 86400000) + 1;
   const restDaysThisWeek = Math.max(0, daysElapsedThisWeek - thisWeek.activeDays.size);
@@ -310,7 +312,7 @@ export function Overview({
         )}
       </div>
 
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '12px 16px 24px', background: 'linear-gradient(to top,#0B0C0D 62%,rgba(11,12,13,0))' }}>
+      <div style={S.bottomBar}>
         <button
           onClick={onRecord}
           style={{

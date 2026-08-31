@@ -5,7 +5,8 @@ and analyses them in depth. No feed, no sharing, no upsell. Built from a Claude 
 handoff (`Contour Capture.dc.html`) and its accompanying design system brief, which
 define the dark-only palette, the mono numeral type scale and every screen here.
 
-React + TypeScript + Vite. Everything is stored locally; there is no backend.
+React + TypeScript + Vite. Everything is stored locally; there is no backend. It
+installs to a home screen and runs with no network at all — see **Installing it** below.
 
 ## Running it
 
@@ -13,11 +14,42 @@ React + TypeScript + Vite. Everything is stored locally; there is no backend.
 npm install
 npm run dev        # http://localhost:5173
 npm run build      # typecheck + production build
+npm run lint
 npm run smoke      # drives the built app in Chromium with a simulated GPS track
+npm run pwa        # asserts the worker installs and the app boots with the network cut
+npm run icons      # re-renders the PNG icons from public/logo.svg
 ```
 
-`npm run smoke` needs `npm run preview` running on port 4173 (or `BASE_URL` set), and
-writes screenshots to `scripts/shots/`.
+`npm run smoke` and `npm run pwa` need `npm run preview` running on port 4173 (or
+`BASE_URL` set); `smoke` writes screenshots to `scripts/shots/`.
+
+## Installing it
+
+The app is meant to be opened at a trailhead, so it is a PWA that works with no network:
+add it to a home screen and it runs without browser chrome, off a cache, against a
+training log that already lived on the device.
+
+- **The shell is precached.** `src/sw.js` caches the document, script, stylesheet, fonts
+  and icons at install and serves them cache-first. There is nothing to sync — every
+  activity is in `localStorage` — so offline is the same app, not a degraded one.
+- **An update never interrupts a recording.** The worker deliberately does not
+  `skipWaiting()`: a new build installs in the background and takes over the next time
+  the app is opened cold, so the shell can never be swapped out from under a session
+  that is capturing. There is no update prompt to dismiss.
+- **The precache list is generated at build time** by the `contourServiceWorker` plugin
+  in `vite.config.ts`, and the cache is versioned by a hash of the precached files'
+  *contents* — so an unhashed icon or the manifest still invalidates when it changes,
+  and a rebuild that changes nothing emits a byte-identical worker with no update to
+  install.
+- **The icon carries a Record shortcut**, which opens the app straight at pre-start with
+  the GPS fix already acquiring.
+- **Installed, the app asks for persistent storage**, so the history stops being
+  evictable cache. Only when installed: in a tab it would be a permission prompt for a
+  visitor who has recorded nothing.
+
+The mark in `public/logo.svg` is the app's own signature element — a recorded elevation
+profile in straight segments over the contour intervals the name comes from — and the
+PNG icons are rendered from it by `npm run icons`.
 
 ## What's real
 
@@ -67,10 +99,15 @@ src/
     compare.ts      per-second traces, distance-axis series, splits, metric rows
     storage.ts      localStorage persistence
     demoSeed.ts     synthetic sample history behind the empty-state action
+    pwa.ts          service-worker registration and the persistent-storage request
   hooks/            useGpsFix, useRecorder, useBleSensors, useWakeLock, useNavStack
   components/       PhoneFrame, primitives (DataField, SensorChip, silhouette), charts
   screens/          Overview, Analyse (load/zones/records/plan), StatDetail, Compare,
                     PreStart, RecordingSession, Save
+  sw.js             the service worker; its precache list is injected at build time
+public/
+  logo.svg          the Contour mark, and the source the PNG icons are rendered from
+  manifest.webmanifest
 ```
 
 ## Getting back
@@ -108,6 +145,16 @@ without a power meter) and Save, plus the stat details and the session compariso
 Screens 4–8 of the original brief — activity list, single-activity detail, trends, route
 repeats — were not part of that design file; the comparison covers what two sessions
 read like together rather than what one reads like alone.
+
+## What a day is
+
+A day is the epoch millisecond its **local** midnight falls on, and days are stepped by
+calendar arithmetic rather than by adding 86 400 000. Both matter, and neither is
+theoretical: keyed off the UTC date, an evening session lands on tomorrow east of
+Greenwich and this morning's on yesterday west of it, and stepped by a fixed number of
+milliseconds, the day the clocks change is 23 or 25 hours long and the walk misses it.
+Either one silently shortens a streak — the first for anyone outside UTC, the second for
+everyone in a DST country, twice a year.
 
 ## Sample history
 

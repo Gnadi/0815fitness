@@ -64,6 +64,19 @@ export const scrollArea: CSSProperties = {
   overflow: 'auto',
 };
 
+/** The primary action floating over a scrolling screen — RECORD on the Overview, the
+ *  confirm button under the comparison picker — on the gradient that lets the list
+ *  disappear under it. Installed to a home screen there is no browser chrome below the
+ *  app, so the bottom padding clears the home indicator itself. */
+export const bottomBar: CSSProperties = {
+  position: 'absolute',
+  left: 0,
+  right: 0,
+  bottom: 0,
+  padding: '12px 16px max(24px, env(safe-area-inset-bottom))',
+  background: `linear-gradient(to top, ${color.background} 62%, rgba(11,12,13,0))`,
+};
+
 export const cardGrid: CSSProperties = {
   display: 'flex',
   gap: 1,

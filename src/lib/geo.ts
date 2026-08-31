@@ -44,6 +44,22 @@ export function fixStrengthFromAccuracy(accuracy: number | null): number {
   return 1;
 }
 
+/** Smallest and largest value in a series.
+ *
+ *  A loop rather than `Math.min(...values)`: the series here are recorded tracks, and
+ *  spreading one of those into an argument list is both slower than a scan and a
+ *  RangeError waiting for the ride long enough to hit the engine's argument limit. */
+export function extent(values: ArrayLike<number>): { min: number; max: number } {
+  let min = Infinity;
+  let max = -Infinity;
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  return { min, max };
+}
+
 /** Project a lat/lon track onto a flat local plane (metres), fitted into the given viewBox
  *  with a margin, for rendering as an SVG path. Good enough for a single run/ride's extent. */
 export function projectTrackToViewBox(
@@ -56,20 +72,29 @@ export function projectTrackToViewBox(
   const lat0 = points[0].lat;
   const mPerDegLat = 111320;
   const mPerDegLon = 111320 * Math.cos((lat0 * Math.PI) / 180);
-  const xs = points.map((p) => p.lon * mPerDegLon);
-  const ys = points.map((p) => p.lat * mPerDegLat);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const p of points) {
+    const x = p.lon * mPerDegLon;
+    const y = p.lat * mPerDegLat;
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+
   const spanX = Math.max(1, maxX - minX);
   const spanY = Math.max(1, maxY - minY);
   const scale = Math.min((vbW - margin * 2) / spanX, (vbH - margin * 2) / spanY);
   const offX = (vbW - spanX * scale) / 2;
   const offY = (vbH - spanY * scale) / 2;
-  return xs.map((x, i) => ({
-    x: offX + (x - minX) * scale,
-    y: vbH - (offY + (ys[i] - minY) * scale), // flip Y: lat increases north, svg y increases down
+  return points.map((p) => ({
+    x: offX + (p.lon * mPerDegLon - minX) * scale,
+    // flip Y: lat increases north, svg y increases down
+    y: vbH - (offY + (p.lat * mPerDegLat - minY) * scale),
   }));
 }
 
@@ -83,8 +108,7 @@ export function pathFromPoints(pts: { x: number; y: number }[]): string {
  *  chips and activity detail. */
 export function silhouettePath(elevations: number[], w: number, h: number): string {
   if (elevations.length < 2) return `M0 ${h} L${w} ${h} Z`;
-  const min = Math.min(...elevations);
-  const max = Math.max(...elevations);
+  const { min, max } = extent(elevations);
   const span = Math.max(1, max - min);
   const n = elevations.length;
   const pts = elevations.map((e, i) => {

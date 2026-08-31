@@ -53,7 +53,6 @@ export function RecordingSession({
   useWakeLock(true);
   const [mapOpen, setMapOpen] = useState(false);
   const autoPausedSince = useRef<number | null>(null);
-  const [, forceTick] = useState(0);
 
   // Feed live BLE readings into the recording as they arrive. Keyed on the sensor's
   // notification tick, so an unchanged reading still records a sample.
@@ -80,12 +79,6 @@ export function RecordingSession({
       autoPausedSince.current = null;
     }
   }, [snapshot.status]);
-
-  // A once-a-second repaint so the clock keeps moving even between GPS fixes.
-  useEffect(() => {
-    const h = setInterval(() => forceTick((n) => n + 1), 1000);
-    return () => clearInterval(h);
-  }, []);
 
   const run = sport === 'run';
   const paused = snapshot.status === 'paused' || snapshot.status === 'autoPaused';
@@ -115,7 +108,7 @@ export function RecordingSession({
   const heroSub = run
     ? `avg ${avgPaceSec ? fmtPace(avgPaceSec) : '—:—'} · ${Math.round(snapshot.ascentM)} m ascent`
     : powerConnected
-      ? `avg ${Math.round(avgWatts(snapshot.power))} W · ${Math.round(snapshot.ascentM)} m ascent`
+      ? `avg ${Math.round(snapshot.avgPowerW ?? 0)} W · ${Math.round(snapshot.ascentM)} m ascent`
       : `avg ${(avgSpeed * 3.6).toFixed(1)} km/h · no power meter paired`;
 
   const hrPct = snapshot.liveHr ? snapshot.liveHr / settings.maxHr : 0;
@@ -123,25 +116,25 @@ export function RecordingSession({
   const waitingForFix = snapshot.points.length === 0 || !snapshot.gpsOk;
 
   const finish = () => {
-    actions.finish();
+    const final = actions.finish();
     onFinish({
       sport,
-      startedAt: snapshot.startedAt ?? Date.now(),
+      startedAt: final.startedAt ?? Date.now(),
       endedAt: Date.now(),
-      points: snapshot.points,
-      laps: snapshot.laps,
-      hr: snapshot.hr,
-      power: snapshot.power,
-      cadence: snapshot.cadence,
-      distance: snapshot.distanceM,
-      ascent: snapshot.ascentM,
+      points: final.points,
+      laps: final.laps,
+      hr: final.hr,
+      power: final.power,
+      cadence: final.cadence,
+      distance: final.distanceM,
+      ascent: final.ascentM,
     });
   };
 
   const autoPauseSeconds = autoPausedSince.current ? Math.round((Date.now() - autoPausedSince.current) / 1000) : 0;
 
   return (
-    <div style={{ height: '100%', background: color.captureBase, display: 'flex', flexDirection: 'column', boxSizing: 'border-box', padding: 'max(20px, env(safe-area-inset-top)) 0 40px', position: 'relative' }}>
+    <div style={{ height: '100%', background: color.captureBase, display: 'flex', flexDirection: 'column', boxSizing: 'border-box', padding: 'max(20px, env(safe-area-inset-top)) 0 max(40px, calc(env(safe-area-inset-bottom) + 16px))', position: 'relative' }}>
 
       {snapshot.status === 'autoPaused' && (
         <Banner text={`AUTO-PAUSED · NO MOVEMENT ${fmtClock(autoPauseSeconds)}`} />
@@ -358,9 +351,4 @@ function LockGlyph({ stroke = 'currentColor' }: { stroke?: string }) {
       <path d="M8 11V7a4 4 0 0 1 8 0v4" />
     </svg>
   );
-}
-
-function avgWatts(samples: PowerSample[]): number {
-  if (samples.length === 0) return 0;
-  return samples.reduce((s, p) => s + p.watts, 0) / samples.length;
 }

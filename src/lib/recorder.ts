@@ -403,22 +403,17 @@ export class Recorder {
 
   /** Picks a checkpointed session back up.
    *
-   *  By default it comes back *paused*, with everything between the last checkpoint and
-   *  now counted as paused time: after a crash the app was not recording during the gap,
-   *  and a session that resumed itself would silently claim minutes it never measured.
-   *
-   *  `stillRecording` is the other case, and it is the one the pivot created. The
-   *  location service outlives the WebView, so the app can be rebuilt — or killed and
-   *  relaunched — while the session is genuinely still running in the notification
-   *  shade. Banking that gap as a pause would be the same lie in the other direction:
-   *  the ride did not stop, only the screen did. The caller passes it when the service
-   *  is still alive, and follows with `addGeoSamples` for what it recorded meanwhile. */
-  restore(cp: RecorderCheckpoint, { stillRecording = false }: { stillRecording?: boolean } = {}): void {
+   *  It comes back *paused*, with everything between the last checkpoint and now counted
+   *  as paused time. That is still right on Android, and worth saying why: the location
+   *  service is bound to the activity and is stopped with it, so an app that is gone is
+   *  a session that genuinely stopped recording. A recorder that resumed itself would
+   *  claim minutes nothing measured — which is the one thing this app does not do. */
+  restore(cp: RecorderCheckpoint): void {
     this.sport = cp.sport;
-    this.status = stillRecording ? 'recording' : 'paused';
+    this.status = 'paused';
     this.startedAt = cp.startedAt;
-    this.pausedAccumS = stillRecording ? cp.pausedAccumS : cp.pausedAccumS + Math.max(0, (this.now() - cp.savedAt) / 1000);
-    this.pauseStartedAt = stillRecording ? null : this.now();
+    this.pausedAccumS = cp.pausedAccumS + Math.max(0, (this.now() - cp.savedAt) / 1000);
+    this.pauseStartedAt = this.now();
     this.points = cp.points;
     this.distanceM = cp.distanceM;
     this.ascentM = cp.ascentM;

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { fixStrengthFromAccuracy } from '../lib/geo';
+import { watchLocation } from '../lib/location';
 
-export type GpsStatus = 'unsupported' | 'denied' | 'acquiring' | 'locked';
+export type GpsStatus = 'denied' | 'disabled' | 'acquiring' | 'locked';
 
 export interface GpsFixState {
   status: GpsStatus;
@@ -12,46 +13,47 @@ export interface GpsFixState {
 
 const LOCK_ACCURACY_M = 20;
 
+const ACQUIRING: GpsFixState = { status: 'acquiring', accuracy: null, strength: 0, coords: null };
+
 /** Watches the device's real GPS fix while `active` is true — used on the pre-start
- *  screen so the fix quality shown is the browser's actual Geolocation accuracy,
- *  not a simulated countdown. */
+ *  screen so the fix quality shown is the receiver's actual accuracy, not a simulated
+ *  countdown.
+ *
+ *  This watch is deliberately a foreground one: no notification, and it stops when the
+ *  screen does. Standing on the pre-start screen is not recording, and an ongoing
+ *  notification that says otherwise would be a lie the person has to dismiss. The
+ *  background service starts when the session does. */
 export function useGpsFix(active: boolean): GpsFixState {
-  const [state, setState] = useState<GpsFixState>(() => ({
-    status: 'geolocation' in navigator ? 'acquiring' : 'unsupported',
-    accuracy: null,
-    strength: 0,
-    coords: null,
-  }));
-  const watchId = useRef<number | null>(null);
+  const [state, setState] = useState<GpsFixState>(ACQUIRING);
 
   useEffect(() => {
-    if (!active || !('geolocation' in navigator)) return;
-    watchId.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        const accuracy = pos.coords.accuracy;
+    if (!active) return;
+    let cancelled = false;
+
+    const pending = watchLocation({
+      onFix: (sample) => {
+        if (cancelled) return;
+        const accuracy = sample.accuracy ?? null;
         setState({
-          status: accuracy <= LOCK_ACCURACY_M ? 'locked' : 'acquiring',
+          status: accuracy != null && accuracy <= LOCK_ACCURACY_M ? 'locked' : 'acquiring',
           accuracy,
           strength: fixStrengthFromAccuracy(accuracy),
-          coords: { lat: pos.coords.latitude, lon: pos.coords.longitude, alt: pos.coords.altitude },
+          coords: { lat: sample.lat, lon: sample.lon, alt: sample.ele ?? null },
         });
       },
-      (err) => {
-        setState({
-          status: err.code === err.PERMISSION_DENIED ? 'denied' : 'acquiring',
-          accuracy: null,
-          strength: 0,
-          coords: null,
-        });
+      onError: (denial) => {
+        if (cancelled) return;
+        // A receiver that is merely struggling reads as a fix that has not landed yet;
+        // only a refusal the person can act on is reported as one.
+        setState({ ...ACQUIRING, status: denial === 'unavailable' ? 'acquiring' : denial });
       },
-      { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 },
-    );
+    });
 
     return () => {
-      if (watchId.current != null) navigator.geolocation.clearWatch(watchId.current);
-      watchId.current = null;
+      cancelled = true;
+      void pending.then((handle) => handle.stop());
     };
   }, [active]);
 
-  return state;
+  return active ? state : ACQUIRING;
 }

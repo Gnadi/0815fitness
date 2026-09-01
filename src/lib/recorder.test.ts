@@ -325,61 +325,6 @@ describe('the recorder', () => {
     });
   });
 
-  describe('coming back to a session the service never stopped', () => {
-    it('resumes recording without banking the gap as a pause', () => {
-      const recorder = new Recorder('ride');
-      recorder.start();
-      recorder.addGeoSample(fix(0, 0));
-      vi.setSystemTime(START + 600_000);
-      recorder.addGeoSample(fix(600, 1800));
-      const checkpoint = recorder.toCheckpoint();
-      recorder.stop();
-
-      // The WebView was killed for five minutes; the notification never went away.
-      vi.setSystemTime(START + 900_000);
-      const resumed = new Recorder('ride');
-      resumed.restore(checkpoint as NonNullable<typeof checkpoint>, { stillRecording: true });
-
-      const snapshot = resumed.snapshot();
-      expect(snapshot.status).toBe('recording');
-      // Fifteen minutes of riding, none of it pause: the ride did not stop, the screen did.
-      expect(snapshot.elapsedS).toBeCloseTo(900, 0);
-      resumed.stop();
-    });
-
-    it('still banks the gap when the session really did stop', () => {
-      const recorder = new Recorder('ride');
-      recorder.start();
-      recorder.addGeoSample(fix(0, 0));
-      vi.setSystemTime(START + 600_000);
-      const checkpoint = recorder.toCheckpoint();
-      recorder.stop();
-
-      vi.setSystemTime(START + 900_000);
-      const resumed = new Recorder('ride');
-      resumed.restore(checkpoint as NonNullable<typeof checkpoint>);
-      expect(resumed.snapshot().status).toBe('paused');
-      expect(resumed.snapshot().elapsedS).toBeCloseTo(600, 0);
-      resumed.stop();
-    });
-
-    it('carries on from the drained fixes after resuming', () => {
-      const recorder = new Recorder('ride');
-      recorder.start();
-      recorder.addGeoSample(fix(0, 0));
-      const checkpoint = recorder.toCheckpoint();
-      recorder.stop();
-
-      vi.setSystemTime(START + 300_000);
-      const resumed = new Recorder('ride');
-      resumed.restore(checkpoint as NonNullable<typeof checkpoint>, { stillRecording: true });
-      resumed.addGeoSamples([fix(100, 500), fix(200, 1000)]);
-      expect(resumed.snapshot().distanceM).toBeCloseTo(1000, -1);
-      expect(resumed.snapshot().status).toBe('recording');
-      resumed.stop();
-    });
-  });
-
   describe('the ceiling on a plausible speed', () => {
     it('keeps a fast descent that the old 50 km/h ceiling would have eaten', () => {
       const recorder = new Recorder('ride');

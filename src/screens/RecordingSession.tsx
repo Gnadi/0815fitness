@@ -5,9 +5,10 @@ import * as S from '../styles';
 import { Label } from '../components/primitives';
 import { TrackMap } from '../components/charts';
 import { useRecorder } from '../hooks/useRecorder';
-import { useWakeLock } from '../hooks/useWakeLock';
 import { useUnits } from '../hooks/useUnits';
 import { fmtClock } from '../lib/stats';
+import { TRACK_GAP_S } from '../lib/derived';
+import { openLocationSettings } from '../lib/location';
 import type { RecorderCheckpoint } from '../lib/recorder';
 import type { GeoSample, HrSample, PowerSample, CadenceSample, Lap, Sport, Settings } from '../types';
 import type { SensorSet } from '../App';
@@ -56,11 +57,10 @@ export function RecordingSession({
   onFinish: (draft: ActivityDraft) => void;
 }) {
   const units = useUnits();
-  const { snapshot, actions, trackLossS, dismissTrackLoss } = useRecorder(sport, true, {
+  const { snapshot, actions, denial } = useRecorder(sport, true, {
     autoPauseMps: settings.autoPauseMps,
     restore,
   });
-  useWakeLock(true);
   const [mapOpen, setMapOpen] = useState(false);
   const autoPausedSince = useRef<number | null>(null);
 
@@ -125,6 +125,12 @@ export function RecordingSession({
   const hrPct = snapshot.liveHr ? snapshot.liveHr / settings.maxHr : 0;
   const hrZoneIdx = HR_ZONE_BOUNDS.slice(0, 5).reduce((acc, bound, i) => (hrPct >= bound ? i : acc), 0);
   const waitingForFix = snapshot.points.length === 0 || !snapshot.gpsOk;
+  // Only once something has been recorded: before the first fix the session is acquiring,
+  // which is a different sentence and already has its own banner.
+  const trackLostS =
+    snapshot.points.length > 0 && snapshot.secondsSinceFix != null && snapshot.secondsSinceFix > TRACK_GAP_S
+      ? snapshot.secondsSinceFix
+      : null;
 
   const finish = () => {
     const final = actions.finish();
@@ -153,13 +159,25 @@ export function RecordingSession({
       )}
       {snapshot.status !== 'autoPaused' && waitingForFix && <Banner text="ACQUIRING FIX · DISTANCE HELD" />}
 
-      {/* The app was off screen, so the browser stopped telling it where it was. Said
-          here, mid-session, rather than left to be discovered on the save screen. */}
-      {trackLossS != null && (
+      {/* A gap used to mean the app had been backgrounded, and the banner said so — the
+          fix was to keep the screen open. It cannot mean that any more: the service
+          reports through a locked screen and a pocket. What is left is the receiver
+          losing the sky, so the banner names that instead, and does not ask for anything
+          the person can usefully do about a tunnel. It counts up live rather than
+          appearing on return, because there is no longer a return to wait for. */}
+      {trackLostS != null && (
         <Banner
-          text={`NO FIXES FOR ${fmtClock(trackLossS)} · APP WAS IN THE BACKGROUND`}
-          detail="That stretch was not recorded. Keep this screen open and the track continues."
-          onDismiss={dismissTrackLoss}
+          text={`NO FIXES FOR ${fmtClock(trackLostS)}`}
+          detail="Nothing is reaching the GPS — a tunnel, a deep valley, dense buildings. Recording continues, and the map will draw this stretch as the guess it is."
+        />
+      )}
+
+      {/* A refusal is different: it is the whole track, and it is fixable. */}
+      {denial != null && denial !== 'unavailable' && (
+        <Banner
+          text={denial === 'denied' ? 'LOCATION PERMISSION REFUSED' : 'LOCATION IS SWITCHED OFF'}
+          detail="Time and sensors are still being recorded, but there is no track. Fixing it now still saves the rest of the session."
+          action={{ label: 'SETTINGS', onClick: () => void openLocationSettings() }}
         />
       )}
 
@@ -342,7 +360,17 @@ export function RecordingSession({
   );
 }
 
-function Banner({ text, detail, onDismiss }: { text: string; detail?: string; onDismiss?: () => void }) {
+function Banner({
+  text,
+  detail,
+  onDismiss,
+  action,
+}: {
+  text: string;
+  detail?: string;
+  onDismiss?: () => void;
+  action?: { label: string; onClick: () => void };
+}) {
   const body = (
     <>
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color.warning} strokeWidth="2" strokeLinecap="round" style={{ flex: 'none', marginTop: detail ? 1 : 0 }}>
@@ -355,6 +383,27 @@ function Banner({ text, detail, onDismiss }: { text: string; detail?: string; on
         {detail && <span style={{ fontSize: 12, lineHeight: 1.4, color: color.textMuted, textWrap: 'pretty' }}>{detail}</span>}
       </span>
       {onDismiss && <span style={{ fontFamily: font.mono, fontSize: 11, color: color.textFaint, flex: 'none' }}>TAP</span>}
+      {action && (
+        <button
+          onClick={action.onClick}
+          style={{
+            flex: 'none',
+            alignSelf: 'center',
+            border: `1px solid ${color.warning}`,
+            background: 'none',
+            color: color.warning,
+            borderRadius: 999,
+            padding: '5px 11px',
+            cursor: 'pointer',
+            fontFamily: font.mono,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '.08em',
+          }}
+        >
+          {action.label}
+        </button>
+      )}
     </>
   );
   const style: CSSProperties = {

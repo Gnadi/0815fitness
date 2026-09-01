@@ -1,10 +1,11 @@
-import type { CSSProperties } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { color, font } from '../theme';
 import * as S from '../styles';
 import { Label, SensorChip } from '../components/primitives';
 import { useGpsFix } from '../hooks/useGpsFix';
-import { useWakeLock } from '../hooks/useWakeLock';
 import { isBluetoothSupported } from '../lib/ble';
+import { openLocationSettings } from '../lib/location';
+import { isBatteryExempt, requestBatteryExemption } from '../lib/power';
 import type { Sport } from '../types';
 import type { SensorSet } from '../App';
 
@@ -24,6 +25,62 @@ const tabOff: CSSProperties = { ...tabBase, background: 'none', color: color.tex
 
 const BAR_HEIGHTS = [8, 14, 6, 18, 11, 16, 9, 13, 7, 15, 10, 12];
 
+/** The line above the START button, and the only place the app now warns about
+ *  recording at all. Three tones, because the three cases are genuinely different: a
+ *  refusal that costs the whole track, a phone that may cut the session short, and the
+ *  ordinary case, which deserves to be stated rather than left silent. */
+function PreflightNote({
+  tone,
+  action,
+  children,
+}: {
+  tone: 'good' | 'warn' | 'bad';
+  action: { label: string; onClick: () => void } | null;
+  children: React.ReactNode;
+}) {
+  const accent = tone === 'bad' ? color.critical : tone === 'warn' ? color.warning : color.positive;
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: 9,
+        alignItems: 'flex-start',
+        padding: '10px 12px',
+        border: `1px solid ${tone === 'good' ? color.border : accent}`,
+        background: tone === 'good' ? 'none' : `${accent}1a`,
+        borderRadius: 8,
+      }}
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}>
+        <circle cx="12" cy="12" r="9" />
+        {tone === 'good' ? <path d="M8.5 12.5l2.5 2.5 4.5-5" /> : <path d="M12 8v5M12 16.5v.01" />}
+      </svg>
+      <span style={{ flex: 1, fontSize: 12, lineHeight: 1.45, color: tone === 'good' ? color.textMuted : accent, textWrap: 'pretty' }}>{children}</span>
+      {action && (
+        <button
+          onClick={action.onClick}
+          style={{
+            flex: 'none',
+            alignSelf: 'center',
+            border: `1px solid ${accent}`,
+            background: 'none',
+            color: accent,
+            borderRadius: 999,
+            padding: '5px 11px',
+            cursor: 'pointer',
+            fontFamily: font.mono,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '.08em',
+          }}
+        >
+          {action.label}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function PreStart({
   sport,
   onSport,
@@ -38,17 +95,34 @@ export function PreStart({
   onBack: () => void;
 }) {
   const fix = useGpsFix(true);
-  // Held here as well as while recording, both because someone waiting for a fix should
-  // not watch the screen sleep, and because taking it now is the only honest way to find
-  // out whether it can be taken at all — Chrome refuses one under battery saver.
-  const wakeLock = useWakeLock(true);
+  // Whether the phone will let a recording run is worth knowing before setting off
+  // rather than after — the same argument the wake-lock warning used to make, about the
+  // one thing that can still stop a track now that the screen cannot.
+  const [batteryExempt, setBatteryExempt] = useState<boolean | null>(null);
+  const checkBattery = useCallback(() => void isBatteryExempt().then(setBatteryExempt), []);
+  useEffect(() => {
+    checkBattery();
+    // Answering the system dialog brings the app back, and the answer is the new state.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') checkBattery();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [checkBattery]);
   const run = sport === 'run';
   const locked = fix.status === 'locked';
   const bleOk = isBluetoothSupported();
 
+  const gpsBlocked = fix.status === 'denied' || fix.status === 'disabled';
   const gpsLabel =
-    fix.status === 'locked' ? 'LOCKED' : fix.status === 'denied' ? 'PERMISSION DENIED' : fix.status === 'unsupported' ? 'NO GPS' : 'ACQUIRING';
-  const gpsColor = locked ? color.positive : fix.status === 'denied' || fix.status === 'unsupported' ? color.critical : color.warning;
+    fix.status === 'locked'
+      ? 'LOCKED'
+      : fix.status === 'denied'
+        ? 'PERMISSION DENIED'
+        : fix.status === 'disabled'
+          ? 'LOCATION OFF'
+          : 'ACQUIRING';
+  const gpsColor = locked ? color.positive : gpsBlocked ? color.critical : color.warning;
 
   const hrMissing = sensors.hr.state !== 'connected';
   const powerMissing = sensors.power.state !== 'connected';
@@ -193,32 +267,31 @@ export function PreStart({
 
       <span style={{ flex: 1 }} />
 
-      {/* The one thing about browser GPS worth knowing before setting off rather than
-          after: a page that is not on screen stops being told where it is. The screen
-          wake lock is what keeps it on screen, so whether it was granted changes how
-          much of a warning this is. */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 9,
-          padding: '10px 12px',
-          border: `1px solid ${wakeLock === 'held' ? color.border : color.warning}`,
-          background: wakeLock === 'held' ? 'none' : 'rgba(201,144,60,0.1)',
-          borderRadius: 8,
-        }}
+      {/* What used to stand here was an apology: the browser only reported a position
+          while the app was on screen, and the wake lock was the whole mitigation. The
+          foreground service ended that, so this says the two things that can still
+          stop a recording — a refused permission, and a manufacturer's battery care
+          shutting the service down anyway — and offers the way to fix each. When
+          neither applies it says so, because "you can pocket the phone" is the single
+          most useful thing this screen can tell someone. */}
+      <PreflightNote
+        tone={gpsBlocked ? 'bad' : batteryExempt === false ? 'warn' : 'good'}
+        action={
+          gpsBlocked
+            ? { label: 'Open settings', onClick: () => void openLocationSettings() }
+            : batteryExempt === false
+              ? { label: 'Allow', onClick: () => void requestBatteryExemption().then(checkBattery) }
+              : null
+        }
       >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color.warning} strokeWidth="2" strokeLinecap="round" style={{ flex: 'none', marginTop: 1 }}>
-          <circle cx="12" cy="12" r="9" />
-          <path d="M12 8v5M12 16.5v.01" />
-        </svg>
-        <span style={{ fontSize: 12, lineHeight: 1.45, color: wakeLock === 'held' ? color.textMuted : color.warning, textWrap: 'pretty' }}>
-          {wakeLock === 'denied'
-            ? 'The screen cannot be kept awake — battery saver usually refuses it. The display will sleep, and the track stops the moment it does. Turn battery saver off, or expect the map to join the gaps with straight lines.'
-            : wakeLock === 'unsupported'
-              ? 'This browser cannot keep the screen awake, so the display will sleep on its own and the track stops when it does. Set the phone’s screen timeout long, or expect gaps.'
-              : 'Keep this screen open. The screen is being held awake, but the browser only reports your position while the app is showing — locking the phone or switching apps stops the track until you come back.'}
-        </span>
-      </div>
+        {fix.status === 'denied'
+          ? 'Contour cannot see your location. Grant it in the app’s settings, or the session records time and sensors but no track.'
+          : fix.status === 'disabled'
+            ? 'Location is switched off on this phone. Turn it on, or the session records time and sensors but no track.'
+            : batteryExempt === false
+              ? 'This phone is set to restrict Contour in the background, and some manufacturers stop a recording within minutes of the screen going off. Allowing it to run unrestricted is what keeps the track going.'
+              : 'Lock the phone and put it away. Recording continues with the screen off, and the notification will show the session until you finish it.'}
+      </PreflightNote>
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
         <button

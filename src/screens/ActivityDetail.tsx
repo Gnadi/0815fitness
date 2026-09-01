@@ -192,8 +192,9 @@ export function ActivityDetail({
                           : `The GPS stopped reporting ${track.gaps} ${track.gaps === 1 ? 'time' : 'times'} — the longest for ${fmtClock(track.longestGapS)}. The dashed stretches are straight guesses, not recorded route.`}
                       </span>
                       <span style={{ ...S.caption, color: color.textFaint, lineHeight: 1.45, textWrap: 'pretty' }}>
-                        A browser only receives locations while the app is on screen. Locking the phone or switching away stops the
-                        track, and the distance for those stretches is the straight line, so it reads short.
+                        {activity.source === 'imported'
+                          ? 'The file was recorded with gaps in it. The distance across them is the straight line, so it reads short.'
+                          : 'Recording continues with the screen off, so a gap is the receiver losing the sky — a tunnel, a deep valley, dense buildings. The distance across one is the straight line, so it reads short.'}
                       </span>
                     </div>
                   )}

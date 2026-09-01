@@ -1,10 +1,16 @@
-// Drives the built app in Chromium with a simulated GPS track so the recording
-// flow can be exercised end to end without real hardware. Screenshots land in
-// scripts/shots/ for a visual check against the design.
+// Drives the app in Chromium with a simulated GPS track so the recording flow can be
+// exercised end to end without a phone. Screenshots land in scripts/shots/ for a visual
+// check against the design.
+//
+// It runs against `npm run dev`, and against the browser stand-in in src/lib/location.ts
+// rather than the foreground service the APK uses — Playwright can move a simulated
+// position but cannot start an Android service. So this checks the screens and the
+// recorder, not the platform: the thing the pivot was for is verified on a phone, by
+// walking around with it, and nowhere else.
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
-const BASE = process.env.BASE_URL ?? 'http://localhost:4173';
+const BASE = process.env.BASE_URL ?? 'http://localhost:5173';
 const OUT = new URL('./shots/', import.meta.url).pathname;
 mkdirSync(OUT, { recursive: true });
 

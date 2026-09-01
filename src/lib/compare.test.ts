@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bestIndex, buildTrace, metricsFor, seriesByDistance, splitsFor } from './compare';
+import { bestIndex, buildTrace, metricsFor, seriesByDistance, splitLengthFor, splitLengthForSport, splitsFor } from './compare';
 import { makeActivity, makeSamples, makeTrack } from './testFixtures';
 import type { FullActivity } from '../types';
 
@@ -118,5 +118,31 @@ describe('picking the better figure', () => {
     expect(bestIndex([300, 280])).toBe(-1);
     expect(bestIndex([280, 280], 'lower')).toBe(-1);
     expect(bestIndex([300, null], 'lower')).toBe(-1);
+  });
+});
+
+describe('split length', () => {
+  it('leaves a run at one unit, and a marathon with it', () => {
+    expect(splitLengthFor(10000, 1000)).toBe(1000);
+    expect(splitLengthFor(42195, 1000)).toBe(1000);
+  });
+
+  it('steps up so a long ride is not a hundred rows', () => {
+    expect(splitLengthForSport('ride', 116000, 1000)).toBe(5000);
+    expect(splitLengthForSport('ride', 45000, 1000)).toBe(2000);
+    expect(splitLengthForSport('ride', 300000, 1000)).toBe(20000);
+  });
+
+  it('lets a run keep a longer table than a ride of the same length', () => {
+    expect(splitLengthForSport('run', 42195, 1000)).toBe(1000);
+    expect(splitLengthForSport('ride', 42195, 1000)).toBe(2000);
+  });
+
+  it('steps in the display unit, so miles step in miles', () => {
+    expect(splitLengthForSport('ride', 160934, 1609.344)).toBeCloseTo(1609.344 * 5, 0);
+  });
+
+  it('never returns nothing for a session that barely moved', () => {
+    expect(splitLengthFor(0, 1000)).toBe(1000);
   });
 });

@@ -250,6 +250,29 @@ export interface Split {
   avgPower: number | null;
 }
 
+/** How long one split should be, given how far the session went.
+ *
+ *  A kilometre is the right split for a run and the wrong one for a hundred-kilometre
+ *  ride, where it is a hundred rows nobody reads. This steps up through the round
+ *  multiples of the display unit until the table is a length a person can take in.
+ *
+ *  The ceiling differs by sport, because what runners and cyclists want out of the table
+ *  differs: a marathon is read split by split, all forty-two of them, while a long ride
+ *  is read in blocks — so a run is allowed a longer table before it is coarsened. */
+const SPLIT_STEPS = [1, 2, 5, 10, 20, 50];
+const MAX_SPLIT_ROWS: Record<Sport, number> = { run: 50, ride: 25 };
+
+export function splitLengthFor(distanceM: number, unitM: number, maxRows = MAX_SPLIT_ROWS.run): number {
+  for (const step of SPLIT_STEPS) {
+    if (distanceM / (step * unitM) <= maxRows) return step * unitM;
+  }
+  return SPLIT_STEPS[SPLIT_STEPS.length - 1] * unitM;
+}
+
+export function splitLengthForSport(sport: Sport, distanceM: number, unitM: number): number {
+  return splitLengthFor(distanceM, unitM, MAX_SPLIT_ROWS[sport]);
+}
+
 export function splitsFor(trace: Trace, splitM = 1000): Split[] {
   if (trace.totalS === 0) return [];
   const out: Split[] = [];

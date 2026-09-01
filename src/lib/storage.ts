@@ -21,6 +21,7 @@ export const DEFAULT_SETTINGS: Settings = {
   gear: DEFAULT_GEAR,
   plan: [1, 3, 1, 5, 4, 6, 0],
   autoPauseMps: 0.5,
+  mapTiles: true,
 };
 
 /** Fills in the fields gear grew after it was first saved, so a list written by an

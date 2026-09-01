@@ -12,6 +12,7 @@ import {
   buildComparands,
   metricSpecs,
   seriesByDistance,
+  splitLengthForSport,
   MAX_COMPARE,
   type Comparand,
 } from '../lib/compare';
@@ -71,7 +72,13 @@ export function Compare({
     () => picked.map((a) => ({ ...a, samples: samplesById.get(a.id) ?? { id: a.id, points: [], hr: [], power: [], cadence: [] } })),
     [picked, samplesById],
   );
-  const comparands = useMemo(() => buildComparands(chosen, units.splitM), [chosen, units.splitM]);
+  // Splits are cut to a length that suits the longest session in the set: a kilometre
+  // for runs, something coarser for a ride nobody wants a hundred rows of.
+  const splitM = useMemo(
+    () => splitLengthForSport(sport, Math.max(0, ...picked.map((a) => a.distance)), units.splitM),
+    [sport, picked, units.splitM],
+  );
+  const comparands = useMemo(() => buildComparands(chosen, splitM), [chosen, splitM]);
 
   const toggle = (id: string) => {
     setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur.length >= MAX_COMPARE ? cur : [...cur, id]));
@@ -116,7 +123,7 @@ export function Compare({
       {mode === 'pick' ? (
         <PickList pool={pool} selected={selected} onToggle={toggle} noun={noun} onDone={() => setMode('view')} />
       ) : (
-        <CompareView comparands={comparands} sport={sport} />
+        <CompareView comparands={comparands} sport={sport} splitM={splitM} />
       )}
     </div>
   );
@@ -250,9 +257,10 @@ function PickList({
 }
 
 // ── the comparison itself ─────────────────────────────────────────
-function CompareView({ comparands, sport }: { comparands: Comparand[]; sport: Sport }) {
+function CompareView({ comparands, sport, splitM }: { comparands: Comparand[]; sport: Sport; splitM: number }) {
   const units = useUnits();
   const run = sport === 'run';
+  const perSplit = splitM / units.splitM;
   const maxM = Math.max(1, ...comparands.map((c) => c.trace.totalM));
   const bucketM = Math.max(100, Math.ceil(maxM / BUCKETS / 50) * 50);
   const bucketCount = Math.max(1, Math.ceil(maxM / bucketM));
@@ -277,7 +285,7 @@ function CompareView({ comparands, sport }: { comparands: Comparand[]; sport: Sp
   const specs = useMemo(() => metricSpecs(sport, units, fmtClock), [sport, units]);
   const reference = comparands[0];
 
-  const fullSplitM = units.splitM * FULL_SPLIT_FRACTION;
+  const fullSplitM = splitM * FULL_SPLIT_FRACTION;
   const splitRows = Math.max(0, ...comparands.map((c) => c.splits.filter((s) => s.distanceM >= fullSplitM).length));
 
   return (
@@ -408,7 +416,9 @@ function CompareView({ comparands, sport }: { comparands: Comparand[]; sport: Sp
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <SectionHeader>Splits</SectionHeader>
           <div style={{ ...S.tableHeaderRow, marginTop: 8 }}>
-            <span style={{ ...S.monoTick, flex: 'none', width: 40 }}>{units.distanceUnit.toUpperCase()}</span>
+            <span style={{ ...S.monoTick, flex: 'none', width: 40 }}>
+              {perSplit > 1 ? `${Math.round(perSplit)}${units.distanceUnit.toUpperCase()}` : units.distanceUnit.toUpperCase()}
+            </span>
             {comparands.map((c) => (
               <span key={c.activity.id} style={{ ...S.monoTick, flex: 1, textAlign: 'right', color: c.color }}>
                 {fmtDayMonth(c.activity.startedAt)}
@@ -436,8 +446,9 @@ function CompareView({ comparands, sport }: { comparands: Comparand[]; sport: Sp
             );
           })}
           <span style={{ padding: '10px 16px 0', fontSize: 12, lineHeight: 1.4, color: color.textFaint, textWrap: 'pretty' }}>
-            Full {units.distanceUnit === 'km' ? 'kilometres' : 'miles'} only — the part-{units.distanceUnit === 'km' ? 'kilometre' : 'mile'} each
-            session ends on is left out rather than compared against a whole one. A dash means that session had already finished.
+            Full splits only — the part-split each session ends on is left out rather than compared against a whole one, and a dash
+            means that session had already finished. The split length follows the distance: a{' '}
+            {units.distanceUnit === 'km' ? 'kilometre' : 'mile'} for a run, something coarser for a long ride.
           </span>
         </div>
       )}

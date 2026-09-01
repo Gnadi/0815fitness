@@ -110,11 +110,14 @@ Three decisions in it are worth knowing:
   renders once; every time decision in ingestion — the auto-pause clock, the kilometre
   markers — reads the fix's own timestamp rather than the wall clock, so a replayed
   stretch reaches the verdict it would have reached live.
-- **Battery optimisation is the one thing left that can stop a ride.** Stock Android
-  exempts a location foreground service from Doze; several manufacturers ship a layer
-  above it that does not, and will stop a recording within minutes of the screen going
-  off. Pre-start checks, says so, and offers the exemption once
-  (`BatteryOptimizationPlugin`). It is the honest replacement for the wake-lock warning.
+- **Two settings outside the service can still ruin a ride**, and pre-start checks both
+  (`RecordingReadinessPlugin`, `src/lib/readiness.ts`). Stock Android exempts a location
+  foreground service from Doze; several manufacturers ship a layer above it that does
+  not, and will stop a recording within minutes of the screen going off. And from
+  Android 13 notifications are opt-in — a suppressed one leaves the session running
+  invisibly, with nothing to tap to get back to it, which would make the sentence
+  pre-start prints a lie. One problem is shown at a time, worst first, each with the
+  button that fixes it. It is the honest replacement for the wake-lock warning.
 
 ## What the app still cannot know about your route
 
@@ -206,7 +209,7 @@ src/
     backup.ts       export and import: the whole log as JSON, one session as GPX
     demoSeed.ts     synthetic sample history behind the empty-state action
     location.ts     the location foreground service — the one seam onto the platform
-    power.ts        whether Android will leave a running recording alone
+    readiness.ts    whether Android will leave a running recording alone, and show it
     shell.ts        system bars, the back gesture, the launcher's Record shortcut
   hooks/            useGpsFix, useRecorder, useBleSensors, useNavStack,
                     useUnits / UnitsProvider
@@ -218,7 +221,7 @@ public/
   logo.svg          the Contour mark, and the source the launcher icons come from
 android/
   app/src/main/AndroidManifest.xml    permissions, and the note on the one not asked for
-  app/src/main/java/app/contour/      MainActivity, BatteryOptimizationPlugin
+  app/src/main/java/app/contour/      MainActivity, RecordingReadinessPlugin
   app/src/main/res/                   launcher icons, dark theme, the Record shortcut
   keystore.properties.example         how to sign a release
 ```

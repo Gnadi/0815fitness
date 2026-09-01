@@ -5,7 +5,7 @@ import { Label, SensorChip } from '../components/primitives';
 import { useGpsFix } from '../hooks/useGpsFix';
 import { isBluetoothSupported } from '../lib/ble';
 import { openLocationSettings } from '../lib/location';
-import { isBatteryExempt, requestBatteryExemption } from '../lib/power';
+import { checkReadiness, requestBatteryExemption, requestNotifications, type Readiness } from '../lib/readiness';
 import type { Sport } from '../types';
 import type { SensorSet } from '../App';
 
@@ -97,18 +97,18 @@ export function PreStart({
   const fix = useGpsFix(true);
   // Whether the phone will let a recording run is worth knowing before setting off
   // rather than after — the same argument the wake-lock warning used to make, about the
-  // one thing that can still stop a track now that the screen cannot.
-  const [batteryExempt, setBatteryExempt] = useState<boolean | null>(null);
-  const checkBattery = useCallback(() => void isBatteryExempt().then(setBatteryExempt), []);
+  // two things that can still stop or hide a session now that the screen cannot.
+  const [readiness, setReadiness] = useState<Readiness | null>(null);
+  const recheck = useCallback(() => void checkReadiness().then(setReadiness), []);
   useEffect(() => {
-    checkBattery();
-    // Answering the system dialog brings the app back, and the answer is the new state.
+    recheck();
+    // Answering a system dialog brings the app back, and the answer is the new state.
     const onVisible = () => {
-      if (document.visibilityState === 'visible') checkBattery();
+      if (document.visibilityState === 'visible') recheck();
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [checkBattery]);
+  }, [recheck]);
   const run = sport === 'run';
   const locked = fix.status === 'locked';
   const bleOk = isBluetoothSupported();
@@ -274,24 +274,39 @@ export function PreStart({
           shutting the service down anyway — and offers the way to fix each. When
           neither applies it says so, because "you can pocket the phone" is the single
           most useful thing this screen can tell someone. */}
-      <PreflightNote
-        tone={gpsBlocked ? 'bad' : batteryExempt === false ? 'warn' : 'good'}
-        action={
-          gpsBlocked
-            ? { label: 'Open settings', onClick: () => void openLocationSettings() }
-            : batteryExempt === false
-              ? { label: 'Allow', onClick: () => void requestBatteryExemption().then(checkBattery) }
-              : null
-        }
-      >
-        {fix.status === 'denied'
-          ? 'Contour cannot see your location. Grant it in the app’s settings, or the session records time and sensors but no track.'
-          : fix.status === 'disabled'
-            ? 'Location is switched off on this phone. Turn it on, or the session records time and sensors but no track.'
-            : batteryExempt === false
-              ? 'This phone is set to restrict Contour in the background, and some manufacturers stop a recording within minutes of the screen going off. Allowing it to run unrestricted is what keeps the track going.'
-              : 'Lock the phone and put it away. Recording continues with the screen off, and the notification will show the session until you finish it.'}
-      </PreflightNote>
+      {(() => {
+        // In order of what it costs: no track at all, then a session the phone may cut
+        // short, then a session that runs invisibly. Only the first one is shown at a
+        // time — a stack of warnings above the START button is a screen nobody reads.
+        const problem = gpsBlocked
+          ? ('location' as const)
+          : readiness?.batteryExempt === false
+            ? ('battery' as const)
+            : readiness?.notificationsAllowed === false
+              ? ('notifications' as const)
+              : null;
+        const action =
+          problem === 'location'
+            ? { label: 'SETTINGS', onClick: () => void openLocationSettings() }
+            : problem === 'battery'
+              ? { label: 'ALLOW', onClick: () => void requestBatteryExemption().then(recheck) }
+              : problem === 'notifications'
+                ? { label: 'ALLOW', onClick: () => void requestNotifications().then(recheck) }
+                : null;
+        return (
+          <PreflightNote tone={problem === 'location' ? 'bad' : problem ? 'warn' : 'good'} action={action}>
+            {problem === 'location'
+              ? fix.status === 'denied'
+                ? 'Contour cannot see your location. Grant it, or this session records time and sensors but no track.'
+                : 'Location is switched off on this phone. Turn it on, or this session records time and sensors but no track.'
+              : problem === 'battery'
+                ? 'This phone restricts Contour in the background, and some manufacturers stop a recording within minutes of the screen going off. Letting it run unrestricted is what keeps the track going.'
+                : problem === 'notifications'
+                  ? 'Notifications are off, so the session will record but will not show in the shade — there will be nothing to tap to get back to it, and no sign it is still running.'
+                  : 'Lock the phone and put it away. Recording continues with the screen off, and the notification will show the session until you finish it.'}
+          </PreflightNote>
+        );
+      })()}
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
         <button

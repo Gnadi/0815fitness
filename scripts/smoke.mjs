@@ -190,9 +190,27 @@ await page.evaluate(() => document.querySelector('.ct-scroll').scrollBy(0, 1200)
 await page.waitForTimeout(400);
 await shot(page, '25-activity-splits');
 
+// Comparing from a session opens the picker with that session held as the reference:
+// which one it is read against is the person's choice, not the app's.
+await page.evaluate(() => document.querySelector('.ct-scroll').scrollBy(0, 4000));
+await page.waitForTimeout(300);
+await page.getByRole('button', { name: /^Compare with another session/ }).click();
+await page.waitForTimeout(500);
+await shot(page, '26-compare-pick-from-detail');
+check('comparing from a session opens the picker', await page.getByRole('button', { name: 'SELECT 1 MORE' }).isVisible());
+check('the session it was opened from is the reference', await page.getByText('is the reference').isVisible());
+await page.locator('.ct-scroll > button').nth(1).click();
+await page.waitForTimeout(300);
+await page.getByRole('button', { name: 'COMPARE 2' }).click();
+await page.waitForTimeout(700);
+await shot(page, '26b-compare-from-detail');
+check('the chosen pair is compared', await page.getByText('reference · ').isVisible());
+
+await page.goBack();
+await page.waitForTimeout(500);
 await page.getByRole('button', { name: 'Edit' }).click();
 await page.waitForTimeout(400);
-await shot(page, '26-activity-edit');
+await shot(page, '26c-activity-edit');
 check('a saved session can be deleted', await page.getByRole('button', { name: 'Delete this session' }).isVisible());
 
 await page.goto(BASE);

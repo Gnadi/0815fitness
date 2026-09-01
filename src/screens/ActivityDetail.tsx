@@ -293,8 +293,11 @@ export function ActivityDetail({
             )}
 
             <div style={{ ...sectionStyle, gap: 8 }}>
+              {/* This session is the reference; which one it is read against is a
+                  choice, not something to guess — so this opens the picker with it
+                  already picked rather than pairing it with the newest of its sport. */}
               {sameSport.length > 0 && (
-                <ActionButton onClick={() => onCompare([activity.id, sameSport[0].id])}>Compare with another session</ActionButton>
+                <ActionButton onClick={() => onCompare([activity.id])}>Compare with another session…</ActionButton>
               )}
               {samples && samples.points.length > 0 && <ActionButton onClick={exportGpx}>Export this session as GPX</ActionButton>}
             </div>

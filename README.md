@@ -149,8 +149,10 @@ it — plus a note on how it is computed, because a number nobody can account fo
 worth showing.
 
 Two or three sessions of the same sport can be read side by side, from the Overview's
-*Compare*, from any session row or card, or from a stat detail's contributors. The first one
-picked is the reference every difference is measured against. The comparison puts them
+*Compare*, from any session row or card, or from a stat detail's contributors. The first
+one picked is the reference every difference is measured against. *Compare with another
+session* on a saved session opens the picker with that session held as the reference —
+which one it is read against is a choice, not a guess the app makes. The comparison puts them
 on one distance axis — pace (or speed), elevation and heart rate overlaid — with a
 metric table and per-kilometre splits under it. Pace comes from the time it took to
 cross each bucket of the track, not an instantaneous speed, so a stop reads as the slow

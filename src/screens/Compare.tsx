@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { color, font } from '../theme';
 import * as S from '../styles';
 import { Label, RouteSilhouette, SectionHeader } from '../components/primitives';
 import { CompareSeriesChart } from '../components/charts';
-import { elevationProfile, fmtClock, fmtDayMonth, fmtEuroDate, fmtPace } from '../lib/stats';
+import { useUnits } from '../hooks/useUnits';
+import { getManySamples } from '../lib/storage';
+import { avgSpeedMps, elevationProfile, fmtClock, fmtDayMonth, fmtEuroDate } from '../lib/stats';
 import {
   bestIndex,
   buildComparands,
@@ -13,10 +15,11 @@ import {
   MAX_COMPARE,
   type Comparand,
 } from '../lib/compare';
-import type { Activity, Sport } from '../types';
+import type { Activity, ActivitySamples, FullActivity, Sport } from '../types';
 
 const BUCKETS = 56;
-const FULL_SPLIT_M = 950; // a part-kilometre at the end is not a split to compare
+/** A part-split at the end is not a split to compare, so only near-full ones are shown. */
+const FULL_SPLIT_FRACTION = 0.95;
 
 export function Compare({
   activities,
@@ -33,6 +36,7 @@ export function Compare({
     return { sport, ids: picked.filter((a) => a.sport === sport).slice(0, MAX_COMPARE).map((a) => a.id) };
   }, [initialIds, activities]);
 
+  const units = useUnits();
   const [sport, setSport] = useState<Sport>(seed.sport);
   const [selected, setSelected] = useState<string[]>(seed.ids);
   const [mode, setMode] = useState<'pick' | 'view'>(seed.ids.length >= 2 ? 'view' : 'pick');
@@ -43,11 +47,31 @@ export function Compare({
   );
 
   // Pick order is meaningful: the first session is the reference every delta is against.
-  const chosen = useMemo(
+  const picked = useMemo(
     () => selected.map((id) => activities.find((a) => a.id === id)).filter((a): a is Activity => a != null),
     [selected, activities],
   );
-  const comparands = useMemo(() => buildComparands(chosen), [chosen]);
+
+  // The traces are drawn from the sample streams, which live apart from the summaries —
+  // so only the two or three sessions actually being compared are read off the disk.
+  const [samplesById, setSamplesById] = useState<Map<string, ActivitySamples>>(new Map());
+  const neededIds = picked.filter((a) => a.hasSamples).map((a) => a.id).join(',');
+  useEffect(() => {
+    if (!neededIds) return;
+    let live = true;
+    void getManySamples(neededIds.split(',')).then((loaded) => {
+      if (live) setSamplesById((current) => new Map([...current, ...loaded]));
+    });
+    return () => {
+      live = false;
+    };
+  }, [neededIds]);
+
+  const chosen: FullActivity[] = useMemo(
+    () => picked.map((a) => ({ ...a, samples: samplesById.get(a.id) ?? { id: a.id, points: [], hr: [], power: [], cadence: [] } })),
+    [picked, samplesById],
+  );
+  const comparands = useMemo(() => buildComparands(chosen, units.splitM), [chosen, units.splitM]);
 
   const toggle = (id: string) => {
     setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur.length >= MAX_COMPARE ? cur : [...cur, id]));
@@ -126,6 +150,7 @@ function PickList({
   noun: string;
   onDone: () => void;
 }) {
+  const units = useUnits();
   const full = selected.length >= MAX_COMPARE;
 
   return (
@@ -140,12 +165,11 @@ function PickList({
           pool.map((a) => {
             const idx = selected.indexOf(a.id);
             const on = idx >= 0;
-            const durationS = (a.endedAt - a.startedAt) / 1000;
-            const speed = durationS > 0 ? a.distance / durationS : 0;
+            const speed = avgSpeedMps(a);
             const metric =
               a.sport === 'run'
-                ? `${(a.distance / 1000).toFixed(1)} km · ${speed > 0.2 ? fmtPace(1000 / speed) : '—:—'}`
-                : `${(a.distance / 1000).toFixed(1)} km · ${(speed * 3.6).toFixed(1)} km/h`;
+                ? `${units.fmtDistance(a.distance, 1)} ${units.distanceUnit} · ${speed > 0.2 ? units.fmtPace(1000 / speed) : '—:—'}`
+                : `${units.fmtDistance(a.distance, 1)} ${units.distanceUnit} · ${units.fmtSpeed(speed)} ${units.speedUnit}`;
             const blocked = !on && full;
             return (
               <button
@@ -227,6 +251,7 @@ function PickList({
 
 // ── the comparison itself ─────────────────────────────────────────
 function CompareView({ comparands, sport }: { comparands: Comparand[]; sport: Sport }) {
+  const units = useUnits();
   const run = sport === 'run';
   const maxM = Math.max(1, ...comparands.map((c) => c.trace.totalM));
   const bucketM = Math.max(100, Math.ceil(maxM / BUCKETS / 50) * 50);
@@ -246,11 +271,14 @@ function CompareView({ comparands, sport }: { comparands: Comparand[]; sport: Sp
   const hasEle = eleSeries.some((s) => s.values.some((v) => v != null));
   const hrSeries = series.map((s) => ({ color: s.color, values: s.hr }));
   const hasHr = hrSeries.some((s) => s.values.some((v) => v != null));
+  const cadenceSeries = series.map((s) => ({ color: s.color, values: s.cadence }));
+  const hasCadence = cadenceSeries.some((s) => s.values.some((v) => v != null));
 
-  const specs = useMemo(() => metricSpecs(sport, fmtClock, fmtPace), [sport]);
+  const specs = useMemo(() => metricSpecs(sport, units, fmtClock), [sport, units]);
   const reference = comparands[0];
 
-  const splitRows = Math.max(0, ...comparands.map((c) => c.splits.filter((s) => s.distanceM >= FULL_SPLIT_M).length));
+  const fullSplitM = units.splitM * FULL_SPLIT_FRACTION;
+  const splitRows = Math.max(0, ...comparands.map((c) => c.splits.filter((s) => s.distanceM >= fullSplitM).length));
 
   return (
     <div className="ct-scroll" style={{ ...S.scrollArea, paddingBottom: 40, display: 'flex', flexDirection: 'column', gap: 22 }}>
@@ -315,7 +343,7 @@ function CompareView({ comparands, sport }: { comparands: Comparand[]; sport: Sp
           label={run ? 'Pace over distance' : 'Speed over distance'}
           note={
             run
-              ? `Seconds spent in each ${bucketM} m of the track, read as a kilometre pace. Higher is faster. A stop shows up as the slow kilometre it was.`
+              ? `Seconds spent in each ${bucketM} m of the track, read as a pace per ${units.distanceUnit}. Higher is faster. A stop shows up as the slow ${units.distanceUnit === 'km' ? 'kilometre' : 'mile'} it was.`
               : `Average speed across each ${bucketM} m of the track.`
           }
         >
@@ -323,21 +351,56 @@ function CompareView({ comparands, sport }: { comparands: Comparand[]; sport: Sp
             series={paceSeries}
             bucketM={bucketM}
             invertY={run}
-            fmtY={(v) => (run ? fmtPace(v) : v.toFixed(0))}
+            fmtY={(v) => (run ? units.fmtPace(v) : units.fmtSpeed(v / 3.6))}
             minSpan={run ? 45 : 6}
+            toXUnit={units.distance}
+            xUnitLabel={units.distanceUnit}
           />
         </ChartBlock>
       )}
 
       {hasEle && (
         <ChartBlock label="Elevation over distance" note="Recorded altitude against distance covered, so the same climb on two days lines up.">
-          <CompareSeriesChart series={eleSeries} bucketM={bucketM} fmtY={(v) => `${Math.round(v)}`} minSpan={40} height={130} />
+          <CompareSeriesChart
+            series={eleSeries}
+            bucketM={bucketM}
+            fmtY={(v) => units.fmtElevation(v)}
+            minSpan={40}
+            height={130}
+            toXUnit={units.distance}
+            xUnitLabel={units.distanceUnit}
+          />
         </ChartBlock>
       )}
 
       {hasHr && (
         <ChartBlock label="Heart rate over distance" note="Only the sessions with a paired strap draw a line here.">
-          <CompareSeriesChart series={hrSeries} bucketM={bucketM} fmtY={(v) => `${Math.round(v)}`} minSpan={25} height={130} />
+          <CompareSeriesChart
+            series={hrSeries}
+            bucketM={bucketM}
+            fmtY={(v) => `${Math.round(v)}`}
+            minSpan={25}
+            height={130}
+            toXUnit={units.distance}
+            xUnitLabel={units.distanceUnit}
+          />
+        </ChartBlock>
+      )}
+
+      {hasCadence && (
+        <ChartBlock
+          label="Cadence over distance"
+          note="Steps or crank revolutions per minute. Two sessions at the same pace on different cadences are two different ways of running the same road."
+        >
+          <CompareSeriesChart
+            series={cadenceSeries}
+            bucketM={bucketM}
+            fmtY={(v) => `${Math.round(v)}`}
+            minSpan={10}
+            height={130}
+            toXUnit={units.distance}
+            xUnitLabel={units.distanceUnit}
+          />
         </ChartBlock>
       )}
 
@@ -345,7 +408,7 @@ function CompareView({ comparands, sport }: { comparands: Comparand[]; sport: Sp
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <SectionHeader>Splits</SectionHeader>
           <div style={{ ...S.tableHeaderRow, marginTop: 8 }}>
-            <span style={{ ...S.monoTick, flex: 'none', width: 40 }}>KM</span>
+            <span style={{ ...S.monoTick, flex: 'none', width: 40 }}>{units.distanceUnit.toUpperCase()}</span>
             {comparands.map((c) => (
               <span key={c.activity.id} style={{ ...S.monoTick, flex: 1, textAlign: 'right', color: c.color }}>
                 {fmtDayMonth(c.activity.startedAt)}
@@ -355,7 +418,7 @@ function CompareView({ comparands, sport }: { comparands: Comparand[]; sport: Sp
           {new Array(splitRows).fill(0).map((_, row) => {
             const paces = comparands.map((c) => {
               const split = c.splits[row];
-              return split && split.distanceM >= FULL_SPLIT_M ? split.paceS : null;
+              return split && split.distanceM >= fullSplitM ? split.paceS : null;
             });
             const best = bestIndex(paces, 'lower');
             return (
@@ -366,15 +429,15 @@ function CompareView({ comparands, sport }: { comparands: Comparand[]; sport: Sp
                     key={comparands[i].activity.id}
                     style={{ ...S.tableNum, flex: 1, textAlign: 'right', color: p == null ? color.textFaint : i === best ? color.positive : color.text }}
                   >
-                    {p == null ? '—' : run ? fmtPace(p) : `${(3600 / p).toFixed(1)}`}
+                    {p == null ? '—' : run ? units.fmtPace(p) : units.fmtSpeed(1000 / p)}
                   </span>
                 ))}
               </div>
             );
           })}
           <span style={{ padding: '10px 16px 0', fontSize: 12, lineHeight: 1.4, color: color.textFaint, textWrap: 'pretty' }}>
-            Full kilometres only — the part-kilometre each session ends on is left out rather than compared against a whole one. A dash means that
-            session had already finished.
+            Full {units.distanceUnit === 'km' ? 'kilometres' : 'miles'} only — the part-{units.distanceUnit === 'km' ? 'kilometre' : 'mile'} each
+            session ends on is left out rather than compared against a whole one. A dash means that session had already finished.
           </span>
         </div>
       )}

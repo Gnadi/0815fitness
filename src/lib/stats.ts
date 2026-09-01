@@ -1,7 +1,9 @@
-import type { Activity, Sport } from '../types';
-import { haversineMeters, resample } from './geo';
-import { MAX_PLAUSIBLE_SPEED_MPS } from './recorder';
-import { HR_ZONE_BOUNDS } from '../theme';
+import type { Activity, HrHistogram, Settings, Sport } from '../types';
+import { resample } from './geo';
+import { histogramMean, PB_DISTANCES, POWER_DURATIONS } from './derived';
+import { HR_ZONE_BOUNDS, LTHR_ZONE_BOUNDS } from '../theme';
+
+export { PB_DISTANCES, POWER_DURATIONS };
 
 const DAY_MS = 86400000;
 
@@ -52,6 +54,12 @@ export function fmtDayMonth(t: number): string {
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}`;
 }
 
+export function fmtTimeOfDay(t: number): string {
+  const d = new Date(t);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 export function fmtClock(totalSeconds: number): string {
   const t = Math.max(0, Math.round(totalSeconds));
   const h = Math.floor(t / 3600);
@@ -74,6 +82,74 @@ export function fmtPace(secPerKm: number): string {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
 
+export function durationS(a: Activity): number {
+  return (a.endedAt - a.startedAt) / 1000;
+}
+
+export function avgSpeedMps(a: Activity): number {
+  const d = durationS(a);
+  return d > 0 ? a.distance / d : 0;
+}
+
+/** Grade-adjusted pace: the pace this run would have been on the level for the same
+ *  cost. Null when the device recorded no altitude to adjust against. */
+export function gapSecPerKm(a: Activity): number | null {
+  const flat = a.derived.gapDistanceM;
+  if (!flat || flat <= 0) return null;
+  const moving = a.derived.movingS || durationS(a);
+  return moving > 0 ? moving / (flat / 1000) : null;
+}
+
+// ── training stress ───────────────────────────────────────────────
+export type StressSource = 'power' | 'hr' | 'rpe';
+
+export interface Stress {
+  value: number;
+  source: StressSource;
+}
+
+/** Threshold heart rate to score against.
+ *
+ *  Someone who has never tested theirs still has a max, and threshold sits near 90 % of
+ *  it for most people — close enough to score a session's stress, and stated as an
+ *  estimate wherever it is used. */
+export function effectiveLthr(settings: Settings): number {
+  return settings.lthr ?? Math.round(settings.maxHr * 0.9);
+}
+
+/** What one session cost, in points, where an hour at threshold is 100.
+ *
+ *  Three ways of arriving at the same scale, in descending order of how directly they
+ *  measure the work: power against FTP, heart rate against threshold, and — when the
+ *  session carries neither — the duration times how hard it felt. The source is
+ *  returned with the number, because a figure derived from a guess should never be
+ *  displayed as though it were measured. */
+export function activityStress(a: Activity, settings: Settings): Stress {
+  const seconds = a.derived.movingS || durationS(a);
+  const np = a.derived.normalizedPower;
+  if (settings.ftp && np && np > 0) {
+    const intensity = np / settings.ftp;
+    return { value: (seconds * np * intensity) / (settings.ftp * 3600) * 100, source: 'power' };
+  }
+
+  const hist = a.derived.hrHist;
+  if (hist) {
+    const lthr = effectiveLthr(settings);
+    // Seconds weighted by the square of intensity: twice the pace over threshold is
+    // four times the cost, which is the shape every heart-rate load score agrees on.
+    let points = 0;
+    for (let i = 0; i < hist.seconds.length; i++) {
+      const ratio = (hist.lo + i) / lthr;
+      points += hist.seconds[i] * ratio * ratio;
+    }
+    return { value: (points / 3600) * 100, source: 'hr' };
+  }
+
+  // Session RPE: minutes times perceived effort, scaled so an hour at 7/10 — a solid
+  // steady session — also lands on 100.
+  return { value: ((seconds / 60) * a.effort * 100) / 420, source: 'rpe' };
+}
+
 // ── weekly rollups ────────────────────────────────────────────────
 export interface WeekRollup {
   weekStart: number;
@@ -82,6 +158,7 @@ export interface WeekRollup {
   timeS: number;
   ascentM: number;
   sessions: number;
+  stress: number;
   activeDays: Set<number>;
 }
 
@@ -90,7 +167,7 @@ export interface WeekRollup {
  *  The weeks are consecutive, so which one an activity belongs to is arithmetic on its
  *  start time rather than a search: twelve weeks of history no longer means twelve
  *  filtered copies of the whole log, times the five figures each week reports. */
-export function rollupWeeks(activities: Activity[], weekStarts: number[]): WeekRollup[] {
+export function rollupWeeks(activities: Activity[], weekStarts: number[], settings: Settings): WeekRollup[] {
   const rollups: WeekRollup[] = weekStarts.map((weekStart) => ({
     weekStart,
     runKm: 0,
@@ -98,6 +175,7 @@ export function rollupWeeks(activities: Activity[], weekStarts: number[]): WeekR
     timeS: 0,
     ascentM: 0,
     sessions: 0,
+    stress: 0,
     activeDays: new Set<number>(),
   }));
   if (rollups.length === 0) return rollups;
@@ -111,9 +189,10 @@ export function rollupWeeks(activities: Activity[], weekStarts: number[]): WeekR
     const week = rollups[i];
     if (a.sport === 'run') week.runKm += a.distance / 1000;
     else week.rideKm += a.distance / 1000;
-    week.timeS += (a.endedAt - a.startedAt) / 1000;
+    week.timeS += durationS(a);
     week.ascentM += a.ascent;
     week.sessions += 1;
+    week.stress += activityStress(a, settings).value;
     week.activeDays.add(dayKey(a.startedAt));
   }
   return rollups;
@@ -197,96 +276,104 @@ export function rampPct(current: number, previous: number): number {
 }
 
 // ── HR zones ─────────────────────────────────────────────────────
-export function zoneSecondsForActivity(activity: Activity, maxHr: number): number[] {
+/** The five zones as heart rates, cut against whichever reference the settings name. */
+export function zoneCuts(settings: Settings): number[] {
+  const bounds = settings.zoneModel === 'lthr' ? LTHR_ZONE_BOUNDS : HR_ZONE_BOUNDS;
+  const reference = settings.zoneModel === 'lthr' ? effectiveLthr(settings) : settings.maxHr;
+  return bounds.map((b) => b * reference);
+}
+
+export function zoneLabel(settings: Settings): string {
+  return settings.zoneModel === 'lthr'
+    ? `${effectiveLthr(settings)} bpm threshold${settings.lthr ? '' : ' (estimated)'}`
+    : `${settings.maxHr} bpm max`;
+}
+
+/** Seconds in each zone, read off the stored per-bpm histogram rather than the samples.
+ *
+ *  Because the histogram is settings-independent, moving a max heart rate or switching
+ *  to threshold zones re-cuts the whole season instantly and correctly, instead of
+ *  leaving every past session bucketed against the setting of the day it was saved. */
+export function zoneSecondsFromHistogram(hist: HrHistogram | null, cuts: number[]): number[] {
   const zones = [0, 0, 0, 0, 0];
-  const samples = activity.hr;
-  if (samples.length < 2) return zones;
-  for (let i = 1; i < samples.length; i++) {
-    const dt = (samples[i].t - samples[i - 1].t) / 1000;
-    if (dt <= 0 || dt > 120) continue;
-    const pct = samples[i - 1].bpm / maxHr;
+  if (!hist) return zones;
+  for (let i = 0; i < hist.seconds.length; i++) {
+    const seconds = hist.seconds[i];
+    if (seconds <= 0) continue;
+    const bpm = hist.lo + i;
     let zone = 0;
-    for (let z = HR_ZONE_BOUNDS.length - 2; z >= 0; z--) {
-      if (pct >= HR_ZONE_BOUNDS[z]) {
+    for (let z = cuts.length - 2; z >= 0; z--) {
+      if (bpm >= cuts[z]) {
         zone = z;
         break;
       }
     }
-    zones[zone] += dt;
+    zones[zone] += seconds;
   }
   return zones;
 }
 
-export function aggregateZoneSeconds(activities: Activity[], maxHr: number): number[] {
+export function zoneSecondsForActivity(activity: Activity, settings: Settings): number[] {
+  return zoneSecondsFromHistogram(activity.derived.hrHist, zoneCuts(settings));
+}
+
+export function aggregateZoneSeconds(activities: Activity[], settings: Settings): number[] {
+  const cuts = zoneCuts(settings);
   const totals = [0, 0, 0, 0, 0];
   for (const a of activities) {
-    const z = zoneSecondsForActivity(a, maxHr);
+    const z = zoneSecondsFromHistogram(a.derived.hrHist, cuts);
     for (let i = 0; i < 5; i++) totals[i] += z[i];
   }
   return totals;
 }
 
-// ── best-effort pace/time over a target distance ────────────────────
-function cumulativeDistanceSeries(activity: Activity): { t: number; d: number }[] {
-  const pts = activity.points;
-  if (pts.length === 0) return [];
-  const out: { t: number; d: number }[] = [{ t: pts[0].t, d: 0 }];
-  let d = 0;
-  for (let i = 1; i < pts.length; i++) {
-    // A GPS jump the recorder refused to count must not hand out a personal best either.
-    const dtS = (pts[i].t - pts[i - 1].t) / 1000;
-    const dM = haversineMeters(pts[i - 1], pts[i]);
-    if (dtS > 0 && dM / dtS <= MAX_PLAUSIBLE_SPEED_MPS) d += dM;
-    out.push({ t: pts[i].t, d });
+// ── cadence ──────────────────────────────────────────────────────
+export function mergeHistograms(histograms: (HrHistogram | null)[]): HrHistogram | null {
+  const present = histograms.filter((h): h is HrHistogram => h != null && h.seconds.length > 0);
+  if (present.length === 0) return null;
+  const lo = Math.min(...present.map((h) => h.lo));
+  const hi = Math.max(...present.map((h) => h.lo + h.seconds.length - 1));
+  const seconds = new Array(hi - lo + 1).fill(0);
+  for (const h of present) {
+    for (let i = 0; i < h.seconds.length; i++) seconds[h.lo + i - lo] += h.seconds[i];
   }
-  return out;
+  return { lo, seconds };
 }
 
-function toSecondGridCumulative(series: { t: number; d: number }[]): number[] {
-  if (series.length < 2) return [];
-  const t0 = series[0].t;
-  const totalS = Math.round((series[series.length - 1].t - t0) / 1000);
-  const out = new Array(totalS + 1).fill(0);
-  let idx = 0;
-  for (let s = 0; s <= totalS; s++) {
-    const targetT = t0 + s * 1000;
-    while (idx < series.length - 2 && series[idx + 1].t < targetT) idx++;
-    const a = series[idx];
-    const b = series[Math.min(idx + 1, series.length - 1)];
-    const span = b.t - a.t;
-    const f = span > 0 ? Math.min(1, Math.max(0, (targetT - a.t) / span)) : 0;
-    out[s] = a.d + (b.d - a.d) * f;
+export interface CadenceSummary {
+  hist: HrHistogram | null;
+  mean: number | null;
+  /** The band the middle half of the time was spent in. */
+  p25: number | null;
+  p75: number | null;
+  sessions: number;
+}
+
+export function cadenceSummary(activities: Activity[]): CadenceSummary {
+  const withCadence = activities.filter((a) => a.derived.cadenceHist);
+  const hist = mergeHistograms(withCadence.map((a) => a.derived.cadenceHist));
+  return {
+    hist,
+    mean: histogramMean(hist),
+    p25: histogramPercentile(hist, 0.25),
+    p75: histogramPercentile(hist, 0.75),
+    sessions: withCadence.length,
+  };
+}
+
+export function histogramPercentile(hist: HrHistogram | null, fraction: number): number | null {
+  if (!hist) return null;
+  const total = hist.seconds.reduce((a, b) => a + b, 0);
+  if (total <= 0) return null;
+  let seen = 0;
+  for (let i = 0; i < hist.seconds.length; i++) {
+    seen += hist.seconds[i];
+    if (seen >= total * fraction) return hist.lo + i;
   }
-  return out;
+  return hist.lo + hist.seconds.length - 1;
 }
 
-/** Fastest whole-second time to cover `targetM` over a per-second cumulative-distance
- *  grid, via the classic "smallest window whose sum ≥ target" two-pointer sweep. */
-function bestEffortOnGrid(grid: number[], targetM: number): number | null {
-  if (grid.length === 0 || grid[grid.length - 1] < targetM) return null;
-  let i = 0;
-  let best = Infinity;
-  for (let j = 0; j < grid.length; j++) {
-    while (i <= j && grid[j] - grid[i] >= targetM) {
-      best = Math.min(best, j - i);
-      i++;
-    }
-  }
-  return isFinite(best) ? best : null;
-}
-
-/** Fastest whole-second time to cover `targetM` anywhere in the activity. */
-export function bestEffortSeconds(activity: Activity, targetM: number): number | null {
-  return bestEffortOnGrid(toSecondGridCumulative(cumulativeDistanceSeries(activity)), targetM);
-}
-
-export const PB_DISTANCES: { key: string; label: string; metres: number }[] = [
-  { key: '1k', label: '1 km', metres: 1000 },
-  { key: '5k', label: '5 km', metres: 5000 },
-  { key: '10k', label: '10 km', metres: 10000 },
-  { key: 'hm', label: 'HM', metres: 21097.5 },
-];
-
+// ── personal bests ────────────────────────────────────────────────
 export interface PbResult {
   key: string;
   label: string;
@@ -297,12 +384,11 @@ export interface PbResult {
   history: { date: number; s: number }[]; // chronological best-so-far, for the sparkline
 }
 
+/** Reads each activity's stored best efforts, which were swept out of its samples once,
+ *  when it was saved. */
 export function computePersonalBests(activities: Activity[], sport: Sport): PbResult[] {
   const sorted = activities.filter((a) => a.sport === sport).sort((a, b) => a.startedAt - b.startedAt);
 
-  // One per-second grid per activity, swept once for each distance. Building it inside
-  // the distance loop instead — which is what asking `bestEffortSeconds` four times
-  // does — re-walks every GPS point of every run four times over.
   const running = PB_DISTANCES.map(() => ({
     best: null as { s: number; id: string; date: number } | null,
     previousBest: null as number | null,
@@ -310,9 +396,8 @@ export function computePersonalBests(activities: Activity[], sport: Sport): PbRe
   }));
 
   for (const a of sorted) {
-    const grid = toSecondGridCumulative(cumulativeDistanceSeries(a));
     PB_DISTANCES.forEach((d, i) => {
-      const s = bestEffortOnGrid(grid, d.metres);
+      const s = a.derived.pbEfforts?.[d.key];
       if (s == null) return;
       const acc = running[i];
       if (!acc.best || s < acc.best.s) {
@@ -355,120 +440,26 @@ export function sparkPathFromHistory(history: { s: number }[], w: number, h: num
 }
 
 // ── power curve (mean maximal power) ────────────────────────────────
-export const POWER_DURATIONS = [
-  { key: '5s', seconds: 5 },
-  { key: '1m', seconds: 60 },
-  { key: '5m', seconds: 300 },
-  { key: '20m', seconds: 1200 },
-  { key: '60m', seconds: 3600 },
-];
-
-function powerToSecondGrid(activity: Activity): number[] {
-  const samples = activity.power;
-  if (samples.length < 2) return [];
-  const t0 = samples[0].t;
-  const totalS = Math.round((samples[samples.length - 1].t - t0) / 1000);
-  const out = new Array(totalS + 1).fill(0);
-  let idx = 0;
-  let cur = samples[0].watts;
-  for (let s = 0; s <= totalS; s++) {
-    const targetT = t0 + s * 1000;
-    while (idx < samples.length && samples[idx].t <= targetT) {
-      cur = samples[idx].watts;
-      idx++;
-    }
-    out[s] = cur;
-  }
-  return out;
-}
-
-function maxAvgPowerForWindow(grid: number[], windowS: number): number | null {
-  if (grid.length < windowS) return null;
-  let sum = 0;
-  for (let i = 0; i < windowS; i++) sum += grid[i];
-  let max = sum;
-  for (let i = windowS; i < grid.length; i++) {
-    sum += grid[i] - grid[i - windowS];
-    if (sum > max) max = sum;
-  }
-  return max / windowS;
-}
-
 export function powerCurve(activities: Activity[]): { key: string; watts: number }[] {
-  // Grid per ride, then every window against it — rather than a fresh grid per
-  // (ride × duration), which rebuilt the same second-by-second series five times.
   const best = POWER_DURATIONS.map(() => 0);
   for (const a of activities) {
-    if (a.sport !== 'ride' || a.power.length < 2) continue;
-    const grid = powerToSecondGrid(a);
+    if (a.sport !== 'ride') continue;
     POWER_DURATIONS.forEach((d, i) => {
-      const v = maxAvgPowerForWindow(grid, d.seconds);
-      if (v != null && v > best[i]) best[i] = v;
+      const watts = a.derived.powerBests?.[d.key];
+      if (watts != null && watts > best[i]) best[i] = watts;
     });
   }
   return POWER_DURATIONS.map((d, i) => ({ key: d.key, watts: Math.round(best[i]) }));
 }
 
 // ── aerobic decoupling ──────────────────────────────────────────────
-/** Heart-rate drift across the halves of a session: efficiency factor (speed per beat)
- *  in the first half against the second. Under ~5 % reads as aerobically durable.
- *  Needs both HR samples and GPS, so it returns null when either is missing. */
-export function aerobicDecoupling(activity: Activity): number | null {
-  if (activity.hr.length < 10 || activity.points.length < 10) return null;
-  const start = activity.startedAt;
-  const end = activity.endedAt;
-  const mid = start + (end - start) / 2;
-  if (end - start < 15 * 60 * 1000) return null; // too short to mean anything
-
-  // Scanned in place rather than filtered into four intermediate arrays: this runs for
-  // every session in a compared pair and for every session of the six weeks the load
-  // table shows, and the arrays it was copying are the whole recorded track.
-  const halfStats = (from: number, to: number) => {
-    const pts = activity.points;
-    let firstT = 0;
-    let lastT = 0;
-    let count = 0;
-    let dist = 0;
-    for (let i = 0; i < pts.length; i++) {
-      const p = pts[i];
-      if (p.t < from || p.t > to) continue;
-      if (count === 0) firstT = p.t;
-      else dist += haversineMeters(pts[i - 1], p);
-      lastT = p.t;
-      count++;
-    }
-    if (count < 3) return null;
-
-    let hrSum = 0;
-    let hrCount = 0;
-    for (const h of activity.hr) {
-      if (h.t < from || h.t > to) continue;
-      hrSum += h.bpm;
-      hrCount++;
-    }
-    if (hrCount < 3) return null;
-
-    const durS = (lastT - firstT) / 1000;
-    if (durS <= 0) return null;
-    const speed = dist / durS;
-    const hr = hrSum / hrCount;
-    if (hr <= 0 || speed <= 0) return null;
-    return speed / hr;
-  };
-
-  const first = halfStats(start, mid);
-  const second = halfStats(mid, end);
-  if (first == null || second == null) return null;
-  return ((first - second) / first) * 100;
-}
-
 export function weeklyDecoupling(activities: Activity[], weekStart: number): number | null {
   const weekEnd = weekStart + 7 * DAY_MS;
   let sum = 0;
   let count = 0;
   for (const a of activities) {
     if (a.startedAt < weekStart || a.startedAt >= weekEnd) continue;
-    const value = aerobicDecoupling(a);
+    const value = a.derived.decoupling;
     if (value == null) continue;
     sum += value;
     count++;
@@ -476,19 +467,34 @@ export function weeklyDecoupling(activities: Activity[], weekStart: number): num
   return count === 0 ? null : sum / count;
 }
 
-/** The load unit used across Overview and Analyse: run kilometres plus ride
- *  kilometres ÷ 3, so one series can carry both sports. */
+// ── the load unit ───────────────────────────────────────────────────
+/** Distance load: run kilometres plus ride kilometres ÷ 3, so one series can carry
+ *  both sports. A fixed divisor, and honest about being one — it treats a recovery
+ *  spin like a threshold ride, which is what the stress model exists to fix. */
 export function loadKm(rollup: WeekRollup): number {
   return rollup.runKm + rollup.rideKm / 3;
 }
 
-export function loadKmBetween(activities: Activity[], from: number, to: number): number {
-  let km = 0;
+export function loadOf(rollup: WeekRollup, settings: Settings): number {
+  return settings.loadModel === 'stress' ? rollup.stress : loadKm(rollup);
+}
+
+export function loadUnit(settings: Settings): string {
+  return settings.loadModel === 'stress' ? 'pts' : 'km';
+}
+
+export function loadBetween(activities: Activity[], from: number, to: number, settings: Settings): number {
+  let total = 0;
   for (const a of activities) {
     if (a.startedAt < from || a.startedAt >= to) continue;
-    km += a.sport === 'run' ? a.distance / 1000 : a.distance / 3000;
+    total +=
+      settings.loadModel === 'stress'
+        ? activityStress(a, settings).value
+        : a.sport === 'run'
+          ? a.distance / 1000
+          : a.distance / 3000;
   }
-  return km;
+  return total;
 }
 
 export interface LoadBalance {
@@ -501,10 +507,10 @@ export interface LoadBalance {
 
 /** Rolling 7-day against rolling 28-day, which is what "Load · 7 day vs 28 day"
  *  actually means — a calendar week would read as detraining every Monday. */
-export function loadBalance(activities: Activity[], reference = Date.now()): LoadBalance {
-  const acute = loadKmBetween(activities, reference - 7 * DAY_MS, reference + 1);
-  const previousAcute = loadKmBetween(activities, reference - 14 * DAY_MS, reference - 7 * DAY_MS);
-  const chronic = loadKmBetween(activities, reference - 28 * DAY_MS, reference + 1) / 4;
+export function loadBalance(activities: Activity[], settings: Settings, reference = Date.now()): LoadBalance {
+  const acute = loadBetween(activities, reference - 7 * DAY_MS, reference + 1, settings);
+  const previousAcute = loadBetween(activities, reference - 14 * DAY_MS, reference - 7 * DAY_MS, settings);
+  const chronic = loadBetween(activities, reference - 28 * DAY_MS, reference + 1, settings) / 4;
   return {
     acute,
     chronic,
@@ -515,37 +521,9 @@ export function loadBalance(activities: Activity[], reference = Date.now()): Loa
 }
 
 // ── route silhouette source data ────────────────────────────────────
-/** Altitude along the track, thinned to at most `maxPoints` samples.
- *
- *  Nothing draws a profile wider than a few hundred pixels — a list row's silhouette is
- *  56 of them, the save screen's 330 — so handing the renderers every fix of a two-hour
- *  ride only builds an SVG path with thousands of segments the screen cannot resolve,
- *  once per row, on every render. The default is eight times the 64 points the widest
- *  of them resamples down to, which puts the worst vertex the thinning moves a tenth of
- *  a pixel from where the full track would have drawn it. */
-export function elevationProfile(activity: Activity, maxPoints = 512): number[] {
-  const pts = activity.points;
-  if (pts.length === 0) return [0, 0];
-
-  const stride = Math.max(1, Math.ceil(pts.length / maxPoints));
-  const out: number[] = [];
-  let flat = true;
-  for (let i = 0; i < pts.length; i += stride) {
-    const ele = pts[i].ele ?? 0;
-    if (ele !== 0) flat = false;
-    out.push(ele);
-  }
-  // The last fix is the end of the profile; a stride that does not land on it would
-  // otherwise cut the descent short.
-  const last = pts[pts.length - 1].ele ?? 0;
-  if ((pts.length - 1) % stride !== 0) {
-    if (last !== 0) flat = false;
-    out.push(last);
-  }
-
-  // A device with no altimeter reports nothing rather than zero: a flat line at zero is
-  // an absent profile, not a profile of flat ground, and the callers show it as such.
-  return flat ? [0, 0] : out;
+export function elevationProfile(activity: Activity): number[] {
+  const profile = activity.derived.elevation;
+  return profile && profile.length > 1 ? profile : [0, 0];
 }
 
 // ── streak history ──────────────────────────────────────────────────
@@ -616,4 +594,24 @@ export function trainedDayGrid(activities: Activity[], days: number, reference =
     out.push({ day, trained: entry != null, sessions: entry?.sessions ?? 0, loadKm: entry?.loadKm ?? 0, isToday: i === 0 });
   }
   return out;
+}
+
+// ── gear ────────────────────────────────────────────────────────────
+export interface GearUse {
+  km: number;
+  sessions: number;
+  lastUsed: number | null;
+}
+
+export function gearUsage(activities: Activity[]): Map<string, GearUse> {
+  const totals = new Map<string, GearUse>();
+  for (const a of activities) {
+    if (!a.gearId) continue;
+    const entry = totals.get(a.gearId) ?? { km: 0, sessions: 0, lastUsed: null };
+    entry.km += a.distance / 1000;
+    entry.sessions += 1;
+    entry.lastUsed = Math.max(entry.lastUsed ?? 0, a.startedAt);
+    totals.set(a.gearId, entry);
+  }
+  return totals;
 }

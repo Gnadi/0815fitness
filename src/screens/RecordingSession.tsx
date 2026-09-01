@@ -6,7 +6,9 @@ import { Label } from '../components/primitives';
 import { TrackMap } from '../components/charts';
 import { useRecorder } from '../hooks/useRecorder';
 import { useWakeLock } from '../hooks/useWakeLock';
-import { fmtClock, fmtPace } from '../lib/stats';
+import { useUnits } from '../hooks/useUnits';
+import { fmtClock } from '../lib/stats';
+import type { RecorderCheckpoint } from '../lib/recorder';
 import type { GeoSample, HrSample, PowerSample, CadenceSample, Lap, Sport, Settings } from '../types';
 import type { SensorSet } from '../App';
 
@@ -21,6 +23,8 @@ export interface ActivityDraft {
   cadence: CadenceSample[];
   distance: number;
   ascent: number;
+  /** True when this draft came back from a session the app was interrupted during. */
+  recovered?: boolean;
 }
 
 const controlButton: CSSProperties = {
@@ -42,14 +46,17 @@ export function RecordingSession({
   sport,
   sensors,
   settings,
+  restore,
   onFinish,
 }: {
   sport: Sport;
   sensors: SensorSet;
   settings: Settings;
+  restore?: RecorderCheckpoint | null;
   onFinish: (draft: ActivityDraft) => void;
 }) {
-  const { snapshot, actions } = useRecorder(sport, true);
+  const units = useUnits();
+  const { snapshot, actions } = useRecorder(sport, true, { autoPauseMps: settings.autoPauseMps, restore });
   useWakeLock(true);
   const [mapOpen, setMapOpen] = useState(false);
   const autoPausedSince = useRef<number | null>(null);
@@ -97,19 +104,20 @@ export function RecordingSession({
   const heroLabel = run ? 'Pace' : powerConnected ? 'Power' : 'Speed';
   const heroValue = run
     ? paceSec
-      ? fmtPace(paceSec)
+      ? units.fmtPace(paceSec)
       : '—:—'
     : powerConnected
       ? String(Math.round(snapshot.livePower ?? 0))
       : speed != null
-        ? (speed * 3.6).toFixed(1)
+        ? units.fmtSpeed(speed)
         : '—';
-  const heroUnit = run ? '/km' : powerConnected ? 'W' : 'km/h';
+  const heroUnit = run ? units.paceUnit : powerConnected ? 'W' : units.speedUnit;
+  const ascentText = `${units.fmtElevation(snapshot.ascentM)} ${units.elevationUnit} ascent`;
   const heroSub = run
-    ? `avg ${avgPaceSec ? fmtPace(avgPaceSec) : '—:—'} · ${Math.round(snapshot.ascentM)} m ascent`
+    ? `avg ${avgPaceSec ? units.fmtPace(avgPaceSec) : '—:—'} · ${ascentText}`
     : powerConnected
-      ? `avg ${Math.round(snapshot.avgPowerW ?? 0)} W · ${Math.round(snapshot.ascentM)} m ascent`
-      : `avg ${(avgSpeed * 3.6).toFixed(1)} km/h · no power meter paired`;
+      ? `avg ${Math.round(snapshot.avgPowerW ?? 0)} W · ${ascentText}`
+      : `avg ${units.fmtSpeed(avgSpeed)} ${units.speedUnit} · no power meter paired`;
 
   const hrPct = snapshot.liveHr ? snapshot.liveHr / settings.maxHr : 0;
   const hrZoneIdx = HR_ZONE_BOUNDS.slice(0, 5).reduce((acc, bound, i) => (hrPct >= bound ? i : acc), 0);
@@ -128,6 +136,7 @@ export function RecordingSession({
       cadence: final.cadence,
       distance: final.distanceM,
       ascent: final.ascentM,
+      recovered: restore != null,
     });
   };
 
@@ -154,8 +163,8 @@ export function RecordingSession({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Label>Distance</Label>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <span style={bigStyle}>{(snapshot.distanceM / 1000).toFixed(2)}</span>
-            <span style={{ fontFamily: font.mono, fontSize: 15, color: color.textMuted }}>km</span>
+            <span style={bigStyle}>{units.fmtDistance(snapshot.distanceM, 2)}</span>
+            <span style={{ fontFamily: font.mono, fontSize: 15, color: color.textMuted }}>{units.distanceUnit}</span>
           </div>
         </div>
 
@@ -197,7 +206,7 @@ export function RecordingSession({
 
       <div style={{ marginTop: 20, padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 12, ...S.sunkWell }}>
         <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, letterSpacing: '.06em', color: color.textFaint }}>LAP {snapshot.currentLapNo}</span>
-        <span style={{ ...S.tableNum, color: color.text }}>{(snapshot.currentLapDistM / 1000).toFixed(2)} km</span>
+        <span style={{ ...S.tableNum, color: color.text }}>{units.fmtDistance(snapshot.currentLapDistM, 2)} {units.distanceUnit}</span>
         <span style={{ ...S.tableNum, color: color.text }}>{fmtClock(snapshot.currentLapDurationS)}</span>
         <span style={{ flex: 1 }} />
         <span style={{ fontFamily: font.mono, fontSize: 12, color: color.textFaint }}>
@@ -221,7 +230,7 @@ export function RecordingSession({
       >
         <TrackMap points={snapshot.points} height={mapOpen ? 260 : 96} />
         <span style={{ position: 'absolute', left: 16, bottom: 10, fontFamily: font.mono, fontSize: 11, fontWeight: 500, letterSpacing: '.06em', color: color.textFaint }}>
-          {mapOpen ? `TAP TO COLLAPSE · ${(snapshot.distanceM / 1000).toFixed(1)} KM TRACKED` : 'TAP TO EXPAND MAP'}
+          {mapOpen ? `TAP TO COLLAPSE · ${units.fmtDistance(snapshot.distanceM, 1)} ${units.distanceUnit.toUpperCase()} TRACKED` : 'TAP TO EXPAND MAP'}
         </span>
       </div>
 
@@ -303,7 +312,7 @@ export function RecordingSession({
           <div style={{ display: 'flex', gap: 28 }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
               <Label>Distance</Label>
-              <span style={{ ...S.metricLarge, color: color.textCapture }}>{(snapshot.distanceM / 1000).toFixed(2)}</span>
+              <span style={{ ...S.metricLarge, color: color.textCapture }}>{units.fmtDistance(snapshot.distanceM, 2)}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
               <Label>{heroLabel}</Label>

@@ -2,26 +2,79 @@
 // recorded at different times, over different distances, with sample intervals that
 // differ per device. Everything here resamples an activity onto a per-second trace
 // first, then aggregates that trace by distance so runs of unequal length still line up.
-import type { Activity, Sport } from '../types';
+import type { FullActivity, Sport } from '../types';
 import { haversineMeters } from './geo';
+import { gradeFactor } from './derived';
 import { MAX_PLAUSIBLE_SPEED_MPS } from './recorder';
-import { aerobicDecoupling, bestEffortSeconds } from './stats';
+import type { UnitFormat } from './units';
 
-/** Per-second view of an activity: metres covered, elevation and heart rate on one
- *  time base. Gaps stay null rather than being invented. */
+/** Per-second view of an activity: metres covered, elevation, heart rate, cadence and
+ *  power on one time base. Gaps stay null rather than being invented. */
 export interface Trace {
   /** Cumulative metres at second i since the first GPS fix. Monotonic. */
   distM: number[];
+  /** Cumulative flat-equivalent metres, for grade-adjusted pace. */
+  gapM: number[];
   ele: (number | null)[];
   hr: (number | null)[];
+  cadence: (number | null)[];
+  power: (number | null)[];
   totalM: number;
   totalS: number;
+  hasElevation: boolean;
 }
 
-const EMPTY_TRACE: Trace = { distM: [], ele: [], hr: [], totalM: 0, totalS: 0 };
+const EMPTY_TRACE: Trace = { distM: [], gapM: [], ele: [], hr: [], cadence: [], power: [], totalM: 0, totalS: 0, hasElevation: false };
 
-export function buildTrace(activity: Activity): Trace {
-  const pts = activity.points;
+/** Resamples a sparse sensor stream onto the per-second grid, bridging gaps of up to
+ *  three minutes and leaving anything longer as the hole it was. */
+function resampleStream<T extends { t: number }>(samples: T[], valueOf: (s: T) => number, t0: number, totalS: number): (number | null)[] {
+  const out = new Array<number | null>(totalS + 1).fill(null);
+  if (samples.length === 0) return out;
+  let i = 0;
+  for (let s = 0; s <= totalS; s++) {
+    const t = t0 + s * 1000;
+    while (i < samples.length - 1 && samples[i + 1].t <= t) i++;
+    const a = samples[i];
+    const b = samples[Math.min(i + 1, samples.length - 1)];
+    if (t < a.t - 180000 || t > b.t + 180000) continue;
+    const span = b.t - a.t;
+    const f = span > 0 ? Math.min(1, Math.max(0, (t - a.t) / span)) : 0;
+    out[s] = valueOf(a) + (valueOf(b) - valueOf(a)) * f;
+  }
+  return out;
+}
+
+/** Cumulative flat-equivalent distance along the per-second grid.
+ *
+ *  Gradients are read over stretches of at least 25 m for the same reason they are in
+ *  the stored figure: a metre of altitude noise between two fixes four metres apart is a
+ *  gradient the ground never had. */
+function gapSeries(distM: number[], ele: (number | null)[]): number[] {
+  const out = new Array<number>(distM.length).fill(0);
+  let anchorS = 0;
+  let anchorEle: number | null = ele[0];
+  let carried = 0;
+  for (let s = 1; s < distM.length; s++) {
+    const spanM = distM[s] - distM[anchorS];
+    const currentEle = ele[s];
+    if (spanM >= 25 && anchorEle != null && currentEle != null) {
+      carried += spanM * gradeFactor((currentEle - anchorEle) / spanM);
+      anchorS = s;
+      anchorEle = currentEle;
+      out[s] = carried;
+      continue;
+    }
+    if (anchorEle == null) anchorEle = currentEle;
+    // Inside a stretch the adjustment is not known yet, so the level distance stands in;
+    // it is corrected as soon as the stretch closes.
+    out[s] = carried + spanM;
+  }
+  return out;
+}
+
+export function buildTrace(activity: FullActivity): Trace {
+  const pts = activity.samples.points;
   if (pts.length < 2) return EMPTY_TRACE;
 
   const t0 = pts[0].t;
@@ -40,6 +93,7 @@ export function buildTrace(activity: Activity): Trace {
   const distM = new Array<number>(totalS + 1).fill(0);
   const ele = new Array<number | null>(totalS + 1).fill(null);
   let p = 0;
+  let hasElevation = false;
   for (let s = 0; s <= totalS; s++) {
     const t = t0 + s * 1000;
     while (p < pts.length - 2 && pts[p + 1].t <= t) p++;
@@ -50,39 +104,36 @@ export function buildTrace(activity: Activity): Trace {
     distM[s] = cum[p] + (cum[Math.min(p + 1, cum.length - 1)] - cum[p]) * f;
     if (a.ele != null && b.ele != null) ele[s] = a.ele + (b.ele - a.ele) * f;
     else if (a.ele != null) ele[s] = a.ele;
+    if (ele[s] != null) hasElevation = true;
   }
 
-  const hr = new Array<number | null>(totalS + 1).fill(null);
-  const beats = activity.hr;
-  if (beats.length > 0) {
-    let h = 0;
-    for (let s = 0; s <= totalS; s++) {
-      const t = t0 + s * 1000;
-      while (h < beats.length - 1 && beats[h + 1].t <= t) h++;
-      const a = beats[h];
-      const b = beats[Math.min(h + 1, beats.length - 1)];
-      // A strap that dropped out leaves a hole; don't bridge more than three minutes of it.
-      if (t < a.t - 180000 || t > b.t + 180000) continue;
-      const span = b.t - a.t;
-      const f = span > 0 ? Math.min(1, Math.max(0, (t - a.t) / span)) : 0;
-      hr[s] = a.bpm + (b.bpm - a.bpm) * f;
-    }
-  }
-
-  return { distM, ele, hr, totalM: distM[totalS], totalS };
+  return {
+    distM,
+    gapM: hasElevation ? gapSeries(distM, ele) : distM,
+    ele,
+    hr: resampleStream(activity.samples.hr, (h) => h.bpm, t0, totalS),
+    cadence: resampleStream(activity.samples.cadence, (c) => c.rpm, t0, totalS),
+    power: resampleStream(activity.samples.power, (w) => w.watts, t0, totalS),
+    totalM: distM[totalS],
+    totalS,
+    hasElevation,
+  };
 }
 
 // ── metrics for one session ───────────────────────────────────────
 export interface Metrics {
   distanceKm: number;
   durationS: number;
+  movingS: number;
   paceS: number | null; // seconds per km
+  gapS: number | null; // grade-adjusted seconds per km
   speedKmh: number;
   ascentM: number;
   avgHr: number | null;
   peakHr: number | null;
   avgCadence: number | null;
   avgPower: number | null;
+  normalizedPower: number | null;
   best1kS: number | null;
   decouplingPct: number | null;
   effort: number;
@@ -93,37 +144,29 @@ function mean(values: number[]): number | null {
   return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
-/** Mean of one field across a sample series, without the intermediate array a
- *  `.map(...)` would build — these series run to thousands of samples an hour. */
-function meanOf<T>(samples: T[], pick: (s: T) => number): number | null {
-  if (samples.length === 0) return null;
-  let sum = 0;
-  for (const s of samples) sum += pick(s);
-  return sum / samples.length;
-}
-
-export function metricsFor(activity: Activity): Metrics {
+/** Almost every figure here was already swept out of the samples when the activity was
+ *  saved, so this reads the stored derivation rather than walking the streams again. */
+export function metricsFor(activity: FullActivity): Metrics {
   const durationS = Math.max(0, (activity.endedAt - activity.startedAt) / 1000);
   const speed = durationS > 0 ? activity.distance / durationS : 0;
-
-  // Scanned rather than spread into Math.max: a strap sampling every second through a
-  // long ride is tens of thousands of arguments, which is slower than a loop and
-  // eventually more than the engine will take at all.
-  let peakHr: number | null = null;
-  for (const h of activity.hr) if (peakHr == null || h.bpm > peakHr) peakHr = h.bpm;
+  const d = activity.derived;
+  const movingS = d.movingS || durationS;
 
   return {
     distanceKm: activity.distance / 1000,
     durationS,
+    movingS,
     paceS: speed > 0.2 ? 1000 / speed : null,
+    gapS: d.gapDistanceM && d.gapDistanceM > 0 ? movingS / (d.gapDistanceM / 1000) : null,
     speedKmh: speed * 3.6,
     ascentM: activity.ascent,
-    avgHr: meanOf(activity.hr, (h) => h.bpm),
-    peakHr,
-    avgCadence: meanOf(activity.cadence, (c) => c.rpm),
-    avgPower: meanOf(activity.power, (p) => p.watts),
-    best1kS: bestEffortSeconds(activity, 1000),
-    decouplingPct: aerobicDecoupling(activity),
+    avgHr: d.avgHr,
+    peakHr: d.maxHr,
+    avgCadence: d.avgCadence,
+    avgPower: d.avgPower,
+    normalizedPower: d.normalizedPower,
+    best1kS: d.pbEfforts?.['1k'] ?? null,
+    decouplingPct: d.decoupling,
     effort: activity.effort,
   };
 }
@@ -133,6 +176,8 @@ export interface DistanceSeries {
   pace: (number | null)[]; // seconds per km in each bucket
   ele: (number | null)[];
   hr: (number | null)[];
+  cadence: (number | null)[];
+  power: (number | null)[];
 }
 
 /** Fractional seconds at which the trace first reaches `m` metres, interpolated
@@ -153,29 +198,26 @@ function secondAtDistance(trace: Trace, m: number): number | null {
 
 /** Aggregate a trace into `count` buckets of `bucketM` metres. Pace comes from the time
  *  it took to cross each bucket rather than an instantaneous speed, so a stop shows up
- *  as the slower kilometre it actually was. Heart rate and elevation are averaged over
- *  the seconds that fell inside the bucket. */
+ *  as the slower kilometre it actually was. The sensor channels are averaged over the
+ *  seconds that fell inside the bucket. */
 export function seriesByDistance(trace: Trace, bucketM: number, count: number): DistanceSeries {
-  const empty = new Array<number | null>(count).fill(null);
-  if (trace.totalS === 0 || trace.distM.length === 0) return { pace: empty, ele: [...empty], hr: [...empty] };
+  const empty = () => new Array<number | null>(count).fill(null);
+  if (trace.totalS === 0 || trace.distM.length === 0) {
+    return { pace: empty(), ele: empty(), hr: empty(), cadence: empty(), power: empty() };
+  }
 
-  const eleSum = new Array<number>(count).fill(0);
-  const eleN = new Array<number>(count).fill(0);
-  const hrSum = new Array<number>(count).fill(0);
-  const hrN = new Array<number>(count).fill(0);
+  const channels: { source: (number | null)[]; sum: number[]; n: number[] }[] = [trace.ele, trace.hr, trace.cadence, trace.power].map(
+    (source) => ({ source, sum: new Array<number>(count).fill(0), n: new Array<number>(count).fill(0) }),
+  );
 
   for (let s = 0; s <= trace.totalS; s++) {
     const b = Math.floor(trace.distM[s] / bucketM);
     if (b < 0 || b >= count) continue;
-    const e = trace.ele[s];
-    if (e != null) {
-      eleSum[b] += e;
-      eleN[b] += 1;
-    }
-    const h = trace.hr[s];
-    if (h != null) {
-      hrSum[b] += h;
-      hrN[b] += 1;
+    for (const channel of channels) {
+      const v = channel.source[s];
+      if (v == null) continue;
+      channel.sum[b] += v;
+      channel.n[b] += 1;
     }
   }
 
@@ -191,11 +233,8 @@ export function seriesByDistance(trace: Trace, bucketM: number, count: number): 
     pace[b] = (t1 - t0) / ((to - from) / 1000);
   }
 
-  return {
-    pace,
-    ele: eleN.map((n, b) => (n > 0 ? eleSum[b] / n : null)),
-    hr: hrN.map((n, b) => (n > 0 ? hrSum[b] / n : null)),
-  };
+  const averaged = channels.map((c) => c.n.map((n, b) => (n > 0 ? c.sum[b] / n : null)));
+  return { pace, ele: averaged[0], hr: averaged[1], cadence: averaged[2], power: averaged[3] };
 }
 
 // ── splits ────────────────────────────────────────────────────────
@@ -204,8 +243,11 @@ export interface Split {
   distanceM: number; // the split's own length; the last one is usually short
   timeS: number;
   paceS: number; // seconds per km, so a short final split stays comparable
+  gapS: number | null; // grade-adjusted, where there is altitude to adjust against
   ascentM: number;
   avgHr: number | null;
+  avgCadence: number | null;
+  avgPower: number | null;
 }
 
 export function splitsFor(trace: Trace, splitM = 1000): Split[] {
@@ -230,18 +272,25 @@ export function splitsFor(trace: Trace, splitM = 1000): Split[] {
       const d = cur - prev;
       if (d > 0.3) ascentM += d;
     }
-    const hrs: number[] = [];
-    for (let i = startS; i <= s; i++) {
-      const h = trace.hr[i];
-      if (h != null) hrs.push(h);
-    }
+    const collect = (series: (number | null)[]) => {
+      const values: number[] = [];
+      for (let i = startS; i <= s; i++) {
+        const v = series[i];
+        if (v != null) values.push(v);
+      }
+      return mean(values);
+    };
+    const gapM = trace.hasElevation ? trace.gapM[s] - trace.gapM[startS] : 0;
     out.push({
       index,
       distanceM,
       timeS,
       paceS: distanceM > 0 ? timeS / (distanceM / 1000) : 0,
+      gapS: gapM > 0 ? timeS / (gapM / 1000) : null,
       ascentM,
-      avgHr: mean(hrs),
+      avgHr: collect(trace.hr),
+      avgCadence: collect(trace.cadence),
+      avgPower: collect(trace.power),
     });
     startS = s;
     index += 1;
@@ -253,7 +302,7 @@ export function splitsFor(trace: Trace, splitM = 1000): Split[] {
 
 // ── a compared session, everything the screen needs in one object ──
 export interface Comparand {
-  activity: Activity;
+  activity: FullActivity;
   color: string;
   metrics: Metrics;
   trace: Trace;
@@ -265,7 +314,7 @@ export interface Comparand {
 export const COMPARE_COLORS = ['#E8EAEB', '#8B84F7', '#4FB3A8'];
 export const MAX_COMPARE = 3;
 
-export function buildComparands(activities: Activity[]): Comparand[] {
+export function buildComparands(activities: FullActivity[], splitM = 1000): Comparand[] {
   return activities.map((activity, i) => {
     const trace = buildTrace(activity);
     return {
@@ -273,7 +322,7 @@ export function buildComparands(activities: Activity[]): Comparand[] {
       color: COMPARE_COLORS[i % COMPARE_COLORS.length],
       metrics: metricsFor(activity),
       trace,
-      splits: splitsFor(trace),
+      splits: splitsFor(trace, splitM),
     };
   });
 }
@@ -298,14 +347,14 @@ function fmtClockDelta(d: number): string {
   return signed(d, m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s} s`);
 }
 
-export function metricSpecs(sport: Sport, fmtClock: (s: number) => string, fmtPace: (s: number) => string): MetricSpec[] {
+export function metricSpecs(sport: Sport, units: UnitFormat, fmtClock: (s: number) => string): MetricSpec[] {
   const all: MetricSpec[] = [
     {
       key: 'distance',
       label: 'Distance',
       value: (m) => m.distanceKm,
-      fmt: (v) => `${v.toFixed(2)} km`,
-      fmtDelta: (d) => signed(d, `${Math.abs(d).toFixed(2)} km`),
+      fmt: (v) => `${units.fmtDistance(v * 1000)} ${units.distanceUnit}`,
+      fmtDelta: (d) => signed(d, `${Math.abs(units.distance(d * 1000)).toFixed(2)} ${units.distanceUnit}`),
     },
     {
       key: 'time',
@@ -319,8 +368,17 @@ export function metricSpecs(sport: Sport, fmtClock: (s: number) => string, fmtPa
       label: 'Avg pace',
       sport: 'run',
       value: (m) => m.paceS,
-      fmt: (v) => `${fmtPace(v)}/km`,
-      fmtDelta: fmtClockDelta,
+      fmt: (v) => `${units.fmtPace(v)}${units.paceUnit}`,
+      fmtDelta: (d) => fmtClockDelta(units.paceSecPerUnit(d)),
+      better: 'lower',
+    },
+    {
+      key: 'gap',
+      label: 'Grade-adj. pace',
+      sport: 'run',
+      value: (m) => m.gapS,
+      fmt: (v) => `${units.fmtPace(v)}${units.paceUnit}`,
+      fmtDelta: (d) => fmtClockDelta(units.paceSecPerUnit(d)),
       better: 'lower',
     },
     {
@@ -328,8 +386,8 @@ export function metricSpecs(sport: Sport, fmtClock: (s: number) => string, fmtPa
       label: 'Avg speed',
       sport: 'ride',
       value: (m) => m.speedKmh,
-      fmt: (v) => `${v.toFixed(1)} km/h`,
-      fmtDelta: (d) => signed(d, `${Math.abs(d).toFixed(1)}`),
+      fmt: (v) => `${units.fmtSpeed(v / 3.6)} ${units.speedUnit}`,
+      fmtDelta: (d) => signed(d, `${Math.abs(Number(units.fmtSpeed(d / 3.6)))}`),
       better: 'higher',
     },
     {
@@ -337,7 +395,7 @@ export function metricSpecs(sport: Sport, fmtClock: (s: number) => string, fmtPa
       label: 'Best 1 km',
       sport: 'run',
       value: (m) => m.best1kS,
-      fmt: (v) => fmtPace(v),
+      fmt: (v) => fmtClock(v),
       fmtDelta: fmtClockDelta,
       better: 'lower',
     },
@@ -351,11 +409,20 @@ export function metricSpecs(sport: Sport, fmtClock: (s: number) => string, fmtPa
       better: 'higher',
     },
     {
+      key: 'np',
+      label: 'Normalised power',
+      sport: 'ride',
+      value: (m) => m.normalizedPower,
+      fmt: (v) => `${Math.round(v)} W`,
+      fmtDelta: (d) => signed(d, `${Math.abs(Math.round(d))} W`),
+      better: 'higher',
+    },
+    {
       key: 'ascent',
       label: 'Ascent',
       value: (m) => m.ascentM,
-      fmt: (v) => `${Math.round(v)} m`,
-      fmtDelta: (d) => signed(d, `${Math.abs(Math.round(d))} m`),
+      fmt: (v) => `${units.fmtElevation(v)} ${units.elevationUnit}`,
+      fmtDelta: (d) => signed(d, `${Math.abs(Number(units.fmtElevation(d)))} ${units.elevationUnit}`),
     },
     {
       key: 'hr',

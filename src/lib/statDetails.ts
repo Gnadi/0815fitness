@@ -2,7 +2,9 @@
 // window, the twelve weeks behind it, a table of those weeks, and the sessions that
 // actually add up to it. This module derives that shape; the screen only renders it.
 import type { Activity, Settings } from '../types';
+import type { UnitFormat } from './units';
 import {
+  activityStress,
   aggregateZoneSeconds,
   chronicSeries,
   computeStreak,
@@ -12,12 +14,13 @@ import {
   isoWeekLabel,
   lastNWeekStarts,
   loadBalance,
-  loadKm,
+  loadOf,
   rampPct,
   rollupWeeks,
   streakSegments,
   trainedDayGrid,
   type TrainedDay,
+  type WeekRollup,
 } from './stats';
 
 export type StatKey = 'runKm' | 'time' | 'ascent' | 'rideKm' | 'sessions' | 'streak' | 'volume' | 'load';
@@ -106,14 +109,24 @@ function toneForDelta(delta: number): Tone {
   return delta > 0 ? 'positive' : delta < 0 ? 'muted' : 'faint';
 }
 
-export function buildStatDetail(key: StatKey, activities: Activity[], settings: Settings, now: number): StatDetail {
+export function buildStatDetail(key: StatKey, activities: Activity[], settings: Settings, now: number, units: UnitFormat): StatDetail {
   const weekStarts = lastNWeekStarts(TREND_WEEKS, now);
-  const rollups = rollupWeeks(activities, weekStarts);
+  const rollups = rollupWeeks(activities, weekStarts, settings);
   const thisWeekStart = weekStarts[weekStarts.length - 1];
   const thisWeek = rollups[rollups.length - 1];
   const lastWeek = rollups[rollups.length - 2];
   const scope = `This week · ${weekRange(thisWeekStart)}`;
   const weekActivities = inWeek(activities, thisWeekStart);
+
+  // Rollups are kept in kilometres and metres, whatever the screen shows, so every
+  // conversion happens here on the way out and nothing downstream has to know.
+  const U = units.distanceUnit;
+  const km = (value: number, digits = 1) => units.distance(value * 1000).toFixed(digits);
+  const dist = (metres: number, digits = 1) => units.fmtDistance(metres, digits);
+  const stressed = settings.loadModel === 'stress';
+  const loadUnitLabel = stressed ? 'pts' : U;
+  const load = (r: WeekRollup) => (stressed ? r.stress : units.distance(loadOf(r, settings) * 1000));
+  const activityLoadValue = (a: Activity) => units.distance(a.sport === 'run' ? a.distance : a.distance / 3);
 
   // The table reads newest first; the trend chart reads left to right in time.
   const tableWeeks = [...rollups].slice(-TABLE_WEEKS).reverse();
@@ -128,25 +141,25 @@ export function buildStatDetail(key: StatKey, activities: Activity[], settings: 
         key,
         title: STAT_TITLES[key],
         scope,
-        value: thisWeek.runKm.toFixed(2),
-        unit: 'km run',
-        sub: deltaSentence(delta, 'km'),
+        value: km(thisWeek.runKm, 2),
+        unit: `${U} run`,
+        sub: deltaSentence(units.distance(delta * 1000), U),
         subTone: toneForDelta(delta),
-        trendLabel: 'Run km · 12 weeks',
-        trend: trendOf((i) => rollups[i].runKm),
+        trendLabel: `Run ${U} · 12 weeks`,
+        trend: trendOf((i) => units.distance(rollups[i].runKm * 1000)),
         trendFormat: (v) => v.toFixed(0),
-        columns: [{ label: 'WEEK', width: 48 }, { label: 'KM' }, { label: 'RUNS' }, { label: 'AVG' }],
+        columns: [{ label: 'WEEK', width: 48 }, { label: U.toUpperCase() }, { label: 'RUNS' }, { label: 'AVG' }],
         rows: tableWeeks.map((w, i) => {
           const weekRuns = inWeek(activities, w.weekStart).filter((a) => a.sport === 'run');
           const avg = weekRuns.length > 0 ? w.runKm / weekRuns.length : 0;
           return {
             key: String(w.weekStart),
-            values: [isoWeekLabel(w.weekStart), w.runKm.toFixed(1), String(weekRuns.length), avg > 0 ? avg.toFixed(1) : '—'],
+            values: [isoWeekLabel(w.weekStart), km(w.runKm), String(weekRuns.length), avg > 0 ? km(avg) : '—'],
             current: i === 0,
           };
         }),
         contributorsLabel: 'Runs this week',
-        contributors: runs.map((a) => ({ activity: a, contribution: `${(a.distance / 1000).toFixed(2)} km` })),
+        contributors: runs.map((a) => ({ activity: a, contribution: `${dist(a.distance, 2)} ${U}` })),
         note: 'Every run started inside the calendar week, measured over its GPS track. Rides are counted separately under ride distance.',
       };
     }
@@ -184,28 +197,34 @@ export function buildStatDetail(key: StatKey, activities: Activity[], settings: 
     case 'ascent': {
       const delta = thisWeek.ascentM - lastWeek.ascentM;
       const climbed = weekActivities.filter((a) => a.ascent > 0);
+      const E = units.elevationUnit;
       return {
         key,
         title: STAT_TITLES[key],
         scope,
-        value: String(Math.round(thisWeek.ascentM)),
-        unit: 'metres climbed',
-        sub: `${delta >= 0 ? '+' : '−'}${Math.abs(Math.round(delta))} m on last week`,
+        value: units.fmtElevation(thisWeek.ascentM),
+        unit: `${E === 'm' ? 'metres' : 'feet'} climbed`,
+        sub: `${delta >= 0 ? '+' : '−'}${units.fmtElevation(Math.abs(delta))} ${E} on last week`,
         subTone: toneForDelta(delta),
         trendLabel: 'Ascent · 12 weeks',
-        trend: trendOf((i) => rollups[i].ascentM),
+        trend: trendOf((i) => units.elevation(rollups[i].ascentM)),
         trendFormat: (v) => String(Math.round(v)),
-        columns: [{ label: 'WEEK', width: 48 }, { label: 'ASCENT' }, { label: 'KM' }, { label: 'M/KM' }],
+        columns: [{ label: 'WEEK', width: 48 }, { label: 'ASCENT' }, { label: U.toUpperCase() }, { label: `${E}/${U}` }],
         rows: tableWeeks.map((w, i) => {
-          const km = w.runKm + w.rideKm;
+          const distance = w.runKm + w.rideKm;
           return {
             key: String(w.weekStart),
-            values: [isoWeekLabel(w.weekStart), String(Math.round(w.ascentM)), km.toFixed(1), km > 0 ? (w.ascentM / km).toFixed(1) : '—'],
+            values: [
+              isoWeekLabel(w.weekStart),
+              units.fmtElevation(w.ascentM),
+              km(distance),
+              distance > 0 ? (units.elevation(w.ascentM) / units.distance(distance * 1000)).toFixed(1) : '—',
+            ],
             current: i === 0,
           };
         }),
         contributorsLabel: 'Climbing this week',
-        contributors: climbed.map((a) => ({ activity: a, contribution: `${Math.round(a.ascent)} m` })),
+        contributors: climbed.map((a) => ({ activity: a, contribution: `${units.fmtElevation(a.ascent)} ${E}` })),
         note: 'Summed from the barometric or GPS altitude of the recorded track, ignoring rises under 30 cm so altitude jitter does not read as climbing.',
       };
     }
@@ -217,27 +236,34 @@ export function buildStatDetail(key: StatKey, activities: Activity[], settings: 
         key,
         title: STAT_TITLES[key],
         scope,
-        value: thisWeek.rideKm.toFixed(1),
-        unit: 'km ridden',
-        sub: deltaSentence(delta, 'km'),
+        value: km(thisWeek.rideKm),
+        unit: `${U} ridden`,
+        sub: deltaSentence(units.distance(delta * 1000), U),
         subTone: toneForDelta(delta),
-        trendLabel: 'Ride km · 12 weeks',
-        trend: trendOf((i) => rollups[i].rideKm),
+        trendLabel: `Ride ${U} · 12 weeks`,
+        trend: trendOf((i) => units.distance(rollups[i].rideKm * 1000)),
         trendFormat: (v) => v.toFixed(0),
-        columns: [{ label: 'WEEK', width: 48 }, { label: 'KM' }, { label: 'RIDES' }, { label: 'KM/H' }],
+        columns: [
+          { label: 'WEEK', width: 48 },
+          { label: U.toUpperCase() },
+          { label: 'RIDES' },
+          { label: units.speedUnit.toUpperCase() },
+        ],
         rows: tableWeeks.map((w, i) => {
           const weekRides = inWeek(activities, w.weekStart).filter((a) => a.sport === 'ride');
           const time = weekRides.reduce((s, a) => s + durationS(a), 0);
           const speed = time > 0 ? (w.rideKm * 1000) / time : 0;
           return {
             key: String(w.weekStart),
-            values: [isoWeekLabel(w.weekStart), w.rideKm.toFixed(1), String(weekRides.length), speed > 0 ? (speed * 3.6).toFixed(1) : '—'],
+            values: [isoWeekLabel(w.weekStart), km(w.rideKm), String(weekRides.length), speed > 0 ? units.fmtSpeed(speed) : '—'],
             current: i === 0,
           };
         }),
         contributorsLabel: 'Rides this week',
-        contributors: rides.map((a) => ({ activity: a, contribution: `${(a.distance / 1000).toFixed(1)} km` })),
-        note: 'Ride kilometres in full here. On the load and volume figures they count as a third of a run kilometre, which is the exchange rate this app holds to.',
+        contributors: rides.map((a) => ({ activity: a, contribution: `${dist(a.distance)} ${U}` })),
+        note: stressed
+          ? 'Ride distance in full here. The load figures are on training stress rather than distance, so a ride counts for what it cost rather than how far it went.'
+          : 'Ride kilometres in full here. On the load and volume figures they count as a third of a run kilometre, which is the exchange rate this app holds to.',
       };
     }
 
@@ -268,7 +294,7 @@ export function buildStatDetail(key: StatKey, activities: Activity[], settings: 
         contributorsLabel: 'Sessions this week',
         contributors: weekActivities.map((a) => ({
           activity: a,
-          contribution: `${(a.distance / 1000).toFixed(1)} km · ${fmtClock(durationS(a))}`,
+          contribution: `${dist(a.distance)} ${U} · ${fmtClock(durationS(a))}`,
         })),
         note: 'Two sessions on one day count twice here and once as a trained day. The rest count runs against the days of the week that have happened, not against seven.',
       };
@@ -292,17 +318,18 @@ export function buildStatDetail(key: StatKey, activities: Activity[], settings: 
         trendLabel: 'Days trained per week · 12 weeks',
         trend: trendOf((i) => rollups[i].activeDays.size),
         trendFormat: (v) => String(Math.round(v)),
-        columns: [{ label: 'FROM', width: 56 }, { label: 'TO' }, { label: 'DAYS' }, { label: 'KM' }],
+        columns: [{ label: 'FROM', width: 56 }, { label: 'TO' }, { label: 'DAYS' }, { label: U.toUpperCase() }],
         rows: segments.map((seg) => ({
           key: String(seg.startDay),
           values: [
             fmtDayMonth(seg.startDay),
             fmtDayMonth(seg.endDay),
             String(seg.days),
-            activities
-              .filter((a) => a.startedAt >= seg.startDay && a.startedAt < seg.endDay + DAY_MS)
-              .reduce((s, a) => s + (a.sport === 'run' ? a.distance / 1000 : a.distance / 3000), 0)
-              .toFixed(1),
+            km(
+              activities
+                .filter((a) => a.startedAt >= seg.startDay && a.startedAt < seg.endDay + DAY_MS)
+                .reduce((s, a) => s + (a.sport === 'run' ? a.distance / 1000 : a.distance / 3000), 0),
+            ),
           ],
           current: seg.current,
         })),
@@ -310,52 +337,58 @@ export function buildStatDetail(key: StatKey, activities: Activity[], settings: 
         contributors: activities
           .filter((a) => now - a.startedAt < 14 * DAY_MS)
           .sort((a, b) => b.startedAt - a.startedAt)
-          .map((a) => ({ activity: a, contribution: `${(a.distance / 1000).toFixed(1)} km` })),
+          .map((a) => ({ activity: a, contribution: `${dist(a.distance)} ${U}` })),
         note: 'A day counts as trained if anything was recorded on it. Today never breaks a streak while it is still running. Nothing here is a target — a rest day is not a broken anything.',
         grid,
       };
     }
 
     case 'volume': {
-      const load = loadKm(thisWeek);
-      const chronic = chronicSeries(rollups.map(loadKm));
+      const current = load(thisWeek);
+      const chronic = chronicSeries(rollups.map(load));
       const avg4 = chronic[chronic.length - 1];
-      const delta = load - avg4;
+      const delta = current - avg4;
       return {
         key,
         title: STAT_TITLES[key],
         scope,
-        value: load.toFixed(1),
-        unit: 'km load',
-        sub: `${delta >= 0 ? '+' : '−'}${Math.abs(delta).toFixed(1)} km on the 4-week average of ${avg4.toFixed(1)}`,
+        value: current.toFixed(stressed ? 0 : 1),
+        unit: `${loadUnitLabel} load`,
+        sub: `${delta >= 0 ? '+' : '−'}${Math.abs(delta).toFixed(stressed ? 0 : 1)} ${loadUnitLabel} on the 4-week average of ${avg4.toFixed(stressed ? 0 : 1)}`,
         subTone: toneForDelta(delta),
-        trendLabel: 'Load km · 12 weeks',
-        trend: trendOf((i) => loadKm(rollups[i])),
+        trendLabel: `Load ${loadUnitLabel} · 12 weeks`,
+        trend: trendOf((i) => load(rollups[i])),
         trendFormat: (v) => v.toFixed(0),
         columns: [{ label: 'WEEK', width: 48 }, { label: 'RUN' }, { label: 'RIDE' }, { label: 'LOAD' }],
         rows: tableWeeks.map((w, i) => ({
           key: String(w.weekStart),
-          values: [isoWeekLabel(w.weekStart), w.runKm.toFixed(1), w.rideKm.toFixed(1), loadKm(w).toFixed(1)],
+          values: [isoWeekLabel(w.weekStart), km(w.runKm), km(w.rideKm), load(w).toFixed(stressed ? 0 : 1)],
           current: i === 0,
         })),
         contributorsLabel: 'Sessions this week',
         contributors: weekActivities.map((a) => ({
           activity: a,
-          contribution: `${(a.sport === 'run' ? a.distance / 1000 : a.distance / 3000).toFixed(1)} km load`,
+          contribution: stressed
+            ? `${Math.round(activityStressValue(a, settings))} pts`
+            : `${activityLoadValue(a).toFixed(1)} ${U} load`,
         })),
-        note: 'One series carries both sports: run kilometres plus ride kilometres ÷ 3. It is a rough exchange rate, not physiology, and it exists so a week of riding does not read as a week off.',
+        note: stressed
+          ? 'One series carries both sports, in training stress: an hour at threshold is 100 points, measured from power against FTP where there is a meter, heart rate against threshold where there is a strap, and duration times perceived effort where there is neither.'
+          : 'One series carries both sports: run kilometres plus ride kilometres ÷ 3. It is a rough exchange rate, not physiology, and it exists so a week of riding does not read as a week off.',
       };
     }
 
     case 'load': {
-      const balance = loadBalance(activities, now);
-      const acuteSeries = rollups.map(loadKm);
+      const balance = loadBalance(activities, settings, now);
+      const acuteSeries = rollups.map(load);
       const chronic = chronicSeries(acuteSeries);
       const ratio = balance.ratio;
       const last7 = activities
         .filter((a) => a.startedAt >= now - 7 * DAY_MS)
         .sort((a, b) => b.startedAt - a.startedAt);
-      const zoneTotal = aggregateZoneSeconds(last7, settings.maxHr).reduce((a, b) => a + b, 0);
+      const zoneTotal = aggregateZoneSeconds(last7, settings).reduce((a, b) => a + b, 0);
+      const shown = (value: number) => (stressed ? value : units.distance(value * 1000));
+      const digits = stressed ? 0 : 1;
       return {
         key,
         title: STAT_TITLES[key],
@@ -365,7 +398,7 @@ export function buildStatDetail(key: StatKey, activities: Activity[], settings: 
         sub:
           ratio === 0
             ? 'no load recorded in the last four weeks'
-            : `${balance.acute.toFixed(1)} km acute against ${balance.chronic.toFixed(1)} km chronic · ramp ${balance.ramp >= 0 ? '+' : '−'}${Math.abs(balance.ramp).toFixed(1)} %`,
+            : `${shown(balance.acute).toFixed(digits)} ${loadUnitLabel} acute against ${shown(balance.chronic).toFixed(digits)} ${loadUnitLabel} chronic · ramp ${balance.ramp >= 0 ? '+' : '−'}${Math.abs(balance.ramp).toFixed(1)} %`,
         subTone: ratio > 1.3 || balance.ramp > 15 ? 'warning' : ratio > 0 && ratio < 0.8 ? 'muted' : 'positive',
         trendLabel: 'Weekly ratio · 12 weeks',
         trend: trendOf((i) => (chronic[i] > 0 ? acuteSeries[i] / chronic[i] : 0)),
@@ -379,8 +412,8 @@ export function buildStatDetail(key: StatKey, activities: Activity[], settings: 
             key: String(w.weekStart),
             values: [
               isoWeekLabel(w.weekStart),
-              acuteSeries[idx].toFixed(1),
-              chronic[idx].toFixed(1),
+              acuteSeries[idx].toFixed(digits),
+              chronic[idx].toFixed(digits),
               r > 0 ? r.toFixed(2) : '—',
               `${ramp >= 0 ? '+' : '−'}${Math.abs(ramp).toFixed(0)} %`,
             ],
@@ -391,14 +424,21 @@ export function buildStatDetail(key: StatKey, activities: Activity[], settings: 
         contributorsLabel: 'The last 7 days',
         contributors: last7.map((a) => ({
           activity: a,
-          contribution: `${(a.sport === 'run' ? a.distance / 1000 : a.distance / 3000).toFixed(1)} km load`,
+          contribution: stressed
+            ? `${Math.round(activityStressValue(a, settings))} pts`
+            : `${activityLoadValue(a).toFixed(1)} ${U} load`,
         })),
-        note:
-          zoneTotal > 0
+        note: stressed
+          ? 'Rolling windows, not calendar weeks — a calendar week would read as detraining every Monday. The band from 0.8 to 1.3 is where the acute week sits close to the month behind it. Load here is training stress, so an easy hour and a hard one are not the same week.'
+          : zoneTotal > 0
             ? 'Rolling windows, not calendar weeks — a calendar week would read as detraining every Monday. The band from 0.8 to 1.3 is where the acute week sits close to the month behind it. The table below is by calendar week, so its top row is still filling up.'
             : 'Rolling windows, not calendar weeks — a calendar week would read as detraining every Monday, and the table below is by calendar week, so its top row is still filling up. This ratio is built from distance alone; pair a heart-rate strap and the zones tab weights it by intensity.',
         ratio,
       };
     }
   }
+}
+
+function activityStressValue(a: Activity, settings: Settings): number {
+  return activityStress(a, settings).value;
 }

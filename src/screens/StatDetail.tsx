@@ -5,6 +5,7 @@ import { Label, RouteSilhouette, SectionHeader } from '../components/primitives'
 import { StatTrendBars, LoadRatioBar } from '../components/charts';
 import { elevationProfile, fmtDayMonth, type TrainedDay } from '../lib/stats';
 import { buildStatDetail, type StatKey, type Tone } from '../lib/statDetails';
+import { useUnits } from '../hooks/useUnits';
 import { MAX_COMPARE } from '../lib/compare';
 import type { Activity, Settings } from '../types';
 
@@ -24,16 +25,22 @@ export function StatDetail({
   settings,
   onBack,
   onCompare,
+  onActivity,
 }: {
   statKey: StatKey;
   activities: Activity[];
   settings: Settings;
   onBack: () => void;
   onCompare: (ids: string[]) => void;
+  onActivity: (id: string) => void;
 }) {
   // One stable reference time per mount, so the figures cannot drift under the reader.
   const [now] = useState(() => Date.now());
-  const detail = useMemo(() => buildStatDetail(statKey, activities, settings, now), [statKey, activities, settings, now]);
+  const units = useUnits();
+  const detail = useMemo(
+    () => buildStatDetail(statKey, activities, settings, now, units),
+    [statKey, activities, settings, now, units],
+  );
 
   // Comparison only makes sense within one sport: pace and speed are different axes.
   const comparable = useMemo(() => {
@@ -145,7 +152,7 @@ export function StatDetail({
               {detail.contributors.map((c) => (
                 <button
                   key={c.activity.id}
-                  onClick={() => onCompare([c.activity.id])}
+                  onClick={() => onActivity(c.activity.id)}
                   style={{ ...S.listRow, width: '100%', background: 'none', border: 'none', borderTop: `1px solid ${color.dividerHairline}`, cursor: 'pointer', textAlign: 'left' }}
                 >
                   <span style={{ fontFamily: font.mono, fontSize: 11, color: color.textFaint, width: 34, fontFeatureSettings: "'tnum' 1" }}>

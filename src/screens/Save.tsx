@@ -4,10 +4,12 @@ import { color, font } from '../theme';
 import * as S from '../styles';
 import { Label } from '../components/primitives';
 import { ElevationProfile } from '../components/charts';
-import { fmtClock, fmtPace, elevationProfile } from '../lib/stats';
+import { fmtClock } from '../lib/stats';
 import { haversineMeters } from '../lib/geo';
+import { deriveActivity, thinElevation } from '../lib/derived';
 import { makeId } from '../lib/storage';
-import type { Activity, Settings } from '../types';
+import { useUnits } from '../hooks/useUnits';
+import type { Activity, ActivitySamples, Settings } from '../types';
 import type { ActivityDraft } from './RecordingSession';
 
 const EFFORT_WORDS = ['Recovery', 'Very easy', 'Easy', 'Steady', 'Moderate', 'Comfortably hard', 'Hard', 'Very hard', 'Near maximal', 'All out'];
@@ -18,7 +20,8 @@ function prefersReducedMotion(): boolean {
 
 /** Reuses the name of a previously recorded activity that started within ~250 m of
  *  this one — the closest thing to a route name we can derive on-device without
- *  calling out to a geocoder. */
+ *  calling out to a geocoder. The start point comes from the stored route signature,
+ *  so this costs no sample stream to read. */
 function autoTitle(draft: ActivityDraft, activities: Activity[]): string {
   const hour = new Date(draft.startedAt).getHours();
   const timeOfDay = hour < 11 ? 'Morning' : hour < 17 ? 'Midday' : 'Evening';
@@ -26,9 +29,9 @@ function autoTitle(draft: ActivityDraft, activities: Activity[]): string {
   const start = draft.points[0];
   if (!start) return base;
   const near = activities.find((a) => {
-    const p = a.points[0];
-    if (!p || a.sport !== draft.sport) return false;
-    return haversineMeters(p, start) < 250 && a.title.includes('·');
+    const route = a.derived.route;
+    if (!route || a.sport !== draft.sport) return false;
+    return haversineMeters(route, start) < 250 && a.title.includes('·');
   });
   if (!near) return base;
   const routeName = near.title.split('·').slice(1).join('·').trim();
@@ -45,10 +48,11 @@ export function SaveScreen({
   draft: ActivityDraft;
   settings: Settings;
   activities: Activity[];
-  onSave: (a: Activity) => void;
+  onSave: (a: Activity, samples: ActivitySamples | null) => void;
   onDiscard: () => void;
 }) {
-  const gearForSport = settings.gear.filter((g) => g.sport === draft.sport);
+  const units = useUnits();
+  const gearForSport = settings.gear.filter((g) => g.sport === draft.sport && !g.retired);
   const [title, setTitle] = useState(() => autoTitle(draft, activities));
   const [notes, setNotes] = useState('');
   const [effort, setEffort] = useState(6);
@@ -77,12 +81,12 @@ export function SaveScreen({
   const avgPaceSec = avgSpeed > 0.2 ? 1000 / avgSpeed : null;
 
   const summary = [
-    { label: 'Distance', value: ((draft.distance / 1000) * count).toFixed(2), unit: 'km' },
+    { label: 'Distance', value: units.fmtDistance(draft.distance * count, 2), unit: units.distanceUnit },
     { label: 'Time', value: fmtClock(durationS * count), unit: run ? 'moving' : 'elapsed' },
     {
       label: run ? 'Avg pace' : 'Avg speed',
-      value: run ? (avgPaceSec ? fmtPace(avgPaceSec) : '—:—') : (avgSpeed * 3.6).toFixed(1),
-      unit: run ? 'min/km' : 'km/h',
+      value: run ? (avgPaceSec ? units.fmtPace(avgPaceSec) : '—:—') : units.fmtSpeed(avgSpeed),
+      unit: run ? units.paceUnit.replace('/', 'min/') : units.speedUnit,
     },
   ];
 
@@ -95,27 +99,39 @@ export function SaveScreen({
     return totals;
   }, [activities]);
 
-  const elevations = elevationProfile({ ...draft, id: '', title, notes, effort, gearId, demo: false } as Activity);
+  const elevations = useMemo(() => thinElevation(draft.points), [draft.points]);
   const hasElevation = elevations.length > 2;
 
   const save = () => {
-    onSave({
-      id: makeId(),
-      sport: draft.sport,
-      startedAt: draft.startedAt,
-      endedAt: draft.endedAt,
-      title: title.trim() || autoTitle(draft, activities),
-      notes,
-      effort,
-      gearId,
+    const id = makeId();
+    const samples: ActivitySamples = {
+      id,
       points: draft.points,
-      laps: draft.laps,
       hr: draft.hr,
       power: draft.power,
       cadence: draft.cadence,
-      distance: draft.distance,
-      ascent: draft.ascent,
-    });
+    };
+    onSave(
+      {
+        id,
+        sport: draft.sport,
+        startedAt: draft.startedAt,
+        endedAt: draft.endedAt,
+        title: title.trim() || autoTitle(draft, activities),
+        notes,
+        effort,
+        gearId,
+        laps: draft.laps,
+        distance: draft.distance,
+        ascent: draft.ascent,
+        source: 'recorded',
+        hasSamples: samples.points.length > 0,
+        // Everything the aggregate screens will read off this session is swept out of
+        // its samples once, here, rather than on every screen that shows it.
+        derived: deriveActivity({ sport: draft.sport, startedAt: draft.startedAt, endedAt: draft.endedAt, samples }),
+      },
+      samples.points.length > 0 ? samples : null,
+    );
   };
 
   const sectionStyle: CSSProperties = { flex: 'none', margin: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 };
@@ -146,6 +162,14 @@ export function SaveScreen({
       </div>
 
       <div className="ct-scroll" style={{ ...S.scrollArea, padding: '16px 0 32px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+        {draft.recovered && (
+          <div style={{ flex: 'none', margin: '0 16px', padding: 12, border: `1px solid ${color.warning}`, borderRadius: 8 }}>
+            <span style={{ fontSize: 13, lineHeight: 1.45, color: color.warning }}>
+              Recovered from an interrupted recording. Everything captured up to the last checkpoint is here; anything after it is not.
+            </span>
+          </div>
+        )}
+
         <div style={{ flex: 'none', margin: '0 16px', border: `1px solid ${color.border}`, borderRadius: 8, overflow: 'hidden' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, background: color.dividerHairline }}>
             {summary.map((m) => (
@@ -157,7 +181,7 @@ export function SaveScreen({
             ))}
           </div>
           <div style={{ background: color.surfaceSunk, borderTop: `1px solid ${color.dividerHairline}`, padding: '10px 12px 0' }}>
-            <Label>Elevation · {Math.round(draft.ascent)} m ascent</Label>
+            <Label>Elevation · {units.fmtElevation(draft.ascent)} {units.elevationUnit} ascent</Label>
             {hasElevation ? (
               <ElevationProfile elevations={elevations} />
             ) : (
@@ -241,7 +265,9 @@ export function SaveScreen({
                   }}
                 />
                 <span style={{ flex: 1, textAlign: 'left', fontSize: 15, color: color.text }}>{g.name}</span>
-                <span style={{ ...S.tableNum, color: color.textMuted }}>{Math.round(gearKm.get(g.id) ?? 0)} km</span>
+                  <span style={{ ...S.tableNum, color: color.textMuted }}>
+                  {units.fmtDistance((g.offsetKm + (gearKm.get(g.id) ?? 0)) * 1000, 0)} {units.distanceUnit}
+                </span>
               </button>
             ))}
           </div>

@@ -3,9 +3,11 @@ import { haversineMeters } from './geo';
 
 export type RecorderStatus = 'idle' | 'recording' | 'paused' | 'autoPaused' | 'finished';
 
-const AUTO_PAUSE_SPEED_MPS = 0.5;
+export const DEFAULT_AUTO_PAUSE_MPS = 0.5;
 const AUTO_PAUSE_AFTER_S = 8;
-const RESUME_SPEED_MPS = 0.9;
+/** Resuming needs a clearly higher speed than pausing, so a fix wobbling either side of
+ *  one threshold does not flip the state every few seconds. */
+const RESUME_FACTOR = 1.8;
 export const MAX_PLAUSIBLE_SPEED_MPS = 14; // ~50 km/h — beyond this a GPS jump is treated as noise
 const MAX_ACCEPT_ACCURACY_M = 50;
 const PACE_WINDOW_S = 25;
@@ -38,6 +40,32 @@ export interface RecorderSnapshot {
   avgPowerW: number | null;
 }
 
+/** Everything a session in progress would lose if the app went away.
+ *
+ *  A recording lived only in memory, so a reload, a browser tab evicted under memory
+ *  pressure or a crash two hours into a long ride took the whole session with it — the
+ *  one moment in the app where the data cannot be recovered by any other means. The
+ *  recorder writes one of these to the database every few seconds; the next launch
+ *  offers it back. */
+export interface RecorderCheckpoint {
+  version: 1;
+  savedAt: number;
+  sport: Sport;
+  startedAt: number;
+  pausedAccumS: number;
+  points: GeoSample[];
+  distanceM: number;
+  ascentM: number;
+  laps: Lap[];
+  lapNo: number;
+  lapStartT: number;
+  lapStartDist: number;
+  prevLapDurationS: number | null;
+  hr: HrSample[];
+  power: PowerSample[];
+  cadence: CadenceSample[];
+}
+
 type Listener = (s: RecorderSnapshot) => void;
 
 export class Recorder {
@@ -67,9 +95,11 @@ export class Recorder {
   private belowThresholdSinceT: number | null = null;
   private listeners = new Set<Listener>();
   private tickHandle: ReturnType<typeof setInterval> | null = null;
+  private autoPauseMps: number;
 
-  constructor(sport: Sport) {
+  constructor(sport: Sport, autoPauseMps = DEFAULT_AUTO_PAUSE_MPS) {
     this.sport = sport;
+    this.autoPauseMps = autoPauseMps;
   }
 
   subscribe(cb: Listener): () => void {
@@ -196,7 +226,7 @@ export class Recorder {
   private evaluateAutoPause(instSpeedMps: number) {
     const was = this.status;
     if (this.status === 'recording') {
-      if (instSpeedMps < AUTO_PAUSE_SPEED_MPS) {
+      if (instSpeedMps < this.autoPauseMps) {
         if (this.belowThresholdSinceT == null) this.belowThresholdSinceT = this.now();
         else if ((this.now() - this.belowThresholdSinceT) / 1000 >= AUTO_PAUSE_AFTER_S) {
           this.status = 'autoPaused';
@@ -205,7 +235,7 @@ export class Recorder {
         this.belowThresholdSinceT = null;
       }
     } else if (this.status === 'autoPaused') {
-      if (instSpeedMps >= RESUME_SPEED_MPS) {
+      if (instSpeedMps >= this.autoPauseMps * RESUME_FACTOR) {
         this.status = 'recording';
         this.belowThresholdSinceT = null;
       }
@@ -262,6 +292,63 @@ export class Recorder {
     let dist = 0;
     for (let i = from + 1; i < pts.length; i++) dist += haversineMeters(pts[i - 1], pts[i]);
     return dist / dtS;
+  }
+
+  /** True once the session holds something a person would mind losing. */
+  hasContent(): boolean {
+    return this.startedAt != null && (this.points.length > 1 || this.hr.length > 1 || this.power.length > 1);
+  }
+
+  toCheckpoint(): RecorderCheckpoint | null {
+    if (this.startedAt == null || this.status === 'idle' || this.status === 'finished') return null;
+    return {
+      version: 1,
+      savedAt: this.now(),
+      sport: this.sport,
+      startedAt: this.startedAt,
+      // The pause that is open right now is closed into the total, so a session
+      // recovered while paused does not count the pause twice.
+      pausedAccumS: this.pausedAccumS + (this.pauseStartedAt ? (this.now() - this.pauseStartedAt) / 1000 : 0),
+      points: this.points,
+      distanceM: this.distanceM,
+      ascentM: this.ascentM,
+      laps: this.laps,
+      lapNo: this.lapNo,
+      lapStartT: this.lapStartT,
+      lapStartDist: this.lapStartDist,
+      prevLapDurationS: this.prevLapDurationS,
+      hr: this.hr,
+      power: this.power,
+      cadence: this.cadence,
+    };
+  }
+
+  /** Picks a checkpointed session back up.
+   *
+   *  It comes back *paused*, with everything between the last checkpoint and now
+   *  counted as paused time: the app was not recording during the gap, and a session
+   *  that resumed itself would silently claim minutes it never measured. */
+  restore(cp: RecorderCheckpoint): void {
+    this.sport = cp.sport;
+    this.status = 'paused';
+    this.startedAt = cp.startedAt;
+    this.pausedAccumS = cp.pausedAccumS + Math.max(0, (this.now() - cp.savedAt) / 1000);
+    this.pauseStartedAt = this.now();
+    this.points = cp.points;
+    this.distanceM = cp.distanceM;
+    this.ascentM = cp.ascentM;
+    this.laps = cp.laps;
+    this.lapNo = cp.lapNo;
+    this.lapStartT = cp.lapStartT;
+    this.lapStartDist = cp.lapStartDist;
+    this.prevLapDurationS = cp.prevLapDurationS;
+    this.hr = cp.hr;
+    this.power = cp.power;
+    this.powerSumW = cp.power.reduce((sum, p) => sum + p.watts, 0);
+    this.cadence = cp.cadence;
+    this.belowThresholdSinceT = null;
+    if (!this.tickHandle) this.tickHandle = setInterval(() => this.emit(), 1000);
+    this.emit();
   }
 
   snapshot(): RecorderSnapshot {

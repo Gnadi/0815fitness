@@ -3,9 +3,10 @@ import type { CSSProperties } from 'react';
 import { color, font, zoneColors, ZONE_NAMES } from '../theme';
 import * as S from '../styles';
 import { ActionButton, Field, Label, ScreenHeader, Segmented } from '../components/primitives';
-import { CompareSeriesChart, ElevationProfile, HistogramBars, TrackMap, ZoneBar } from '../components/charts';
+import { CompareSeriesChart, ElevationProfile, HistogramBars, ZoneBar } from '../components/charts';
+import { TileMap } from '../components/TileMap';
 import { useUnits } from '../hooks/useUnits';
-import { buildTrace, metricsFor, splitsFor, type Split, type Trace } from '../lib/compare';
+import { buildTrace, metricsFor, splitLengthForSport, splitsFor, type Split, type Trace } from '../lib/compare';
 import { deriveActivity } from '../lib/derived';
 import { downloadFile, exportFileName, toGpx } from '../lib/backup';
 import { getSamples } from '../lib/storage';
@@ -74,7 +75,8 @@ export function ActivityDetail({
   );
 
   const trace = useMemo(() => (full ? buildTrace(full) : null), [full]);
-  const splits = useMemo(() => (trace ? splitsFor(trace, units.splitM) : []), [trace, units.splitM]);
+  const splitM = trace && activity ? splitLengthForSport(activity.sport, trace.totalM, units.splitM) : units.splitM;
+  const splits = useMemo(() => (trace ? splitsFor(trace, splitM) : []), [trace, splitM]);
   const metrics = useMemo(() => (full ? metricsFor(full) : null), [full]);
   const zones = useMemo(() => (activity ? zoneSecondsForActivity(activity, settings) : []), [activity, settings]);
   const stress = useMemo(() => (activity ? activityStress(activity, settings) : null), [activity, settings]);
@@ -168,7 +170,7 @@ export function ActivityDetail({
               </div>
               {samples && samples.points.length > 2 && (
                 <div style={{ background: color.surfaceSunk, borderTop: `1px solid ${color.dividerHairline}` }}>
-                  <TrackMap points={samples.points} height={200} />
+                  <TileMap points={samples.points} height={220} tiles={settings.mapTiles} />
                 </div>
               )}
               {activity.derived.elevation.length > 2 && (
@@ -235,7 +237,7 @@ export function ActivityDetail({
               </div>
             )}
 
-            {splits.length > 1 && <SplitsTable splits={splits} run={run} />}
+            {splits.length > 1 && <SplitsTable splits={splits} run={run} splitM={splitM} />}
 
             {activity.laps.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -365,15 +367,19 @@ function SeriesSection({ trace, run }: { trace: Trace; run: boolean }) {
   );
 }
 
-function SplitsTable({ splits, run }: { splits: Split[]; run: boolean }) {
+function SplitsTable({ splits, run, splitM }: { splits: Split[]; run: boolean; splitM: number }) {
   const units = useUnits();
+  const perSplit = splitM / units.splitM;
   const paces = splits.map((s) => s.paceS).filter((p) => p > 0);
   const fastest = paces.length ? Math.min(...paces) : 0;
   const slowest = paces.length ? Math.max(...paces) : 1;
   const anyGap = splits.some((s) => s.gapS != null);
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <Label style={{ padding: '0 16px 8px' }}>Splits · per {units.distanceUnit}</Label>
+      <Label style={{ padding: '0 16px 8px' }}>
+        Splits · per {perSplit > 1 ? `${Math.round(perSplit)} ` : ''}
+        {units.distanceUnit}
+      </Label>
       <div style={S.tableHeaderRow}>
         <span style={{ ...S.monoTick, width: 28 }}>#</span>
         <span style={{ ...S.monoTick, flex: 1, textAlign: 'right' }}>{run ? 'PACE' : 'SPEED'}</span>

@@ -287,6 +287,29 @@ export function SettingsScreen({
           </Field>
         </div>
 
+        {/* ── the map ── */}
+        <div style={sectionStyle}>
+          <Label>Map</Label>
+          <Field
+            label="Basemap under a saved track"
+            hint={
+              settings.mapTiles
+                ? 'Tiles are fetched from openstreetmap.org when a saved session is opened, which tells that server roughly where you were. It is the only request this app makes. Recording never fetches anything, and a session opened with no signal falls back to the drawn track.'
+                : 'Off — a saved track is drawn on its own, and the app makes no network requests at all.'
+            }
+          >
+            <Segmented
+              ariaLabel="Basemap"
+              options={[
+                { value: 'on', label: 'OPENSTREETMAP' },
+                { value: 'off', label: 'DRAWN TRACK' },
+              ]}
+              value={settings.mapTiles ? 'on' : 'off'}
+              onChange={(v) => set({ mapTiles: v === 'on' })}
+            />
+          </Field>
+        </div>
+
         {/* ── gear ── */}
         {(['run', 'ride'] as Sport[]).map((sport) => (
           <div key={sport} style={sectionStyle}>

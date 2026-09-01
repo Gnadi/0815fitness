@@ -21,6 +21,25 @@ const context = await browser.newContext({
   geolocation: { latitude: 48.3069, longitude: 14.2858, accuracy: 6 },
   locale: 'de-AT',
 });
+// The basemap is the one thing in the app that talks to the network, and a smoke run
+// must not hammer a public tile server. Each stand-in tile draws its own z/x/y and its
+// own border, so a misplaced or duplicated tile is visible in the screenshots.
+let tilesServed = 0;
+await context.route('https://tile.openstreetmap.org/**', async (route) => {
+  const [, z, x, y] = route.request().url().match(/\/(\d+)\/(\d+)\/(\d+)\.png$/);
+  tilesServed++;
+  await route.fulfill({
+    status: 200,
+    contentType: 'image/svg+xml',
+    body: `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
+      <rect width="256" height="256" fill="#f2efe9"/>
+      <path d="M0 128 H256 M128 0 V256" stroke="#d8d2c6" stroke-width="6"/>
+      <path d="M20 236 C 90 150 150 190 240 40" stroke="#a8c8a0" stroke-width="14" fill="none"/>
+      <text x="8" y="24" font-family="monospace" font-size="16" fill="#7a736a">${z}/${x}/${y}</text>
+    </svg>`,
+  });
+});
+
 const page = await context.newPage();
 page.on('console', (m) => m.type() === 'error' && console.log('console.error:', m.text()));
 page.on('pageerror', (e) => console.log('pageerror:', e.message));
@@ -150,9 +169,11 @@ await page.getByLabel('Search the log').fill('');
 await page.waitForTimeout(300);
 
 await page.locator('.ct-row').first().click();
-await page.waitForTimeout(700);
+await page.waitForTimeout(1200);
 await shot(page, '23-activity-detail');
 check('a session opens on its own', await page.getByText('Moving time').isVisible());
+check('the basemap loads under the track', tilesServed > 0);
+check('the basemap is attributed', await page.getByText('© OpenStreetMap').isVisible());
 await page.evaluate(() => document.querySelector('.ct-scroll').scrollBy(0, 900));
 await page.waitForTimeout(400);
 await shot(page, '24-activity-charts');
@@ -204,6 +225,26 @@ await page.getByRole('button', { name: 'Settings' }).click();
 await page.waitForTimeout(400);
 await page.getByRole('button', { name: 'KM · M' }).click();
 await page.waitForTimeout(300);
+// With the basemap off, a saved track falls back to the drawing and nothing is fetched.
+await page.getByRole('button', { name: 'DRAWN TRACK' }).click();
+await page.waitForTimeout(300);
+const tilesBefore = tilesServed;
+await page.getByRole('button', { name: 'Back', exact: true }).click();
+await page.waitForTimeout(300);
+await page.getByRole('button', { name: /^All \d+ →$/ }).click();
+await page.waitForTimeout(400);
+await page.locator('.ct-row').first().click();
+await page.waitForTimeout(900);
+await shot(page, '35-activity-detail-no-tiles');
+check('turning the basemap off stops the requests', tilesServed === tilesBefore);
+await page.getByRole('button', { name: 'Back', exact: true }).click();
+await page.waitForTimeout(300);
+await page.getByRole('button', { name: 'Back', exact: true }).click();
+await page.waitForTimeout(400);
+await page.getByRole('button', { name: 'Settings' }).click();
+await page.waitForTimeout(400);
+await page.getByRole('button', { name: 'OPENSTREETMAP' }).click();
+await page.waitForTimeout(200);
 await page.getByRole('button', { name: 'TRAINING STRESS' }).click();
 await page.waitForTimeout(300);
 await page.getByRole('button', { name: 'Back', exact: true }).click();

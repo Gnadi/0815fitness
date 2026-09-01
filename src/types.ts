@@ -163,4 +163,7 @@ export interface Settings {
   plan: number[]; // 7 entries, Mon..Sun — index into PLANNED_SESSIONS
   /** Speed under which the recorder auto-pauses, in metres per second. */
   autoPauseMps: number;
+  /** Whether a saved session's map draws an OpenStreetMap basemap under the track.
+   *  The only setting in the app that decides whether it talks to the network. */
+  mapTiles: boolean;
 }

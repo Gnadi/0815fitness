@@ -74,8 +74,10 @@ Two honest deviations from the prototype's copy:
 
 - **No satellite count.** No web API exposes one, so the pre-start card shows real
   accuracy in metres and derives the signal bars from it (`fixStrengthFromAccuracy`).
-- **No map tiles.** The recording map draws the actual recorded track rather than
-  loading a third-party basemap, in the prototype's line-and-terrain style.
+- **The recording map draws no tiles.** It renders the actual recorded track in the
+  prototype's line-and-terrain style. A saved session's map can show an OpenStreetMap
+  basemap under the track — see **The basemap** below — but recording never fetches
+  anything, because that is the screen used where there is no signal.
 
 ## Browser support
 
@@ -102,6 +104,7 @@ src/
     statDetails.ts  the model behind each Overview figure's detail screen
     compare.ts      per-second traces, distance-axis series, splits, metric rows
     routes.ts       matching a track against the routes already in the log
+    tiles.ts        Web Mercator, the zoom that fits a track, and the tile grid
     units.ts        metric or imperial, applied on the way to the screen
     db.ts           the IndexedDB store: summaries, samples, key/value
     storage.ts      the store's facade, settings, and migration from older builds
@@ -111,7 +114,7 @@ src/
     pwa.ts          service-worker registration and the persistent-storage request
   hooks/            useGpsFix, useRecorder, useBleSensors, useWakeLock, useNavStack,
                     useUnits / UnitsProvider
-  components/       PhoneFrame, primitives, ActivityRow, charts
+  components/       PhoneFrame, primitives, ActivityRow, charts, TileMap
   screens/          Overview, Activities, ActivityDetail, ManualEntry, Settings,
                     Analyse (load/zones/records/routes/plan), RouteDetail, StatDetail,
                     Compare, PreStart, RecordingSession, Save
@@ -147,6 +150,31 @@ metric table and per-kilometre splits under it. Pace comes from the time it took
 cross each bucket of the track, not an instantaneous speed, so a stop reads as the slow
 kilometre it was; a GPS jump the recorder refused to count is discarded here too.
 Sports are never mixed: pace against speed is not a comparison.
+
+## The basemap
+
+Opening a saved session draws its track over OpenStreetMap raster tiles. It is the only
+thing in the app that talks to the network, and it is built to stay that way:
+
+- **It is a setting.** Settings → *Map* switches it to the drawn track, and with it off
+  the app makes no network requests at all. A tile request tells a third-party server
+  roughly where you were; that is a choice worth leaving to the person making it.
+- **Recording never fetches.** The tiles are on the detail screen only. The screen used
+  at a trailhead with no signal draws the track and nothing else.
+- **Failure is not a grey hole.** If the tiles do not arrive — offline, blocked, the
+  server saying no — the map falls back to the line-and-contour drawing, which is what
+  the app showed before there were tiles and needs nothing.
+- **The service worker does not touch them.** It returns early on any cross-origin
+  request, so tiles never enter the precache and the offline guarantee is unchanged.
+- **No map library.** `src/lib/tiles.ts` is the Web Mercator projection, the zoom that
+  fits a track to the viewport, and the tile grid that covers it — about a hundred lines,
+  against a dependency whose stylesheet the app would have to carry offline for a
+  basemap that only ever appears online. The zoom is chosen rather than offered: this is
+  a picture of one recorded session, not something to pan around.
+- **Standard OSM tiles are a light map** in a dark-only app, so they are inverted through
+  a CSS filter into the palette rather than swapped for a dark tile server that would
+  need an account and a key. Attribution is on the map, as the tile server's terms
+  require.
 
 ## Where the log lives
 

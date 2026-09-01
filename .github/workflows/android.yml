@@ -1,0 +1,102 @@
+name: Build
+
+# The repository had no CI at all, so this does both jobs: the checks a contributor runs
+# before pushing, and the APK. The APK is the deliverable — the app is sideloaded, so a
+# tagged build attaching a signed file to a release is the whole distribution channel.
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    name: Lint, typecheck and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      # `npm run build` runs `tsc -b` first, so the typecheck is not a separate step.
+      - run: npm run build
+      - run: npm test
+
+  apk:
+    name: Assemble the APK
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync android
+
+      # Written only when the secrets exist, so a fork — or this repository before a key
+      # has been generated — still builds and still proves the Java compiles. The APK it
+      # produces is unsigned and will not install, which is the correct outcome.
+      #
+      # The emptiness check is in the shell rather than in `if:` because the secrets
+      # context is not available to step conditions.
+      - name: Write the signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::warning::No ANDROID_KEYSTORE_B64 secret — the release APK will be unsigned and will not install."
+            exit 0
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > android/contour-release.jks
+          cat > android/keystore.properties <<PROPS
+          storeFile=contour-release.jks
+          storePassword=$STORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          PROPS
+
+      # versionCode has to rise for every build a phone is asked to install over the
+      # last one, and the run number is the only counter here that never goes backwards.
+      - name: Assemble
+        working-directory: android
+        run: |
+          ./gradlew --no-daemon assembleRelease \
+            -PcontourVersionCode=${{ github.run_number }} \
+            -PcontourVersionName=${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('0.1.0-{0}', github.run_number) }}
+
+      - name: Forget the signing key
+        if: always()
+        run: rm -f android/contour-release.jks android/keystore.properties
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: contour-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      - name: Attach it to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: android/app/build/outputs/apk/release/*.apk

@@ -5,52 +5,141 @@ and analyses them in depth. No feed, no sharing, no upsell. Built from a Claude 
 handoff (`Contour Capture.dc.html`) and its accompanying design system brief, which
 define the dark-only palette, the mono numeral type scale and every screen here.
 
-React + TypeScript + Vite. Everything is stored locally; there is no backend. It
-installs to a home screen and runs with no network at all — see **Installing it** below.
+An Android app: React + TypeScript + Vite inside a Capacitor shell. Everything is stored
+on the device and there is no backend, no account and no network except an optional
+basemap. Recording continues with the screen off — see **Recording in the background**,
+which is the reason the app is native at all.
 
 ## Running it
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
+npm run dev        # http://localhost:5173 — the screens, in a desktop browser
 npm run build      # typecheck + production build
 npm run lint
 npm run test       # vitest over the pure logic
-npm run smoke      # drives the built app in Chromium with a simulated GPS track
-npm run pwa        # asserts the worker installs and the app boots with the network cut
-npm run icons      # re-renders the PNG icons from public/logo.svg
+npm run smoke      # drives the app in Chromium with a simulated GPS track
+npm run icons      # re-renders the launcher icons from public/logo.svg
+
+npm run sync       # build, then copy the web build into the Android project
+npm run android    # sync, then open it in Android Studio
 ```
 
-`npm run smoke` and `npm run pwa` need `npm run preview` running on port 4173 (or
-`BASE_URL` set); `smoke` writes screenshots to `scripts/shots/`.
+`npm run smoke` needs `npm run dev` running (or `BASE_URL` set) and writes screenshots to
+`scripts/shots/`.
+
+**What the desktop browser is and is not for.** `npm run dev` renders every screen and
+runs the whole recorder, against a `navigator.geolocation` stand-in in
+`src/lib/location.ts` — a development affordance, unreachable from the APK. It is how to
+work on a chart without a phone. It cannot exercise the foreground service, the straps,
+or the share sheet, and neither can the smoke run: those are verified on a phone, by
+walking around with it.
+
+### Building the APK
+
+```bash
+cd android && ./gradlew assembleRelease
+```
+
+Signing comes from `android/keystore.properties`, which is gitignored — copy
+`keystore.properties.example` and follow the `keytool` line in it. Without it the build
+still succeeds and produces an unsigned APK, which will not install.
+
+Keep the key. An APK signed with a different one installs as a different app, which means
+uninstalling the old one, which means losing the log.
+
+CI (`.github/workflows/android.yml`) runs lint, typecheck and tests on every push, then
+assembles the APK; pushing a `v*` tag attaches a signed one to a GitHub release.
+`versionCode` comes from the run number, because it has to rise for every build a phone
+is asked to install over the last.
 
 ## Installing it
 
-The app is meant to be opened at a trailhead, so it is a PWA that works with no network:
-add it to a home screen and it runs without browser chrome, off a cache, against a
-training log that already lived on the device.
+Build the APK and sideload it — there is no Play listing. The app is single-user by
+design, and a store listing would mean a Play Console account, a data-safety declaration
+and a privacy policy for an app that sends nothing anywhere.
 
-- **The shell is precached.** `src/sw.js` caches the document, script, stylesheet, fonts
-  and icons at install and serves them cache-first. There is nothing to sync — every
-  activity is in IndexedDB on the device — so offline is the same app, not a degraded one.
-- **An update never interrupts a recording.** The worker deliberately does not
-  `skipWaiting()`: a new build installs in the background and takes over the next time
-  the app is opened cold, so the shell can never be swapped out from under a session
-  that is capturing. There is no update prompt to dismiss.
-- **The precache list is generated at build time** by the `contourServiceWorker` plugin
-  in `vite.config.ts`, and the cache is versioned by a hash of the precached files'
-  *contents* — so an unhashed icon or the manifest still invalidates when it changes,
-  and a rebuild that changes nothing emits a byte-identical worker with no update to
-  install.
-- **The icon carries a Record shortcut**, which opens the app straight at pre-start with
-  the GPS fix already acquiring.
-- **Installed, the app asks for persistent storage**, so the history stops being
-  evictable cache. Only when installed: in a tab it would be a permission prompt for a
-  visitor who has recorded nothing.
+- **Everything is in the APK.** The document, script, fonts and icons are loaded from the
+  app's own assets, so there is no network on the path to a first paint and nothing to
+  precache. The service worker that used to do that job is gone with the web build.
+- **The log is app-private storage.** IndexedDB inside the WebView is not the evictable
+  cache it was in a browser: it survives updates and reboots, and only an uninstall or a
+  deliberate "clear data" removes it. Nothing asks to be spared any more.
+- **Backup is switched off.** Android's auto-backup would copy a season of tracks to a
+  Google account, which is the opposite of what this app promises. `Settings → Your data`
+  is the way off the phone, and it is a file handed to the share sheet.
+- **The launcher icon carries a Record shortcut**, which opens the app straight at
+  pre-start with the fix already acquiring.
 
 The mark in `public/logo.svg` is the app's own signature element — a recorded elevation
 profile in straight segments over the contour intervals the name comes from — and the
-PNG icons are rendered from it by `npm run icons`.
+launcher icons are rendered from it by `npm run icons`, scaled into the 72 dp safe square
+so a round launcher shaves the margin rather than the ridge.
+
+## Recording in the background
+
+This is why the app is native.
+
+A browser only delivers positions to a page that is on screen. Lock the phone or switch
+apps mid-ride and `watchPosition` stops: a 4 km ride came back as two fixes twenty
+minutes apart and a straight line across the city. There was no way around it. The
+Geolocation API is exposed to `Window` only, never to a service worker; Chromium's
+*Intent to implement: Background Geolocation for Progressive Web-Apps* was filed in 2016
+and never shipped; installing to a home screen changed nothing, because a standalone PWA
+is still a page and is suspended like one. Two rounds of work went into the problem and
+both were mitigation — keep the coarse fixes, draw the gaps as guesses, warn before and
+during — with a screen wake lock as the entire defence, and Chrome refuses one under
+battery saver, which is exactly what someone turns on before a long ride.
+
+What replaces it is an Android **location foreground service**. It holds a notification
+for as long as it runs, and in exchange Android keeps delivering positions with the
+screen off and the phone in a pocket. Because the service holds the process, the strap
+keeps reporting too — heart rate now covers the whole ride rather than the parts that
+were looked at.
+
+Three decisions in it are worth knowing:
+
+- **The service starts from the Record button, with the app on screen**, which makes it a
+  *while in use* service. That is why the app does not request
+  `ACCESS_BACKGROUND_LOCATION`: a foreground-started location service does not need it,
+  and requesting it is what puts an app in front of Google's background-location
+  reviewers. There is a note in `AndroidManifest.xml` for whoever is tempted.
+- **Fixes are taken in runs, and carry the time they were produced.** Android throttles a
+  WebView's JavaScript while the app is off screen, so a pocketed stretch can arrive as a
+  burst on return. `Recorder.addGeoSamples` orders it, drops what it already has, and
+  renders once; every time decision in ingestion — the auto-pause clock, the kilometre
+  markers — reads the fix's own timestamp rather than the wall clock, so a replayed
+  stretch reaches the verdict it would have reached live.
+- **Battery optimisation is the one thing left that can stop a ride.** Stock Android
+  exempts a location foreground service from Doze; several manufacturers ship a layer
+  above it that does not, and will stop a recording within minutes of the screen going
+  off. Pre-start checks, says so, and offers the exemption once
+  (`BatteryOptimizationPlugin`). It is the honest replacement for the wake-lock warning.
+
+## What the app still cannot know about your route
+
+A gap in a track is no longer the app's fault, but gaps still happen: a tunnel, a deep
+valley, a street of towers. The receiver loses the sky and there is nothing to record.
+So the distinction the app has always drawn — between what it recorded and what it
+inferred — stays exactly as it was, and only the explanation changed.
+
+- **An uncertain fix is kept, not discarded.** Accuracy decides whether a fix is trusted
+  with *distance*, not whether it is recorded at all — a fix good to eighty metres still
+  says which road you were on. Below 50 m it counts normally; between 50 m and 200 m it
+  is drawn but only earns distance for movement larger than its own error, so a phone
+  drifting inside its accuracy circle does not ride kilometres; past 200 m it is noise.
+- **Stretches with no fixes are drawn as the guess they are** — thin, dashed and dimmed,
+  with the recorded track lifting its pen across them. The distance across one is the
+  straight line, so it reads short.
+- **The session says so.** `TrackQuality` carries the fix count, the longest gap, how
+  many there were and what share of the elapsed time the fixes actually cover.
+- **And it says it during the session**, counting up live, naming a tunnel rather than
+  asking for something the person cannot do anything about while they are in one.
+
+One number moved with the pivot. The plausible-speed ceiling was 14 m/s — 50 km/h —
+which a browser rarely met, because a pocketed phone was not reporting on the descent
+anyway. A service that reports the whole way down would have had the app quietly discard
+the fastest kilometres of every ride, so it is 25 m/s now.
 
 ## What's real
 
@@ -58,12 +147,12 @@ The prototype simulated its sensor data. This implementation reads the actual ha
 
 | Screen data | Source |
 | --- | --- |
-| Distance, pace, speed, elevation, route | `navigator.geolocation.watchPosition`, haversine over accepted fixes |
-| GPS fix state and accuracy | `GeolocationPosition.coords.accuracy` |
-| Heart rate | Web Bluetooth, Heart Rate Service `0x180D` / measurement `0x2A37` |
-| Cycling power | Web Bluetooth, Cycling Power `0x1818` / `0x2A63` |
-| Bike cadence | Web Bluetooth, CSC `0x1816` / `0x2A5B`, RPM derived from crank revolutions |
-| Running cadence | Web Bluetooth, RSC `0x1814` / `0x2A53` |
+| Distance, pace, speed, elevation, route | Android location foreground service (fused provider, 1 Hz, high accuracy), haversine over accepted fixes |
+| GPS fix state and accuracy | The reported accuracy of each fix |
+| Heart rate | Native BLE, Heart Rate Service `0x180D` / measurement `0x2A37` |
+| Cycling power | Native BLE, Cycling Power `0x1818` / `0x2A63` |
+| Bike cadence | Native BLE, CSC `0x1816` / `0x2A5B`, RPM derived from crank revolutions |
+| Running cadence | Native BLE, RSC `0x1814` / `0x2A53` |
 | Week volume, streak, load ratio, zones, PBs, power curve, decoupling | Computed from stored activities in `src/lib/stats.ts` |
 | Training stress, normalised power, grade-adjusted pace, cadence distribution | Derived per activity in `src/lib/derived.ts`, aggregated in `src/lib/stats.ts` |
 | Route repeats | Track shape matching in `src/lib/routes.ts` |
@@ -72,21 +161,26 @@ The prototype simulated its sensor data. This implementation reads the actual ha
 
 Two honest deviations from the prototype's copy:
 
-- **No satellite count.** No web API exposes one, so the pre-start card shows real
-  accuracy in metres and derives the signal bars from it (`fixStrengthFromAccuracy`).
+- **No satellite count.** The platform does not expose one, so the pre-start card shows
+  real accuracy in metres and derives the signal bars from it (`fixStrengthFromAccuracy`).
 - **The recording map draws no tiles.** It renders the actual recorded track in the
   prototype's line-and-terrain style. A saved session's map can show an OpenStreetMap
   basemap under the track — see **The basemap** below — but recording never fetches
   anything, because that is the screen used where there is no signal.
 
-## Browser support
+## Platform
 
-- **GPS** works anywhere with the Geolocation API, over HTTPS or `localhost`.
-- **Web Bluetooth** is Chromium-only (Chrome/Edge on desktop and Android, not iOS Safari
-  or Firefox) and needs HTTPS. Where it's missing, the sensor chips say so and the app
-  degrades to GPS-only — pace, distance, elevation and route all still record, and the
-  heart-rate field shows its designed absent state rather than a lock.
-- A screen wake lock is held while recording where `navigator.wakeLock` exists.
+- **Android 7.0 (API 24) and up**, compiled against API 36.
+- **Permissions asked for:** fine and coarse location, the foreground service and its
+  location type, notifications, and Bluetooth scan/connect. Scanning is asserted
+  `neverForLocation` — the app has GPS and never infers a position from a strap.
+  `ACCESS_BACKGROUND_LOCATION` is deliberately not among them; see **Recording in the
+  background**.
+- **Refusing anything degrades rather than blocks.** Without location the session still
+  records time and sensors and says why; without a strap the heart-rate field shows its
+  designed absent state rather than a lock.
+- **iOS is not built, but is not ruled out.** Capacitor and both plugins support it, and
+  nothing above `src/lib/location.ts` and `src/lib/ble.ts` knows which platform it is on.
 
 ## Layout
 
@@ -111,18 +205,28 @@ src/
     session.ts      the checkpoint a session in progress is recovered from
     backup.ts       export and import: the whole log as JSON, one session as GPX
     demoSeed.ts     synthetic sample history behind the empty-state action
-    pwa.ts          service-worker registration and the persistent-storage request
-  hooks/            useGpsFix, useRecorder, useBleSensors, useWakeLock, useNavStack,
+    location.ts     the location foreground service — the one seam onto the platform
+    power.ts        whether Android will leave a running recording alone
+    shell.ts        system bars, the back gesture, the launcher's Record shortcut
+  hooks/            useGpsFix, useRecorder, useBleSensors, useNavStack,
                     useUnits / UnitsProvider
   components/       AppShell, primitives, ActivityRow, ActivityCard, charts, TileMap
   screens/          Overview, Activities, ActivityDetail, ManualEntry, Settings,
                     Analyse (load/zones/records/routes/plan), RouteDetail, StatDetail,
                     Compare, PreStart, RecordingSession, Save
-  sw.js             the service worker; its precache list is injected at build time
 public/
-  logo.svg          the Contour mark, and the source the PNG icons are rendered from
-  manifest.webmanifest
+  logo.svg          the Contour mark, and the source the launcher icons come from
+android/
+  app/src/main/AndroidManifest.xml    permissions, and the note on the one not asked for
+  app/src/main/java/app/contour/      MainActivity, BatteryOptimizationPlugin
+  app/src/main/res/                   launcher icons, dark theme, the Record shortcut
+  keystore.properties.example         how to sign a release
 ```
+
+Only three files under `src/` know they are on Android: `location.ts`, `ble.ts` and
+`shell.ts`. Everything else — every screen, every chart, the whole analysis layer —
+is the same code that ran in a browser, which is why the pivot was a shell rather than
+a rewrite.
 
 ## Getting back
 
@@ -172,8 +276,8 @@ thing in the app that talks to the network, and it is built to stay that way:
 - **Failure is not a grey hole.** If the tiles do not arrive — offline, blocked, the
   server saying no — the map falls back to the line-and-contour drawing, which is what
   the app showed before there were tiles and needs nothing.
-- **The service worker does not touch them.** It returns early on any cross-origin
-  request, so tiles never enter the precache and the offline guarantee is unchanged.
+- **They are the only network the app does.** Everything else is in the APK or in the
+  database, so switching the basemap off leaves an app that never opens a socket.
 - **No map library.** `src/lib/tiles.ts` is the Web Mercator projection, the zoom that
   fits a track to the viewport, and the tile grid that covers it — about a hundred lines,
   against a dependency whose stylesheet the app would have to carry offline for a
@@ -183,46 +287,6 @@ thing in the app that talks to the network, and it is built to stay that way:
   a CSS filter into the palette rather than swapped for a dark tile server that would
   need an account and a key. Attribution is on the map, as the tile server's terms
   require.
-
-## What the app does not know about your route
-
-A browser only receives locations while the page is on screen. Lock the phone or switch
-apps mid-ride and `watchPosition` stops: you can come back to two fixes twenty minutes
-apart. Joining them with a line drawn like any other stretch of road claims a route that
-was never recorded — a 4 km straight line across a city, at the distance of the crow's
-flight rather than the roads ridden.
-
-So the app distinguishes what it recorded from what it inferred:
-
-- **An uncertain fix is kept, not discarded.** Accuracy decides whether a fix is trusted
-  with *distance*, not whether it is recorded at all — a fix good to eighty metres still
-  says which road you were on. Below 50 m it counts normally; between 50 m and 200 m it
-  is drawn but only earns distance for movement larger than its own error, so a phone
-  drifting inside its accuracy circle does not ride kilometres; past 200 m it is noise
-  and is dropped. Previously *anything* over 50 m was thrown away, which is the other way
-  a ride came back as two points.
-- **Stretches with no fixes are drawn as the guess they are** — thin, dashed and dimmed,
-  with the recorded track lifting its pen across them.
-- **The session says so.** `TrackQuality` in the stored derivation carries the fix count,
-  the longest gap, how many there were and what share of the elapsed time the fixes
-  actually cover; the detail screen reports it, and explains the cause when there are
-  gaps.
-- **Pre-start says it first**, because it is worth knowing before setting off rather than
-  after — and it says it having actually taken a screen wake lock, so a browser that
-  cannot hold one, or a phone whose battery saver refuses it, is a stronger warning than
-  a phone that can. `denied` is not theoretical: Chrome refuses a wake lock under battery
-  saver, which is exactly what someone turns on before a long ride.
-- **And it says it again during the session, not after.** Coming back to the app is the
-  moment the loss is measurable, so returning to a recording that has heard nothing from
-  the GPS for longer than the gap threshold raises a banner saying how long — rather than
-  leaving it to be discovered on the save screen.
-
-There is no way around this on the web. The Geolocation API is exposed to `Window` only,
-never to a service worker, so there is no surface to record position from the background;
-Chromium's *Intent to implement: Background Geolocation for Progressive Web-Apps* was
-filed in 2016 and has never shipped. Installing to the home screen changes nothing — a
-standalone PWA is still a page, and it is suspended like one. The screen wake lock is the
-whole mitigation, which is why the app takes one and reports whether it got it.
 
 ## Where the log lives
 
@@ -252,20 +316,22 @@ transaction has committed.
 
 ## Getting it off the device
 
-`localStorage` was also the only copy: a cleared browser, an eviction or a new phone took
-the log with it. Settings → *Your data* exports every session — full track and sensor
+The database is the only copy, and an uninstall takes it. Settings → *Your data* exports every session — full track and sensor
 streams, plus the settings — as one JSON file, and reads one back; a single session
 exports as GPX 1.1 with Garmin's TrackPointExtension, which is what every other training
 tool reads heart rate, cadence and power out of. GPX comes back in too, so a file from a
 watch can be added to the log. Imports merge rather than replace, so a backup restored
 onto a phone that has also been recording loses nothing.
 
-Nothing is sent anywhere. The export is a file the browser hands to the person.
+Nothing is sent anywhere. The export is written to the app's cache and handed to the
+Android share sheet, which is where the person decides whether it goes to a drive, a mail
+draft or a cable. The blob-and-anchor download this used to do is ignored by a WebView
+without complaining, so it would have been a button that silently did nothing.
 
 ## When a recording is interrupted
 
-A session in progress used to live only in memory, so a reload, a tab evicted under
-memory pressure or a crash two hours into a long ride took the whole thing — the one
+A session in progress used to live only in memory, so a crash two hours into a long ride
+took the whole thing — the one
 moment in the app where the data cannot be recovered by any other means.
 
 The recorder now writes a checkpoint every five seconds, and again the moment the app is

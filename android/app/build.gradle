@@ -1,5 +1,18 @@
 apply plugin: 'com.android.application'
 
+// Release signing.
+//
+// The key is never in the repository. Locally it comes from android/keystore.properties
+// (gitignored); in CI the workflow writes that same file out of repository secrets. A
+// build that finds neither still succeeds — it produces an unsigned release, which is
+// the honest outcome rather than a mysterious failure — and only the signed one is
+// worth installing.
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "app.contour"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +20,9 @@ android {
         applicationId "app.contour"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // Stamped by CI from the run number; 1 / 0.1.0-dev is what a local build gets.
+        versionCode project.hasProperty('contourVersionCode') ? contourVersionCode.toInteger() : 1
+        versionName project.hasProperty('contourVersionName') ? contourVersionName : "0.1.0-dev"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,12 +30,32 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
-    buildTypes {
+    signingConfigs {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (keystoreProperties.containsKey('storeFile')) {
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
         }
     }
+
+    buildTypes {
+        release {
+            // Left off deliberately. Capacitor finds plugins by annotation and reflection,
+            // so shrinking is exactly the kind of change that builds green and then fails
+            // to locate BackgroundGeolocation on a phone, at the start of a ride. The APK
+            // is a couple of megabytes either way and it is sideloaded, so there is
+            // nothing here worth that risk.
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (keystoreProperties.containsKey('storeFile')) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
 }
 
 repositories {

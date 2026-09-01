@@ -165,22 +165,25 @@ export async function deleteKv(key: string): Promise<void> {
 export interface StorageUsage {
   usedBytes: number | null;
   quotaBytes: number | null;
-  persisted: boolean;
 }
 
+/** What the log is costing.
+ *
+ *  There is no `persisted` flag any more. In a browser the log was evictable cache and
+ *  the app had to ask not to be cleared; inside the APK this database is app-private
+ *  storage, which Android only removes when the app is uninstalled or the person clears
+ *  its data deliberately. The question stopped being worth asking. */
 export async function storageUsage(): Promise<StorageUsage> {
   let usedBytes: number | null = null;
   let quotaBytes: number | null = null;
-  let persisted = false;
   try {
     if (navigator.storage?.estimate) {
       const estimate = await navigator.storage.estimate();
       usedBytes = estimate.usage ?? null;
       quotaBytes = estimate.quota ?? null;
     }
-    if (navigator.storage?.persisted) persisted = await navigator.storage.persisted();
   } catch {
-    // An estimate the browser declines to give is not worth an error on a settings screen.
+    // An estimate the WebView declines to give is not worth an error on a settings screen.
   }
-  return { usedBytes, quotaBytes, persisted };
+  return { usedBytes, quotaBytes };
 }

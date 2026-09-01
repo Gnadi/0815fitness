@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Contour</string>
+    <string name="title_activity_main">Contour</string>
+    <string name="package_name">app.contour</string>
+    <string name="custom_url_scheme">app.contour</string>
+    <string name="shortcut_record_short">Record</string>
+    <string name="shortcut_record_long">Record a session</string>
+</resources>

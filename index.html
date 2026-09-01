@@ -3,8 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0B0C0D" />
     <meta name="color-scheme" content="dark" />
@@ -12,13 +10,9 @@
       name="description"
       content="A single-user training log for running and cycling. Records activities on the device and analyses them in depth. No feed, no sharing, no upsell."
     />
-    <!-- Installed to a home screen the app runs without browser chrome. The status bar
-         stays translucent over it, which is why every screen pads with
-         env(safe-area-inset-*) rather than a fixed inset. -->
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Contour" />
+    <!-- The WebView draws edge to edge under a translucent status bar, which is why
+         every screen pads with env(safe-area-inset-*) rather than a fixed inset. -->
+    <meta name="format-detection" content="telephone=no" />
     <title>Contour</title>
   </head>
   <body>

@@ -41,7 +41,7 @@ export function SettingsScreen({
   onEraseAll: () => Promise<void>;
 }) {
   const units = useUnits();
-  const [usage, setUsage] = useState<{ usedBytes: number | null; quotaBytes: number | null; persisted: boolean } | null>(null);
+  const [usage, setUsage] = useState<{ usedBytes: number | null; quotaBytes: number | null } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmWipe, setConfirmWipe] = useState(false);
@@ -403,9 +403,7 @@ export function SettingsScreen({
           <span style={{ fontSize: 13, lineHeight: 1.45, color: color.textMuted, textWrap: 'pretty' }}>
             {activities.length} {activities.length === 1 ? 'session' : 'sessions'} on this device
             {usedMb != null ? `, using ${usedMb.toFixed(1)} MB${quotaMb != null ? ` of about ${quotaMb.toFixed(0)} MB available` : ''}` : ''}.
-            {usage?.persisted
-              ? ' Storage is marked persistent, so the browser will not evict it to reclaim space.'
-              : ' Storage is not marked persistent — install the app to your home screen and the browser stops treating the log as evictable cache.'}
+            {' '}Uninstalling the app deletes it, so keep an export somewhere else.
           </span>
           {usedMb != null && quotaMb != null && quotaMb > 0 && (
             <div style={{ height: 6, borderRadius: 999, background: color.surfaceSunk, overflow: 'hidden' }}>

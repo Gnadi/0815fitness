@@ -6,6 +6,7 @@ import { Label } from '../components/primitives';
 import { LoadChart, ZoneMixChart, PowerCurveChart, HistogramBars } from '../components/charts';
 import { useUnits } from '../hooks/useUnits';
 import { clusterRoutes, type RouteCluster } from '../lib/routes';
+import type { StatKey } from '../lib/statDetails';
 import {
   activityStress,
   addDays,
@@ -59,6 +60,7 @@ export function Analyse({
   onBack,
   onRoute,
   onActivity,
+  onStat,
 }: {
   activities: Activity[];
   settings: Settings;
@@ -66,6 +68,7 @@ export function Analyse({
   onBack: () => void;
   onRoute: (id: string) => void;
   onActivity: (id: string) => void;
+  onStat: (key: StatKey) => void;
 }) {
   const [tab, setTab] = useState<Tab>('load');
   const [range, setRange] = useState<Range>('90 D');
@@ -144,7 +147,9 @@ export function Analyse({
       </div>
 
       <div className="ct-scroll" style={{ ...S.scrollArea, padding: '18px 0 40px', display: 'flex', flexDirection: 'column', gap: 22 }}>
-        {tab === 'load' && <LoadTab activities={activities} settings={settings} rollups={rollups} acute={acute} chronic={chronic} balance={balance} />}
+        {tab === 'load' && (
+          <LoadTab activities={activities} settings={settings} rollups={rollups} acute={acute} chronic={chronic} balance={balance} onStat={onStat} />
+        )}
         {tab === 'zones' && <ZonesTab activities={inRange} allActivities={activities} settings={settings} range={range} />}
         {tab === 'records' && <RecordsTab activities={activities} inRange={inRange} settings={settings} range={range} />}
         {tab === 'routes' && <RoutesTab activities={activities} onRoute={onRoute} onActivity={onActivity} />}
@@ -162,6 +167,7 @@ function LoadTab({
   acute,
   chronic,
   balance,
+  onStat,
 }: {
   activities: Activity[];
   settings: Settings;
@@ -169,6 +175,7 @@ function LoadTab({
   acute: number[];
   chronic: number[];
   balance: LoadBalance;
+  onStat: (key: StatKey) => void;
 }) {
   const units = useUnits();
   const stressed = settings.loadModel === 'stress';
@@ -238,7 +245,12 @@ function LoadTab({
       </div>
 
       <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <Label style={{ padding: '0 16px' }}>Acute vs chronic load · 12 weeks · {unitLabel}</Label>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '0 16px' }}>
+          <Label>Acute vs chronic load · 12 weeks · {unitLabel}</Label>
+          <button onClick={() => onStat('load')} style={S.linkButton}>
+            Load detail →
+          </button>
+        </div>
         <div style={{ ...S.sunkWell, padding: '12px 0 6px' }}>
           <LoadChart acute={acute.map(shown)} chronic={chronic.map(shown)} labels={labels} hotIndices={hotIndices} />
         </div>
@@ -292,6 +304,16 @@ function LoadTab({
           Decoupling is heart-rate drift over the second half of each session — under 5 % reads as aerobically durable, and needs a
           paired strap to compute.
         </span>
+        {/* Two of the columns above have a window of their own — twelve weeks of the
+            figure, the weeks behind it and the sessions that add up to it. */}
+        <div style={{ display: 'flex', gap: 18, padding: '12px 16px 0' }}>
+          <button onClick={() => onStat('volume')} style={S.linkButton}>
+            Volume detail →
+          </button>
+          <button onClick={() => onStat('ascent')} style={S.linkButton}>
+            Ascent detail →
+          </button>
+        </div>
       </div>
     </>
   );

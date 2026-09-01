@@ -125,9 +125,13 @@ await page.getByRole('button', { name: 'Streak detail' }).click();
 await page.waitForTimeout(400);
 await shot(page, '15-stat-streak');
 
+// The load and volume windows hang off the analysis rather than the start screen:
+// the Overview keeps the week and the sessions, everything deeper is a screen away.
 await page.getByRole('button', { name: 'Back to overview' }).click();
 await page.waitForTimeout(300);
-await page.getByRole('button', { name: 'Load balance detail' }).click();
+await page.getByText('Analyse →').click();
+await page.waitForTimeout(400);
+await page.getByRole('button', { name: 'Load detail →' }).click();
 await page.waitForTimeout(400);
 await shot(page, '16-stat-load');
 await page.getByRole('button', { name: 'Compare →' }).click();
@@ -162,7 +166,7 @@ const check = (label, passed) => {
 
 await page.goto(BASE);
 await page.waitForTimeout(600);
-await page.getByRole('button', { name: /^All \d+ →$/ }).click();
+await page.getByRole('button', { name: /^All \d+ sessions →$/ }).click();
 await page.waitForTimeout(500);
 await shot(page, '21-history');
 
@@ -186,14 +190,32 @@ await page.evaluate(() => document.querySelector('.ct-scroll').scrollBy(0, 1200)
 await page.waitForTimeout(400);
 await shot(page, '25-activity-splits');
 
+// Comparing from a session opens the picker with that session held as the reference:
+// which one it is read against is the person's choice, not the app's.
+await page.evaluate(() => document.querySelector('.ct-scroll').scrollBy(0, 4000));
+await page.waitForTimeout(300);
+await page.getByRole('button', { name: /^Compare with another session/ }).click();
+await page.waitForTimeout(500);
+await shot(page, '26-compare-pick-from-detail');
+check('comparing from a session opens the picker', await page.getByRole('button', { name: 'SELECT 1 MORE' }).isVisible());
+check('the session it was opened from is the reference', await page.getByText('is the reference').isVisible());
+await page.locator('.ct-scroll > button').nth(1).click();
+await page.waitForTimeout(300);
+await page.getByRole('button', { name: 'COMPARE 2' }).click();
+await page.waitForTimeout(700);
+await shot(page, '26b-compare-from-detail');
+check('the chosen pair is compared', await page.getByText('reference · ').isVisible());
+
+await page.goBack();
+await page.waitForTimeout(500);
 await page.getByRole('button', { name: 'Edit' }).click();
 await page.waitForTimeout(400);
-await shot(page, '26-activity-edit');
+await shot(page, '26c-activity-edit');
 check('a saved session can be deleted', await page.getByRole('button', { name: 'Delete this session' }).isVisible());
 
 await page.goto(BASE);
 await page.waitForTimeout(600);
-await page.getByRole('button', { name: /^All \d+ →$/ }).click();
+await page.getByRole('button', { name: /^All \d+ sessions →$/ }).click();
 await page.waitForTimeout(400);
 await page.getByRole('button', { name: '+ Manual' }).click();
 await page.waitForTimeout(400);
@@ -225,7 +247,11 @@ await shot(page, '31-settings-imperial');
 await page.getByRole('button', { name: 'Back', exact: true }).click();
 await page.waitForTimeout(500);
 await shot(page, '32-overview-imperial');
-check('switching units restates the Overview', await page.getByText('mi run').isVisible());
+// The Overview's week strip and its session cards both carry the unit, so a switch
+// has to reach the start screen rather than only the screens that analyse it.
+const runFigure = await page.getByRole('button', { name: 'Run distance detail' }).innerText();
+const firstCard = await page.locator('.ct-card').first().innerText();
+check('switching units restates the Overview', runFigure.includes('mi') && firstCard.includes('mi'));
 await page.getByRole('button', { name: 'Settings' }).click();
 await page.waitForTimeout(400);
 await page.getByRole('button', { name: 'KM · M' }).click();
@@ -236,7 +262,7 @@ await page.waitForTimeout(300);
 const tilesBefore = tilesServed;
 await page.getByRole('button', { name: 'Back', exact: true }).click();
 await page.waitForTimeout(300);
-await page.getByRole('button', { name: /^All \d+ →$/ }).click();
+await page.getByRole('button', { name: /^All \d+ sessions →$/ }).click();
 await page.waitForTimeout(400);
 await page.locator('.ct-row').first().click();
 await page.waitForTimeout(900);

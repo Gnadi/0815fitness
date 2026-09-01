@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { PhoneFrame } from './components/PhoneFrame';
+import { AppShell } from './components/AppShell';
 import { Overview } from './screens/Overview';
 import { Analyse } from './screens/Analyse';
 import { StatDetail } from './screens/StatDetail';
@@ -247,7 +247,7 @@ export default function App() {
 
   return (
     <UnitsProvider units={settings.units}>
-      <PhoneFrame>
+      <AppShell>
         {view.screen === 'ovw' && (
           <Overview
             activities={activities}
@@ -268,7 +268,15 @@ export default function App() {
           />
         )}
         {view.screen === 'ana' && (
-          <Analyse activities={activities} settings={settings} onSettings={setSettings} onBack={back} onRoute={openRoute} onActivity={openActivity} />
+          <Analyse
+            activities={activities}
+            settings={settings}
+            onSettings={setSettings}
+            onBack={back}
+            onRoute={openRoute}
+            onActivity={openActivity}
+            onStat={openStat}
+          />
         )}
         {view.screen === 'list' && (
           <Activities
@@ -327,7 +335,7 @@ export default function App() {
         {view.screen === 'save' && draft && (
           <SaveScreen draft={draft} settings={settings} activities={activities} onSave={handleSave} onDiscard={handleDiscard} />
         )}
-      </PhoneFrame>
+      </AppShell>
     </UnitsProvider>
   );
 }

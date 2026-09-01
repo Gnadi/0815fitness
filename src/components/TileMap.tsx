@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { color, font } from '../theme';
 import { TRACK_GAP_S } from '../lib/derived';
 import { TrackMap } from './charts';
 import { planTiles, projectToView, TILE_SIZE, tileUrl, trackPaths } from '../lib/tiles';
 import type { GeoSample } from '../types';
 
-const WIDTH = 358;
+// What the map was drawn at before it measured itself — used for the first paint and
+// whenever a browser gives no size back (a test renderer, a display:none parent).
+const FALLBACK_WIDTH = 358;
 
 /** The recorded track over an OpenStreetMap basemap.
  *
@@ -21,8 +23,29 @@ const WIDTH = 358;
 export function TileMap({ points, height, tiles: tilesEnabled = true }: { points: GeoSample[]; height: number; tiles?: boolean }) {
   const [failed, setFailed] = useState(0);
   const [loaded, setLoaded] = useState(0);
+  // The map lays real tile images out in pixels, so it has to know how wide it actually
+  // is rather than how wide the phone layout used to be: the app fills whatever column
+  // the viewport gives it, and a basemap planned for the wrong width leaves a gap.
+  const [width, setWidth] = useState(FALLBACK_WIDTH);
+  const box = useRef<HTMLDivElement | null>(null);
+  const measure = useCallback((node: HTMLDivElement | null) => {
+    box.current = node;
+    const w = node?.getBoundingClientRect().width ?? 0;
+    if (w > 0) setWidth(Math.round(w));
+  }, []);
 
-  const view = useMemo(() => (tilesEnabled ? planTiles(points, WIDTH, height) : null), [points, height, tilesEnabled]);
+  useEffect(() => {
+    const node = box.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width ?? 0;
+      if (w > 0) setWidth(Math.round(w));
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  const view = useMemo(() => (tilesEnabled ? planTiles(points, width, height) : null), [points, width, height, tilesEnabled]);
   const paths = useMemo(() => (view ? trackPaths(points, view, TRACK_GAP_S) : null), [points, view]);
 
   // Every tile refused: no network, a blocked request, a server saying no. The drawn map
@@ -35,7 +58,7 @@ export function TileMap({ points, height, tiles: tilesEnabled = true }: { points
   const end = points.length ? projectToView(points[points.length - 1], view) : null;
 
   return (
-    <div style={{ position: 'relative', width: '100%', height, overflow: 'hidden', background: color.surfaceSunk }}>
+    <div ref={measure} style={{ position: 'relative', width: '100%', height, overflow: 'hidden', background: color.surfaceSunk }}>
       <div
         aria-hidden
         style={{
@@ -66,7 +89,7 @@ export function TileMap({ points, height, tiles: tilesEnabled = true }: { points
       </div>
 
       <svg
-        viewBox={`0 0 ${WIDTH} ${height}`}
+        viewBox={`0 0 ${width} ${height}`}
         width="100%"
         height={height}
         style={{ position: 'absolute', inset: 0, display: 'block' }}

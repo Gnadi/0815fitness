@@ -121,7 +121,7 @@ export function Compare({
       </div>
 
       {mode === 'pick' ? (
-        <PickList pool={pool} selected={selected} onToggle={toggle} noun={noun} onDone={() => setMode('view')} />
+        <PickList pool={pool} selected={selected} reference={picked[0] ?? null} onToggle={toggle} noun={noun} onDone={() => setMode('view')} />
       ) : (
         <CompareView comparands={comparands} sport={sport} splitM={splitM} />
       )}
@@ -147,12 +147,17 @@ function sportTabStyle(active: boolean): CSSProperties {
 function PickList({
   pool,
   selected,
+  reference,
   onToggle,
   noun,
   onDone,
 }: {
   pool: Activity[];
   selected: string[];
+  /** The session every difference is measured against — the first one picked, or the
+   *  one this screen was opened from. Named in the line above the list so it is clear
+   *  what is already in the comparison before anything else is chosen. */
+  reference: Activity | null;
   onToggle: (id: string) => void;
   noun: string;
   onDone: () => void;
@@ -164,7 +169,14 @@ function PickList({
     <>
       <div className="ct-scroll" style={{ ...S.scrollArea, paddingBottom: 100 }}>
         <span style={{ display: 'block', padding: '0 16px 14px', fontSize: 13, lineHeight: 1.45, color: color.textMuted, textWrap: 'pretty' }}>
-          Pick two or three {noun}s. The first one you pick is the reference — every difference below is measured against it.
+          {reference ? (
+            <>
+              <span style={{ color: color.text }}>{reference.title}</span> is the reference — every difference below is measured against it.{' '}
+              {selected.length < 2 ? `Pick the ${noun} to read it against.` : `Tap a ${noun} to add or drop it.`}
+            </>
+          ) : (
+            <>Pick two or three {noun}s. The first one you pick is the reference — every difference below is measured against it.</>
+          )}
         </span>
         {pool.length === 0 ? (
           <span style={{ padding: '0 16px', ...S.body, color: color.textMuted }}>Nothing recorded for this sport yet.</span>

@@ -94,15 +94,19 @@ export function RouteSilhouette({
   width = 88,
   height = 20,
   fill = color.metricElevation,
+  style,
 }: {
   elevations: number[];
   width?: number;
   height?: number;
   fill?: string;
+  /** Overrides the drawn size — `width: '100%'` stretches the shape across its row,
+   *  which is what the session cards on the Overview do with it. */
+  style?: CSSProperties;
 }) {
   const profile = resample(elevations, Math.min(48, Math.max(2, elevations.length)));
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ flex: 'none' }}>
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ flex: 'none', ...style }}>
       <path d={silhouettePath(profile, width, height)} fill={fill} />
     </svg>
   );

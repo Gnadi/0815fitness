@@ -285,6 +285,18 @@ describe('the recorder', () => {
       recorder.stop();
     });
 
+    it('refuses a repeat arriving on its own, not only inside a drain', () => {
+      const recorder = new Recorder('run');
+      recorder.start();
+      recorder.addGeoSample(fix(0, 0));
+      recorder.addGeoSample(fix(1, 4));
+      recorder.addGeoSample(fix(1, 4)); // the same fix again
+      recorder.addGeoSample(fix(0, 0)); // and one from before it
+      expect(recorder.snapshot().points).toHaveLength(2);
+      expect(recorder.snapshot().distanceM).toBeCloseTo(4, 0);
+      recorder.stop();
+    });
+
     it('announces a drain once rather than once per fix', () => {
       const recorder = new Recorder('run');
       recorder.start();

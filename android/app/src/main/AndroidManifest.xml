@@ -26,13 +26,10 @@
             </intent-filter>
 
             <!-- The long-press shortcut below hands the activity a contour:// URI, which
-                 the bridge surfaces to JS as a launch URL. -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="contour" />
-            </intent-filter>
-
+                 the bridge surfaces to JS as a launch URL. It names this activity
+                 explicitly, so it needs no intent filter of its own — and giving it one
+                 would let any app on the phone launch Contour with a URI, for nothing
+                 in return. -->
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />

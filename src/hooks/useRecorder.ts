@@ -67,6 +67,9 @@ export function useRecorder(sport: Sport, armed: boolean, options: RecorderOptio
     const handle = watchLocation({
       background: { title: 'Contour', message: 'Recording — the track continues with the screen off.' },
       onFix: (sample) => {
+        // A fix is the proof a refusal has been lifted: granting the permission from the
+        // banner starts them flowing again, and the banner has to go with it.
+        setDenial(null);
         pending.push(sample);
         if (flushHandle == null) flushHandle = setTimeout(flush, 0) as unknown as number;
       },
@@ -138,5 +141,5 @@ export function useRecorder(sport: Sport, armed: boolean, options: RecorderOptio
     [recorder, stopWatch],
   );
 
-  return { snapshot, actions, denial, dismissDenial: () => setDenial(null) };
+  return { snapshot, actions, denial };
 }

@@ -236,19 +236,13 @@ export class Recorder {
    *  fix — a thousand renders for a stretch nobody watched happen. They are ingested in
    *  time order and announced once.
    *
-   *  Fixes at or before the last one already recorded are dropped: a drain that overlaps
-   *  what was already delivered live must not add the same metres twice. */
+   *  A drain that overlaps what already arrived live is safe: ingestion refuses a fix
+   *  that is not newer than the last one held, so the same metres cannot be charged
+   *  twice. */
   addGeoSamples(samples: GeoSample[]) {
     if (samples.length === 0) return;
-    const ordered = [...samples].sort((a, b) => a.t - b.t);
-    let ingested = 0;
-    for (const sample of ordered) {
-      const last = this.points[this.points.length - 1];
-      if (last && sample.t <= last.t) continue;
-      this.ingestGeoSample(sample);
-      ingested += 1;
-    }
-    if (ingested > 0) this.emit();
+    for (const sample of [...samples].sort((a, b) => a.t - b.t)) this.ingestGeoSample(sample);
+    this.emit();
   }
 
   /** Takes one fix into the session, without announcing it.
@@ -272,6 +266,10 @@ export class Recorder {
     if (accuracy != null && accuracy > KEEP_ACCURACY_M) return;
 
     const last = this.points[this.points.length - 1];
+    // A fix no newer than the one already held is a repeat — a drain overlapping what
+    // arrived live, or a provider redelivering. Appending it would put the track out of
+    // order, which every later reading of `points` assumes it is not.
+    if (last && sample.t <= last.t) return;
     this.points.push(sample);
 
     if (last) {

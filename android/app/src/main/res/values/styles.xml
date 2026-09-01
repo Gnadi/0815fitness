@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Dark-only, because the app is. Theme.AppCompat.Light would put a white window
-         behind a WebView that has not painted yet. -->
+    <!-- Dark-only, because the app is. The template's Theme.AppCompat.Light would put a
+         white window behind a WebView that has not painted yet, which on a cold start
+         reads as a flash of the wrong app. -->
     <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
@@ -10,20 +11,30 @@
         <item name="android:windowBackground">@color/background</item>
     </style>
 
+    <!-- BridgeActivity sets this one itself, by name, in onCreate. -->
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <item name="android:background">@null</item>
         <item name="android:windowBackground">@color/background</item>
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
     </style>
 
-    <!-- The launch theme. The splash is the app's ground and its mark, so the gap
-         between tapping the icon and React's first paint looks like the app starting
-         rather than a page loading. `postSplashScreenTheme` is what the window becomes
-         once the bridge is up. -->
-    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/background</item>
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
-        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+    <!-- The launch theme, which owns the window from the moment the icon is tapped until
+         onCreate swaps in the theme above.
+         
+         The template parented this on Theme.SplashScreen, which only appeared to work:
+         BridgeActivity never calls installSplashScreen(), so postSplashScreenTheme was
+         never applied and the compat behaviour never ran. What actually matters is two
+         things, and they are stated here directly. windowBackground covers every API
+         level, including the moments before any Android version draws its own splash.
+         The windowSplashScreen* attributes are API 31+, where the system draws a splash
+         on every cold start whether the app asks for one or not — left unset it would
+         use the launcher icon on a light ground, which is not this app. -->
+    <style name="AppTheme.NoActionBarLaunch" parent="AppTheme.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/background</item>
+        <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@mipmap/ic_launcher_foreground</item>
     </style>
 </resources>

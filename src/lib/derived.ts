@@ -5,7 +5,11 @@ import { MAX_PLAUSIBLE_SPEED_MPS } from './recorder';
 /** Bumped whenever anything below changes what it computes, so that activities carrying
  *  an older blob are re-derived from their samples on the next launch rather than
  *  quietly reporting a figure this build no longer stands behind. */
-export const DERIVED_VERSION = 2;
+// 3: the plausible-speed ceiling went from 50 km/h to 90 km/h, which changes moving
+// time, the personal bests and the route signature of anything ever ridden down a hill.
+// Bumping this re-derives the whole log in the background on the next launch, so a ride
+// from before the pivot and a ride from after it are measured the same way.
+export const DERIVED_VERSION = 3;
 
 export const PB_DISTANCES: { key: string; label: string; metres: number }[] = [
   { key: '1k', label: '1 km', metres: 1000 },

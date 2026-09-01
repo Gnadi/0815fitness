@@ -227,4 +227,178 @@ describe('the recorder', () => {
       recorder.stop();
     });
   });
+  describe('a stretch recorded while the app was not on screen', () => {
+    // The pivot's whole point: the location service keeps going with the screen off, so
+    // fixes can arrive long after the moment they describe, and in bulk. What comes back
+    // has to be the ride that happened, not the ride as timed by when the app woke up.
+
+    it('measures a drained backlog exactly as it would have measured it live', () => {
+      const samples = Array.from({ length: 60 }, (_, i) => fix(i, i * 4));
+
+      const live = new Recorder('run');
+      live.start();
+      for (const s of samples) live.addGeoSample(s);
+
+      const drained = new Recorder('run');
+      drained.start();
+      vi.setSystemTime(START + 60_000); // the app comes back a minute later
+      drained.addGeoSamples(samples);
+
+      expect(drained.snapshot().distanceM).toBeCloseTo(live.snapshot().distanceM, 3);
+      expect(drained.snapshot().points).toHaveLength(60);
+      live.stop();
+      drained.stop();
+    });
+
+    it('takes ascent off a backlog the same way', () => {
+      const samples = [fix(0, 0, { ele: 100 }), fix(1, 4, { ele: 110 }), fix(2, 8, { ele: 105 }), fix(3, 12, { ele: 120 })];
+      const drained = new Recorder('ride');
+      drained.start();
+      vi.setSystemTime(START + 300_000);
+      drained.addGeoSamples(samples);
+      // Ten up, five down and ignored, fifteen up.
+      expect(drained.snapshot().ascentM).toBeCloseTo(25, 3);
+      drained.stop();
+    });
+
+    it('orders a backlog that arrives shuffled', () => {
+      const ordered = [fix(0, 0), fix(1, 4), fix(2, 8), fix(3, 12)];
+      const shuffled = [ordered[2], ordered[0], ordered[3], ordered[1]];
+      const recorder = new Recorder('run');
+      recorder.start();
+      recorder.addGeoSamples(shuffled);
+      expect(recorder.snapshot().points.map((p) => p.t)).toEqual(ordered.map((p) => p.t));
+      expect(recorder.snapshot().distanceM).toBeCloseTo(12, 0);
+      recorder.stop();
+    });
+
+    it('does not count a fix twice when a drain overlaps what arrived live', () => {
+      const samples = [fix(0, 0), fix(1, 4), fix(2, 8)];
+      const recorder = new Recorder('run');
+      recorder.start();
+      recorder.addGeoSample(samples[0]);
+      recorder.addGeoSample(samples[1]);
+      // The service hands back everything it buffered, including the two already seen.
+      recorder.addGeoSamples(samples);
+      expect(recorder.snapshot().points).toHaveLength(3);
+      expect(recorder.snapshot().distanceM).toBeCloseTo(8, 0);
+      recorder.stop();
+    });
+
+    it('announces a drain once rather than once per fix', () => {
+      const recorder = new Recorder('run');
+      recorder.start();
+      let emitted = 0;
+      const unsub = recorder.subscribe(() => {
+        emitted += 1;
+      });
+      emitted = 0; // subscribe delivers the current snapshot first
+      recorder.addGeoSamples(Array.from({ length: 40 }, (_, i) => fix(i, i * 4)));
+      expect(emitted).toBe(1);
+      unsub();
+      recorder.stop();
+    });
+
+    it('auto-pauses on the ride\'s own clock, not on when the fixes turned up', () => {
+      // Standing still for twenty seconds, recorded while the app was away.
+      const samples = [fix(0, 0), ...Array.from({ length: 20 }, (_, i) => fix(i + 1, 0.05 * (i + 1)))];
+      const recorder = new Recorder('run');
+      recorder.start();
+      vi.setSystemTime(START + 600_000);
+      recorder.addGeoSamples(samples);
+      expect(recorder.snapshot().status).toBe('autoPaused');
+      recorder.stop();
+    });
+
+    it('puts a kilometre marker where it was crossed, not where the app woke up', () => {
+      const samples = Array.from({ length: 101 }, (_, i) => fix(i * 2, i * 12));
+      const recorder = new Recorder('run');
+      recorder.start();
+      vi.setSystemTime(START + 900_000);
+      recorder.addGeoSamples(samples);
+      const [lap] = recorder.snapshot().laps;
+      expect(lap).toBeDefined();
+      // The kilometre falls a shade past 83 fixes of 12 m, two seconds apart.
+      expect((lap.endT - START) / 1000).toBeCloseTo(168, 0);
+      expect(lap.endT).toBeLessThan(START + 900_000);
+      recorder.stop();
+    });
+  });
+
+  describe('coming back to a session the service never stopped', () => {
+    it('resumes recording without banking the gap as a pause', () => {
+      const recorder = new Recorder('ride');
+      recorder.start();
+      recorder.addGeoSample(fix(0, 0));
+      vi.setSystemTime(START + 600_000);
+      recorder.addGeoSample(fix(600, 1800));
+      const checkpoint = recorder.toCheckpoint();
+      recorder.stop();
+
+      // The WebView was killed for five minutes; the notification never went away.
+      vi.setSystemTime(START + 900_000);
+      const resumed = new Recorder('ride');
+      resumed.restore(checkpoint as NonNullable<typeof checkpoint>, { stillRecording: true });
+
+      const snapshot = resumed.snapshot();
+      expect(snapshot.status).toBe('recording');
+      // Fifteen minutes of riding, none of it pause: the ride did not stop, the screen did.
+      expect(snapshot.elapsedS).toBeCloseTo(900, 0);
+      resumed.stop();
+    });
+
+    it('still banks the gap when the session really did stop', () => {
+      const recorder = new Recorder('ride');
+      recorder.start();
+      recorder.addGeoSample(fix(0, 0));
+      vi.setSystemTime(START + 600_000);
+      const checkpoint = recorder.toCheckpoint();
+      recorder.stop();
+
+      vi.setSystemTime(START + 900_000);
+      const resumed = new Recorder('ride');
+      resumed.restore(checkpoint as NonNullable<typeof checkpoint>);
+      expect(resumed.snapshot().status).toBe('paused');
+      expect(resumed.snapshot().elapsedS).toBeCloseTo(600, 0);
+      resumed.stop();
+    });
+
+    it('carries on from the drained fixes after resuming', () => {
+      const recorder = new Recorder('ride');
+      recorder.start();
+      recorder.addGeoSample(fix(0, 0));
+      const checkpoint = recorder.toCheckpoint();
+      recorder.stop();
+
+      vi.setSystemTime(START + 300_000);
+      const resumed = new Recorder('ride');
+      resumed.restore(checkpoint as NonNullable<typeof checkpoint>, { stillRecording: true });
+      resumed.addGeoSamples([fix(100, 500), fix(200, 1000)]);
+      expect(resumed.snapshot().distanceM).toBeCloseTo(1000, -1);
+      expect(resumed.snapshot().status).toBe('recording');
+      resumed.stop();
+    });
+  });
+
+  describe('the ceiling on a plausible speed', () => {
+    it('keeps a fast descent that the old 50 km/h ceiling would have eaten', () => {
+      const recorder = new Recorder('ride');
+      recorder.start();
+      // 18 m/s is 65 km/h: an ordinary descent, and over the ceiling as it used to be.
+      recorder.addGeoSample(fix(0, 0));
+      recorder.addGeoSample(fix(1, 18));
+      recorder.addGeoSample(fix(2, 36));
+      expect(recorder.snapshot().distanceM).toBeCloseTo(36, 0);
+      recorder.stop();
+    });
+
+    it('still refuses a leap no bicycle makes', () => {
+      const recorder = new Recorder('ride');
+      recorder.start();
+      recorder.addGeoSample(fix(0, 0));
+      recorder.addGeoSample(fix(1, 200)); // 720 km/h
+      expect(recorder.snapshot().distanceM).toBe(0);
+      recorder.stop();
+    });
+  });
 });

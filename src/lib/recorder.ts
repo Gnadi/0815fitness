@@ -8,7 +8,14 @@ const AUTO_PAUSE_AFTER_S = 8;
 /** Resuming needs a clearly higher speed than pausing, so a fix wobbling either side of
  *  one threshold does not flip the state every few seconds. */
 const RESUME_FACTOR = 1.8;
-export const MAX_PLAUSIBLE_SPEED_MPS = 14; // ~50 km/h — beyond this a GPS jump is treated as noise
+/** Beyond this a jump between two fixes is noise rather than movement.
+ *
+ *  It was 14 m/s — 50 km/h — which a browser rarely exceeded because a phone in a
+ *  pocket was not reporting at all. A foreground service reports the whole descent, and
+ *  50 km/h is an ordinary one, so the old ceiling would have started silently eating the
+ *  fastest kilometres of every ride. 25 m/s is 90 km/h: quick for a bicycle, still far
+ *  below the continent-crossing leap a bad fix produces. */
+export const MAX_PLAUSIBLE_SPEED_MPS = 25;
 /** At or under this, a fix is trusted: it counts towards distance like any other, and
  *  the live signal indicator reads as good. */
 const TRUSTED_ACCURACY_M = 50;
@@ -187,32 +194,78 @@ export class Recorder {
     this.emit();
   }
 
+  /** The lap button. */
   addLap() {
-    if (this.status === 'finished' || this.status === 'idle') return;
-    const t = this.now();
+    if (this.cutLap(this.now())) this.emit();
+  }
+
+  /** Closes the current lap at `t`.
+   *
+   *  The time is passed in rather than read off the clock because a lap can be cut by a
+   *  fix as well as by a thumb, and a fix carries its own timestamp — one that may be
+   *  minutes old by the time it is ingested, if it was recorded while the app was not
+   *  on screen. Stamping it `now` would put the kilometre marker where the app woke up
+   *  instead of where it was crossed. */
+  private cutLap(t: number): boolean {
+    if (this.status === 'finished' || this.status === 'idle') return false;
     this.laps.push({ lapNo: this.lapNo, startT: this.lapStartT, endT: t, startDist: this.lapStartDist, endDist: this.distanceM });
     this.prevLapDurationS = (t - this.lapStartT) / 1000;
     this.lapNo += 1;
     this.lapStartT = t;
     this.lapStartDist = this.distanceM;
-    this.emit();
+    return true;
   }
 
-  private maybeAutoLap() {
+  private maybeAutoLap(atT: number) {
     const km = Math.floor(this.distanceM / 1000);
     const lapStartKm = Math.floor(this.lapStartDist / 1000);
-    if (km > lapStartKm) this.addLap();
+    if (km > lapStartKm) this.cutLap(atT);
   }
 
-  /** A fix landed.
+  /** A fix landed. */
+  addGeoSample(sample: GeoSample) {
+    this.ingestGeoSample(sample);
+    this.sampled();
+  }
+
+  /** A run of fixes landed at once.
+   *
+   *  The location service keeps recording while the app is not on screen, so coming back
+   *  to it can mean twenty minutes of ride arriving in one callback. Feeding them through
+   *  `addGeoSample` one at a time would be correct but would also emit a snapshot per
+   *  fix — a thousand renders for a stretch nobody watched happen. They are ingested in
+   *  time order and announced once.
+   *
+   *  Fixes at or before the last one already recorded are dropped: a drain that overlaps
+   *  what was already delivered live must not add the same metres twice. */
+  addGeoSamples(samples: GeoSample[]) {
+    if (samples.length === 0) return;
+    const ordered = [...samples].sort((a, b) => a.t - b.t);
+    let ingested = 0;
+    for (const sample of ordered) {
+      const last = this.points[this.points.length - 1];
+      if (last && sample.t <= last.t) continue;
+      this.ingestGeoSample(sample);
+      ingested += 1;
+    }
+    if (ingested > 0) this.emit();
+  }
+
+  /** Takes one fix into the session, without announcing it.
    *
    *  An uncertain fix used to be discarded outright, which is how a ride could come back
-   *  as two points and a straight line: a phone in a pocket, or a browser that has
+   *  as two points and a straight line: a phone in a pocket, or a receiver that has
    *  fallen back to a coarse wifi or cell fix, reports fifty to two hundred metres
    *  routinely, and every one of those was thrown away. Accuracy now decides whether a
    *  fix is *trusted with distance*, not whether it is recorded at all — a fix good to
-   *  eighty metres still says which road you were on. */
-  addGeoSample(sample: GeoSample) {
+   *  eighty metres still says which road you were on.
+   *
+   *  Every time decision here is made from `sample.t`, never from the clock. A fix can be
+   *  minutes old by the time it is ingested, and judging an eight-second auto-pause or a
+   *  kilometre marker against the moment of arrival rather than the moment of recording
+   *  is how a replayed stretch would come back with its pauses and laps in the wrong
+   *  places. */
+  private ingestGeoSample(sample: GeoSample) {
     const accuracy = sample.accuracy ?? null;
     this.accuracy = accuracy ?? this.accuracy;
     this.gpsOk = accuracy == null || accuracy <= TRUSTED_ACCURACY_M;
@@ -234,20 +287,26 @@ export class Recorder {
           const rise = sample.ele - last.ele;
           if (rise > 0.3) this.ascentM += rise;
         }
-        this.evaluateAutoPause(speed);
+        this.evaluateAutoPause(speed, sample.t);
       }
     }
 
-    this.maybeAutoLap();
-    this.sampled();
+    this.maybeAutoLap(sample.t);
   }
 
-  private evaluateAutoPause(instSpeedMps: number) {
+  /** Decides whether standing still has lasted long enough to be a pause.
+   *
+   *  `atT` is the timestamp of the fix that produced this speed, not the clock. The
+   *  eight seconds are eight seconds of the ride: replaying a stretch recorded while the
+   *  app was away must reach the same verdict it would have reached live, and measuring
+   *  from arrival would collapse the whole backlog into a single instant that never
+   *  crosses the threshold. */
+  private evaluateAutoPause(instSpeedMps: number, atT: number) {
     const was = this.status;
     if (this.status === 'recording') {
       if (instSpeedMps < this.autoPauseMps) {
-        if (this.belowThresholdSinceT == null) this.belowThresholdSinceT = this.now();
-        else if ((this.now() - this.belowThresholdSinceT) / 1000 >= AUTO_PAUSE_AFTER_S) {
+        if (this.belowThresholdSinceT == null) this.belowThresholdSinceT = atT;
+        else if ((atT - this.belowThresholdSinceT) / 1000 >= AUTO_PAUSE_AFTER_S) {
           this.status = 'autoPaused';
         }
       } else {
@@ -344,15 +403,22 @@ export class Recorder {
 
   /** Picks a checkpointed session back up.
    *
-   *  It comes back *paused*, with everything between the last checkpoint and now
-   *  counted as paused time: the app was not recording during the gap, and a session
-   *  that resumed itself would silently claim minutes it never measured. */
-  restore(cp: RecorderCheckpoint): void {
+   *  By default it comes back *paused*, with everything between the last checkpoint and
+   *  now counted as paused time: after a crash the app was not recording during the gap,
+   *  and a session that resumed itself would silently claim minutes it never measured.
+   *
+   *  `stillRecording` is the other case, and it is the one the pivot created. The
+   *  location service outlives the WebView, so the app can be rebuilt — or killed and
+   *  relaunched — while the session is genuinely still running in the notification
+   *  shade. Banking that gap as a pause would be the same lie in the other direction:
+   *  the ride did not stop, only the screen did. The caller passes it when the service
+   *  is still alive, and follows with `addGeoSamples` for what it recorded meanwhile. */
+  restore(cp: RecorderCheckpoint, { stillRecording = false }: { stillRecording?: boolean } = {}): void {
     this.sport = cp.sport;
-    this.status = 'paused';
+    this.status = stillRecording ? 'recording' : 'paused';
     this.startedAt = cp.startedAt;
-    this.pausedAccumS = cp.pausedAccumS + Math.max(0, (this.now() - cp.savedAt) / 1000);
-    this.pauseStartedAt = this.now();
+    this.pausedAccumS = stillRecording ? cp.pausedAccumS : cp.pausedAccumS + Math.max(0, (this.now() - cp.savedAt) / 1000);
+    this.pauseStartedAt = stillRecording ? null : this.now();
     this.points = cp.points;
     this.distanceM = cp.distanceM;
     this.ascentM = cp.ascentM;

@@ -188,6 +188,19 @@ export function PreStart({
 
       <span style={{ flex: 1 }} />
 
+      {/* The one thing about browser GPS worth knowing before setting off rather than
+          after: a page that is not on screen stops being told where it is. */}
+      <div style={{ display: 'flex', gap: 9, padding: '10px 12px', border: `1px solid ${color.border}`, borderRadius: 8 }}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color.warning} strokeWidth="2" strokeLinecap="round" style={{ flex: 'none', marginTop: 1 }}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 8v5M12 16.5v.01" />
+        </svg>
+        <span style={{ fontSize: 12, lineHeight: 1.45, color: color.textMuted, textWrap: 'pretty' }}>
+          Keep this screen open. The browser only reports your position while the app is showing — locking the phone or switching
+          apps stops the track until you come back, and the map joins the gap with a straight line.
+        </span>
+      </div>
+
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
         <button
           onClick={onStart}

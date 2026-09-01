@@ -13,6 +13,7 @@ import {
   routeSignature,
   ROUTE_POINTS,
   thinElevation,
+  trackQuality,
 } from './derived';
 import { makeSamples, makeTrack } from './testFixtures';
 
@@ -148,5 +149,51 @@ describe('the whole derivation', () => {
     expect(derived.route).toBeNull();
     // A stated average still lands in a zone, as one bucket covering the session.
     expect(derived.hrHist).toEqual({ lo: 145, seconds: [2700] });
+  });
+});
+
+describe('how well the fixes covered the session', () => {
+  const at = (second: number) => ({ t: startedAt + second * 1000, lat: 48.3 + second * 0.0001, lon: 14.28 });
+
+  it('reads a steady 1 Hz track as fully covered', () => {
+    const points = makeTrack({ startedAt, speedMps: 3, distanceM: 900 });
+    const quality = trackQuality(points, startedAt, points[points.length - 1].t);
+    expect(quality.gaps).toBe(0);
+    expect(quality.medianIntervalS).toBe(1);
+    expect(quality.coverage).toBeGreaterThan(0.99);
+  });
+
+  it('finds the stretch where the app was in the background', () => {
+    // Two minutes of riding, then nineteen minutes of nothing, then one more fix.
+    const points = [...Array.from({ length: 120 }, (_, i) => at(i)), at(119 + 19 * 60)];
+    const quality = trackQuality(points, points[0].t, points[points.length - 1].t);
+    expect(quality.gaps).toBe(1);
+    expect(quality.longestGapS).toBeCloseTo(19 * 60, 0);
+    expect(quality.coverage).toBeLessThan(0.15);
+  });
+
+  it('calls a two-fix session what it is', () => {
+    const points = [at(0), at(1161)];
+    const quality = trackQuality(points, points[0].t, points[1].t);
+    expect(quality.fixes).toBe(2);
+    expect(quality.gaps).toBe(1);
+    expect(quality.longestGapS).toBeCloseTo(1161, 0);
+    expect(quality.coverage).toBe(0);
+  });
+
+  it('counts the wait before the first fix as uncovered', () => {
+    const points = Array.from({ length: 60 }, (_, i) => at(300 + i));
+    const quality = trackQuality(points, startedAt, points[points.length - 1].t);
+    expect(quality.longestGapS).toBeCloseTo(300, 0);
+  });
+
+  it('has nothing to report for a session with no track at all', () => {
+    expect(trackQuality([], startedAt, startedAt + 60000).fixes).toBe(0);
+  });
+
+  it('is carried on the stored derivation', () => {
+    const points = makeTrack({ startedAt, speedMps: 3, distanceM: 900 });
+    const derived = deriveActivity({ sport: 'run', startedAt, endedAt: points[points.length - 1].t, samples: makeSamples('x', points) });
+    expect(derived.track.fixes).toBe(points.length);
   });
 });

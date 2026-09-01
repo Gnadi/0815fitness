@@ -1,11 +1,11 @@
-import type { ActivityDerived, ActivitySamples, GeoSample, HrHistogram, RouteSignature, Sport } from '../types';
+import type { ActivityDerived, ActivitySamples, GeoSample, HrHistogram, RouteSignature, Sport, TrackQuality } from '../types';
 import { haversineMeters } from './geo';
 import { MAX_PLAUSIBLE_SPEED_MPS } from './recorder';
 
 /** Bumped whenever anything below changes what it computes, so that activities carrying
  *  an older blob are re-derived from their samples on the next launch rather than
  *  quietly reporting a figure this build no longer stands behind. */
-export const DERIVED_VERSION = 1;
+export const DERIVED_VERSION = 2;
 
 export const PB_DISTANCES: { key: string; label: string; metres: number }[] = [
   { key: '1k', label: '1 km', metres: 1000 },
@@ -31,6 +31,11 @@ const MAX_GAP_S = 120;
 const MOVING_FLOOR_MPS = 0.4;
 
 export const ROUTE_POINTS = 32;
+
+/** Longer than this between two fixes and the stretch between them was not recorded —
+ *  it was inferred. At the once-a-second the recorder asks for, twenty seconds is twenty
+ *  missed fixes, which is past any ordinary hiccup. */
+export const TRACK_GAP_S = 20;
 
 // ── histograms ────────────────────────────────────────────────────
 /** Seconds at each integer value of a sampled signal.
@@ -329,6 +334,47 @@ export function computeDecoupling(samples: ActivitySamples, startedAt: number, e
   return ((first - second) / first) * 100;
 }
 
+// ── how well the fixes covered the session ────────────────────────
+export function trackQuality(points: GeoSample[], startedAt: number, endedAt: number): TrackQuality {
+  const elapsedS = Math.max(0, (endedAt - startedAt) / 1000);
+  if (points.length < 2) {
+    return { fixes: points.length, longestGapS: elapsedS, gaps: points.length ? 1 : 0, coverage: 0, medianIntervalS: 0 };
+  }
+
+  const intervals: number[] = [];
+  let longestGapS = 0;
+  let gaps = 0;
+  let covered = 0;
+  for (let i = 1; i < points.length; i++) {
+    const dt = (points[i].t - points[i - 1].t) / 1000;
+    if (dt <= 0) continue;
+    intervals.push(dt);
+    if (dt > TRACK_GAP_S) {
+      gaps++;
+      if (dt > longestGapS) longestGapS = dt;
+    } else {
+      covered += dt;
+    }
+  }
+  // The stretches before the first fix and after the last are uncovered too.
+  const leading = (points[0].t - startedAt) / 1000;
+  const trailing = (endedAt - points[points.length - 1].t) / 1000;
+  if (leading > TRACK_GAP_S && leading > longestGapS) longestGapS = leading;
+  if (trailing > TRACK_GAP_S && trailing > longestGapS) longestGapS = trailing;
+
+  const sorted = [...intervals].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const medianIntervalS = sorted.length === 0 ? 0 : sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+
+  return {
+    fixes: points.length,
+    longestGapS,
+    gaps,
+    coverage: elapsedS > 0 ? Math.min(1, covered / elapsedS) : 0,
+    medianIntervalS,
+  };
+}
+
 // ── moving time ───────────────────────────────────────────────────
 /** Time actually spent moving: the elapsed span minus the stops. The recorder's
  *  auto-pause already keeps most of them out of the live clock, but an imported file
@@ -390,6 +436,7 @@ export function deriveActivity({ sport, startedAt, endedAt, samples }: DeriveInp
     elevation: thinElevation(points),
     gapDistanceM: sport === 'run' ? gradeAdjustedDistance(points) : null,
     route: routeSignature(points),
+    track: trackQuality(points, startedAt, endedAt),
   };
 }
 
@@ -419,6 +466,7 @@ export function manualDerived(opts: {
     elevation: [0, 0],
     gapDistanceM: null,
     route: null,
+    track: { fixes: 0, longestGapS: 0, gaps: 0, coverage: 0, medianIntervalS: 0 },
   };
 }
 

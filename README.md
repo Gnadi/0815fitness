@@ -176,6 +176,32 @@ thing in the app that talks to the network, and it is built to stay that way:
   need an account and a key. Attribution is on the map, as the tile server's terms
   require.
 
+## What the app does not know about your route
+
+A browser only receives locations while the page is on screen. Lock the phone or switch
+apps mid-ride and `watchPosition` stops: you can come back to two fixes twenty minutes
+apart. Joining them with a line drawn like any other stretch of road claims a route that
+was never recorded — a 4 km straight line across a city, at the distance of the crow's
+flight rather than the roads ridden.
+
+So the app distinguishes what it recorded from what it inferred:
+
+- **An uncertain fix is kept, not discarded.** Accuracy decides whether a fix is trusted
+  with *distance*, not whether it is recorded at all — a fix good to eighty metres still
+  says which road you were on. Below 50 m it counts normally; between 50 m and 200 m it
+  is drawn but only earns distance for movement larger than its own error, so a phone
+  drifting inside its accuracy circle does not ride kilometres; past 200 m it is noise
+  and is dropped. Previously *anything* over 50 m was thrown away, which is the other way
+  a ride came back as two points.
+- **Stretches with no fixes are drawn as the guess they are** — thin, dashed and dimmed,
+  with the recorded track lifting its pen across them.
+- **The session says so.** `TrackQuality` in the stored derivation carries the fix count,
+  the longest gap, how many there were and what share of the elapsed time the fixes
+  actually cover; the detail screen reports it, and explains the cause when there are
+  gaps.
+- **Pre-start says it first**, because it is worth knowing before setting off rather than
+  after.
+
 ## Where the log lives
 
 Activities are stored in IndexedDB, split in two: a **summary** per activity — the

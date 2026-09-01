@@ -9,7 +9,12 @@ const AUTO_PAUSE_AFTER_S = 8;
  *  one threshold does not flip the state every few seconds. */
 const RESUME_FACTOR = 1.8;
 export const MAX_PLAUSIBLE_SPEED_MPS = 14; // ~50 km/h — beyond this a GPS jump is treated as noise
-const MAX_ACCEPT_ACCURACY_M = 50;
+/** At or under this, a fix is trusted: it counts towards distance like any other, and
+ *  the live signal indicator reads as good. */
+const TRUSTED_ACCURACY_M = 50;
+/** Past this a fix is noise — a cell-tower guess in the wrong suburb — and is dropped.
+ *  Between the two it is kept for the shape of the track but has to earn its distance. */
+const KEEP_ACCURACY_M = 200;
 const PACE_WINDOW_S = 25;
 
 export interface RecorderSnapshot {
@@ -197,10 +202,19 @@ export class Recorder {
     if (km > lapStartKm) this.addLap();
   }
 
+  /** A fix landed.
+   *
+   *  An uncertain fix used to be discarded outright, which is how a ride could come back
+   *  as two points and a straight line: a phone in a pocket, or a browser that has
+   *  fallen back to a coarse wifi or cell fix, reports fifty to two hundred metres
+   *  routinely, and every one of those was thrown away. Accuracy now decides whether a
+   *  fix is *trusted with distance*, not whether it is recorded at all — a fix good to
+   *  eighty metres still says which road you were on. */
   addGeoSample(sample: GeoSample) {
-    this.accuracy = sample.accuracy ?? this.accuracy;
-    this.gpsOk = sample.accuracy == null || sample.accuracy <= MAX_ACCEPT_ACCURACY_M;
-    if (!this.gpsOk) return;
+    const accuracy = sample.accuracy ?? null;
+    this.accuracy = accuracy ?? this.accuracy;
+    this.gpsOk = accuracy == null || accuracy <= TRUSTED_ACCURACY_M;
+    if (accuracy != null && accuracy > KEEP_ACCURACY_M) return;
 
     const last = this.points[this.points.length - 1];
     this.points.push(sample);
@@ -209,7 +223,10 @@ export class Recorder {
       const dtS = (sample.t - last.t) / 1000;
       const dM = haversineMeters(last, sample);
       const speed = dtS > 0 ? dM / dtS : 0;
-      if (dtS > 0 && speed <= MAX_PLAUSIBLE_SPEED_MPS) {
+      // An uncertain fix only earns distance for movement bigger than its own error —
+      // otherwise a stationary phone drifting inside its accuracy circle rides kilometres.
+      const earnsDistance = accuracy == null || accuracy <= TRUSTED_ACCURACY_M || dM > accuracy;
+      if (dtS > 0 && speed <= MAX_PLAUSIBLE_SPEED_MPS && earnsDistance) {
         this.distanceM += dM;
         if (last.ele != null && sample.ele != null) {
           const rise = sample.ele - last.ele;

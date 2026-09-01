@@ -91,6 +91,26 @@ export interface ActivityDerived {
   gapDistanceM: number | null;
   /** The track reduced to a fixed-length, start-relative shape, for matching repeats. */
   route: RouteSignature | null;
+  /** How well the fixes actually cover the session — see `TrackQuality`. */
+  track: TrackQuality;
+}
+
+/** How completely the GPS covered a session.
+ *
+ *  A browser stops delivering fixes while the page is in the background, so a phone
+ *  pocketed mid-ride can leave two fixes twenty minutes apart. The line between them is
+ *  an assumption, not a route, and the app has to be able to say so rather than drawing
+ *  it like any other stretch of road. */
+export interface TrackQuality {
+  fixes: number;
+  /** The longest stretch with no fix at all, in seconds. */
+  longestGapS: number;
+  /** How many stretches exceeded the gap threshold. */
+  gaps: number;
+  /** The share of the session's elapsed time that fixes actually cover, 0–1. */
+  coverage: number;
+  /** Typical seconds between fixes, as a median so one gap does not skew it. */
+  medianIntervalS: number;
 }
 
 /** A track reduced to `ROUTE_POINTS` evenly spaced offsets in metres from its start,

@@ -1,3 +1,22 @@
+> **This is the plan as approved, kept as the record of the decision. The README
+> documents what actually shipped — read that first if you want to know how the app
+> works today.** Five things went differently once the code was in front of us:
+>
+> - **`restore(cp, { stillRecording })` was dropped.** Reading the location plugin's Java
+>   showed `handleOnDestroy()` stops the service with the activity, so a service never
+>   outlives the WebView and the flag had no honest caller. A checkpoint still comes back
+>   paused, which is correct: if the app is gone, the recording genuinely stopped.
+> - **The battery-optimisation prompt grew.** From Android 13 notifications are opt-in,
+>   and the location plugin only ever requests location — so a foreground service can run
+>   with its notification suppressed, which would make pre-start's promise untrue. The
+>   plugin covers both and is named `RecordingReadinessPlugin` for it.
+> - **`DERIVED_VERSION` went to 3.** Raising the speed ceiling changes moving time, the
+>   bests and route signatures for anything ridden downhill, so the log re-derives rather
+>   than measuring pre- and post-pivot rides differently.
+> - **No `uuid16` helper was needed** — `numberToUUID` ships with the BLE plugin.
+> - **The smoke run kept working** rather than being retired, via a browser stand-in in
+>   `src/lib/location.ts` that is unreachable from the APK.
+
 # Pivot Contour from PWA to a native Android app
 
 ## Context

@@ -81,6 +81,9 @@ export interface ActivityDerived {
   cadenceHist: HrHistogram | null;
   /** Fastest time over each PB distance, keyed by `PB_DISTANCES` key. */
   pbEfforts: Record<string, number>;
+  /** Seconds taken over each whole kilometre of the session, in order — the sections a
+   *  repeat of a route is read against its earlier selves with. */
+  kmSplitS: number[];
   /** Mean maximal power over each window, keyed by `POWER_DURATIONS` key. */
   powerBests: Record<string, number>;
   decoupling: number | null;

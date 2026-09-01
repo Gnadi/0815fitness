@@ -1,9 +1,11 @@
 import { color, font } from '../theme';
 import * as S from '../styles';
 import { RouteSilhouette } from './primitives';
+import { MedalBadge } from './medals';
 import { useUnits } from '../hooks/useUnits';
 import type { UnitFormat } from '../lib/units';
 import { avgSpeedMps, elevationProfile, fmtDayMonth } from '../lib/stats';
+import type { Medal } from '../lib/medals';
 import type { Activity } from '../types';
 
 /** The headline figure for one session: pace for a run, power — or speed, without a
@@ -25,12 +27,14 @@ export function ActivityRow({
   onOpen,
   right,
   trailing = '›',
+  medals = [],
 }: {
   activity: Activity;
   onOpen: () => void;
   /** Replaces the default metric line — a route's repeats show a delta instead. */
   right?: string;
   trailing?: string;
+  medals?: Medal[];
 }) {
   const units = useUnits();
   return (
@@ -46,6 +50,7 @@ export function ActivityRow({
       <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: color.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {activity.title}
       </span>
+      <MedalBadge medals={medals} />
       <span style={{ ...S.tableNum, color: color.textMuted, whiteSpace: 'nowrap' }}>{right ?? activityMetric(activity, units)}</span>
       <span className="ct-cue-dot" style={{ fontSize: 13, lineHeight: 1, paddingBottom: 1 }}>
         {trailing}

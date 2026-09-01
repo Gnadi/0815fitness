@@ -4,6 +4,7 @@ import { color, font } from '../theme';
 import * as S from '../styles';
 import { Label } from '../components/primitives';
 import { ActivityCard } from '../components/ActivityCard';
+import { awardMedals } from '../lib/medals';
 import { useUnits } from '../hooks/useUnits';
 import {
   computeStreak,
@@ -151,6 +152,9 @@ export function Overview({
   const weekStarts = useMemo(() => lastNWeekStarts(2, now), [now]);
   const rollups = useMemo(() => rollupWeeks(activities, weekStarts, settings), [activities, weekStarts, settings]);
   const streak = useMemo(() => computeStreak(activities, now), [activities, now]);
+  // One pass over the log gives every session its medals, so a card can carry its count
+  // without the list asking the question once per row.
+  const medals = useMemo(() => awardMedals(activities), [activities]);
   const thisWeek = rollups[rollups.length - 1];
 
   // Gear past the distance it was meant to be replaced at — the one thing in the log
@@ -317,7 +321,7 @@ export function Overview({
 
               <div style={{ ...S.cardStack, gap: 10 }}>
                 {recent.map((a) => (
-                  <ActivityCard key={a.id} activity={a} now={now} onOpen={() => onActivity(a.id)} />
+                  <ActivityCard key={a.id} activity={a} now={now} medals={medals.get(a.id) ?? []} onOpen={() => onActivity(a.id)} />
                 ))}
               </div>
 

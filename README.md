@@ -67,6 +67,7 @@ The prototype simulated its sensor data. This implementation reads the actual ha
 | Week volume, streak, load ratio, zones, PBs, power curve, decoupling | Computed from stored activities in `src/lib/stats.ts` |
 | Training stress, normalised power, grade-adjusted pace, cadence distribution | Derived per activity in `src/lib/derived.ts`, aggregated in `src/lib/stats.ts` |
 | Route repeats | Track shape matching in `src/lib/routes.ts` |
+| Medals on a session, its route and its kilometres | Ranked against everything older in `src/lib/medals.ts` |
 | Stat details behind each Overview figure | Twelve-week rollups in `src/lib/statDetails.ts` |
 | Session comparison: metrics, pace/elevation/HR overlays, splits | Per-second traces off the recorded track in `src/lib/compare.ts` |
 
@@ -76,7 +77,7 @@ Two honest deviations from the prototype's copy:
   accuracy in metres and derives the signal bars from it (`fixStrengthFromAccuracy`).
 - **The recording map draws no tiles.** It renders the actual recorded track in the
   prototype's line-and-terrain style. A saved session's map can show an OpenStreetMap
-  basemap under the track — see **The basemap** below — but recording never fetches
+  basemap under the track — see **The map** below — but recording never fetches
   anything, because that is the screen used where there is no signal.
 
 ## Browser support
@@ -104,7 +105,9 @@ src/
     statDetails.ts  the model behind each Overview figure's detail screen
     compare.ts      per-second traces, distance-axis series, splits, metric rows
     routes.ts       matching a track against the routes already in the log
-    tiles.ts        Web Mercator, the zoom that fits a track, and the tile grid
+    medals.ts       what a session, a route and its kilometres were worth on the day
+    tiles.ts        Web Mercator, the framing that fits a track, the tile grid it
+                    covers, the pace ribbon and the marks along the track
     units.ts        metric or imperial, applied on the way to the screen
     db.ts           the IndexedDB store: summaries, samples, key/value
     storage.ts      the store's facade, settings, and migration from older builds
@@ -114,10 +117,11 @@ src/
     pwa.ts          service-worker registration and the persistent-storage request
   hooks/            useGpsFix, useRecorder, useBleSensors, useWakeLock, useNavStack,
                     useUnits / UnitsProvider
-  components/       AppShell, primitives, ActivityRow, ActivityCard, charts, TileMap
-  screens/          Overview, Activities, ActivityDetail, ManualEntry, Settings,
-                    Analyse (load/zones/records/routes/plan), RouteDetail, StatDetail,
-                    Compare, PreStart, RecordingSession, Save
+  components/       AppShell, primitives, ActivityRow, ActivityCard, charts, medals,
+                    RouteMap
+  screens/          Overview, Activities, ActivityDetail, MapScreen, ManualEntry,
+                    Settings, Analyse (load/zones/records/routes/plan), RouteDetail,
+                    StatDetail, Compare, PreStart, RecordingSession, Save
   sw.js             the service worker; its precache list is injected at build time
 public/
   logo.svg          the Contour mark, and the source the PNG icons are rendered from
@@ -159,30 +163,104 @@ cross each bucket of the track, not an instantaneous speed, so a stop reads as t
 kilometre it was; a GPS jump the recorder refused to count is discarded here too.
 Sports are never mixed: pace against speed is not a comparison.
 
-## The basemap
+## The map
 
-Opening a saved session draws its track over OpenStreetMap raster tiles. It is the only
-thing in the app that talks to the network, and it is built to stay that way:
+A saved session opens on its map. It is the widest thing on the screen — full bleed,
+under the two or three figures anyone actually looks for — and a tap takes it fullscreen,
+where it pans and zooms. What it draws is the session, not a line:
+
+- **The track is coloured by pace**, against the rest of the same session: the tenth
+  percentile of its own speeds through to the ninetieth, blue through neutral to teal.
+  Relative, because an absolute scale would paint every recovery run one colour and say
+  nothing; and a session held to within a few per cent of one speed is left the plain
+  white track, because colouring that would be painting rounding as terrain. The scale
+  is labelled on the map — a ribbon nobody can read is decoration.
+- **The kilometres are marked along it**, every one on a run, every five or twenty on a
+  long ride, so a stretch on the map can be found in the splits table and the other way
+  round.
+- **The medals are pinned where they were won** — see **Medals** below. A route whose
+  every kilometre was a personal best would be fifty pins on one line, so the map keeps
+  the best tier and thins them evenly along the route; the splits table still marks
+  every one.
+- **Start and finish are distinguishable**: a green disc and a square, rather than two
+  dots of different colours.
+- **A stretch the GPS never recorded stays a dashed guess**, and nothing is coloured
+  across it — the pace of a stretch that was never recorded is not known.
+
+Under it all is the same basemap policy the app has always had, unchanged:
 
 - **It is a setting.** Settings → *Map* switches it to the drawn track, and with it off
   the app makes no network requests at all. A tile request tells a third-party server
   roughly where you were; that is a choice worth leaving to the person making it.
-- **Recording never fetches.** The tiles are on the detail screen only. The screen used
-  at a trailhead with no signal draws the track and nothing else.
+- **Recording never fetches.** The tiles are on the saved-session screens only. The
+  screen used at a trailhead with no signal draws the track and nothing else.
 - **Failure is not a grey hole.** If the tiles do not arrive — offline, blocked, the
-  server saying no — the map falls back to the line-and-contour drawing, which is what
-  the app showed before there were tiles and needs nothing.
+  server saying no — the map falls back to the line-and-contour drawing that is what the
+  app showed before there were tiles. The pace colours, the kilometre marks and the
+  medals are all still on it: they come from the recording, not from the basemap.
 - **The service worker does not touch them.** It returns early on any cross-origin
   request, so tiles never enter the precache and the offline guarantee is unchanged.
-- **No map library.** `src/lib/tiles.ts` is the Web Mercator projection, the zoom that
-  fits a track to the viewport, and the tile grid that covers it — about a hundred lines,
-  against a dependency whose stylesheet the app would have to carry offline for a
-  basemap that only ever appears online. The zoom is chosen rather than offered: this is
-  a picture of one recorded session, not something to pan around.
+- **No map library.** `src/lib/tiles.ts` is the Web Mercator projection, the framing that
+  fits a track to a viewport, the tile grid that covers it, and the arithmetic a drag and
+  a pinch move it by — about three hundred lines, against a dependency whose stylesheet
+  the app would have to carry offline for a basemap that only ever appears online.
+- **The framing is fractional.** Tiles exist at whole zooms only, and fitting a track by
+  flooring to one of them drew it at anywhere down to half the size of its frame. The
+  fit is now a fractional zoom, with the lower zoom's tiles drawn enlarged to meet it:
+  the basemap is a little softer, and the track is the size of the frame it was given.
+- **Panning and zooming are a framing, not a scroll position.** A centre and a zoom;
+  the tiles and every projected point are derived from it. A drag moves the map by
+  exactly the distance the finger travelled, and a pinch keeps the coordinate under the
+  fingers under the fingers, because both are worked in world pixels rather than by
+  compounding deltas frame by frame. Moving the map is a departure from the fit that is
+  remembered against it, so a rotation — or opening another session — goes back to
+  showing all of the route rather than to wherever the last one was left.
 - **Standard OSM tiles are a light map** in a dark-only app, so they are inverted through
   a CSS filter into the palette rather than swapped for a dark tile server that would
   need an account and a key. Attribution is on the map, as the tile server's terms
-  require.
+  require, and it moves clear of the fullscreen map's figures rather than sitting behind
+  them.
+
+## Medals
+
+A log full of numbers still leaves the question a person opens it with — *was that any
+good?* — to be answered by reading a table. Medals answer it before the table is read.
+Each session is marked with what it was worth, and the marks are the same object
+everywhere: in the log's rows, on the session's header, listed under its map, pinned on
+the track and set against the splits table row that earned them.
+
+Three of them are awarded, all by the same rule:
+
+| Medal | Ranked against |
+| --- | --- |
+| **Best effort** | The same distance in every earlier run (1 km, 5 km, 10 km, HM), or the same window in every earlier ride (5 s to 60 min of the power curve) |
+| **Route** | Every earlier time on the same route, as the route matcher already groups them |
+| **Section** | The same kilometre of the same route, covered the same way round |
+
+And the rule is what keeps a medal worth having:
+
+- **A medal is earned against what came before it.** Every effort is ranked against the
+  sessions *older* than it, never against the whole log. So it is what the session was
+  worth on the day; nothing recorded since can take it away, and nothing appears on an
+  old session because of something recorded last week.
+- **It takes a field to win**: three earlier attempts before anything is awarded. A
+  first run is not a personal best, it is a first run.
+- **A placing is not enough.** Third of four is a placing, and also — necessarily — a
+  session slower than most of the ones before it. A medal is a top-three placing *that
+  also beat what you usually do*, better than the median of everything before it. With a
+  season of attempts the second condition never binds; it binds early, which is when
+  the noise it removes would otherwise be all there is.
+- **Only like against like.** A route is the same route in either direction, but a
+  kilometre of it is not: the fourth kilometre of a loop run backwards is a different
+  stretch of road, so sections are only ranked against repeats covered the same way
+  round. For the same reason the splits table only carries medal marks when it is cut in
+  kilometres — a table in miles, or in five-kilometre blocks for a long ride, is not the
+  same stretch of ground and must not claim to be.
+
+Sections are kilometres because that is what the derivation stores: `kmSplitS` holds the
+time over each whole kilometre of a session, which is ten numbers for a ten-kilometre run
+and the reason a screenful of medals costs one pass over the summaries with not a single
+sample stream loaded.
 
 ## What the app does not know about your route
 
@@ -298,7 +376,8 @@ Recording (live, auto-paused, paused, screen-locked, ride without a power meter)
 — plus the stat details and the session comparison above, and the screens the design file
 did not cover: the activity list, a single activity on its own (splits, laps, zones,
 cadence, its own charts, and the only place a saved session can be edited or deleted),
-manual entry for a session done without the phone, settings, and route repeats.
+manual entry for a session done without the phone, settings, route repeats, the
+fullscreen map, and the medals a session earned.
 
 Analyse has five tabs: **Load**, **Zones** (with the cadence distribution), **Records**,
 **Routes**, and **Plan** — which now scores the week that has just finished against the

@@ -111,6 +111,31 @@ describe('route signature', () => {
   });
 });
 
+describe('kilometre splits', () => {
+  it('times each whole kilometre and leaves the remainder out', () => {
+    // 3.5 km at a flat 4 m/s: three splits of 250 s, and no split for the last 500 m.
+    const points = makeTrack({ startedAt, speedMps: 4, distanceM: 3500 });
+    const derived = deriveActivity({ sport: 'run', startedAt, endedAt: points[points.length - 1].t, samples: makeSamples('x', points) });
+    expect(derived.kmSplitS).toHaveLength(3);
+    for (const split of derived.kmSplitS) expect(split).toBeCloseTo(250, 0);
+  });
+
+  it('records a slow kilometre as the slow one it was', () => {
+    const first = makeTrack({ startedAt, speedMps: 4, distanceM: 1000 });
+    const turn = first[first.length - 1];
+    const second = makeTrack({ startedAt: turn.t, speedMps: 2, distanceM: 1200, lat: turn.lat, lon: turn.lon });
+    const points = [...first, ...second];
+    const derived = deriveActivity({ sport: 'run', startedAt, endedAt: points[points.length - 1].t, samples: makeSamples('x', points) });
+    expect(derived.kmSplitS[1] / derived.kmSplitS[0]).toBeCloseTo(2, 1);
+  });
+
+  it('has no splits for a session that never covered a kilometre', () => {
+    const points = makeTrack({ startedAt, speedMps: 3, distanceM: 400 });
+    const derived = deriveActivity({ sport: 'run', startedAt, endedAt: points[points.length - 1].t, samples: makeSamples('x', points) });
+    expect(derived.kmSplitS).toEqual([]);
+  });
+});
+
 describe('the whole derivation', () => {
   it('carries the version it was computed at, so a later build can re-derive it', () => {
     const points = makeTrack({ startedAt, speedMps: 3, distanceM: 3000 });

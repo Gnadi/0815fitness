@@ -12,6 +12,7 @@ import { ActivityDetail } from './screens/ActivityDetail';
 import { SettingsScreen } from './screens/Settings';
 import { ManualEntry } from './screens/ManualEntry';
 import { RouteDetail } from './screens/RouteDetail';
+import { MapScreen } from './screens/MapScreen';
 import {
   addActivity,
   clearDemoActivities,
@@ -45,7 +46,8 @@ type View =
   | { screen: 'stat'; statKey: StatKey }
   | { screen: 'cmp'; ids: string[] }
   | { screen: 'act'; id: string }
-  | { screen: 'route'; id: string };
+  | { screen: 'route'; id: string }
+  | { screen: 'map'; id: string };
 
 const ROOT: View = { screen: 'ovw' };
 
@@ -130,6 +132,7 @@ export default function App() {
   const openCompare = useCallback((ids: string[]) => push({ screen: 'cmp', ids }), [push]);
   const openActivity = useCallback((id: string) => push({ screen: 'act', id }), [push]);
   const openRoute = useCallback((id: string) => push({ screen: 'route', id }), [push]);
+  const openMap = useCallback((id: string) => push({ screen: 'map', id }), [push]);
 
   // The record flow replaces rather than stacks: pre-start, recording and save are steps
   // of one session, and none of them is a place back should land on.
@@ -296,7 +299,11 @@ export default function App() {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onCompare={openCompare}
+            onMap={openMap}
           />
+        )}
+        {view.screen === 'map' && (
+          <MapScreen activity={activityById(view.id)} activities={activities} settings={settings} onBack={back} />
         )}
         {view.screen === 'route' && (
           <RouteDetail routeId={view.id} activities={activities} onBack={back} onActivity={openActivity} onCompare={openCompare} />

@@ -5,7 +5,7 @@ import { MAX_PLAUSIBLE_SPEED_MPS } from './recorder';
 /** Bumped whenever anything below changes what it computes, so that activities carrying
  *  an older blob are re-derived from their samples on the next launch rather than
  *  quietly reporting a figure this build no longer stands behind. */
-export const DERIVED_VERSION = 2;
+export const DERIVED_VERSION = 3;
 
 export const PB_DISTANCES: { key: string; label: string; metres: number }[] = [
   { key: '1k', label: '1 km', metres: 1000 },
@@ -129,6 +129,35 @@ export function bestEffortOnGrid(grid: number[], targetM: number): number | null
     }
   }
   return isFinite(best) ? best : null;
+}
+
+/** The time each whole kilometre of the session took, in order.
+ *
+ *  Stored with the summary rather than recomputed, because it is what one repeat of a
+ *  route is read against another with: comparing the fourth kilometre of this Tuesday's
+ *  loop with the fourth kilometre of every previous one is a comparison of the same
+ *  ground, and doing it from the sample streams would mean loading a season of them to
+ *  draw one screen. Ten numbers for a ten-kilometre run.
+ *
+ *  Kilometres, not display units, for the same reason nothing else in here is settings-
+ *  dependent: a log read in miles must not be a different log. */
+export function kilometreSplits(grid: number[], splitM = 1000): number[] {
+  if (grid.length === 0) return [];
+  const out: number[] = [];
+  let previousS = 0;
+  let target = splitM;
+  for (let s = 1; s < grid.length; s++) {
+    while (grid[s] >= target) {
+      // Interpolate inside the second the kilometre was crossed in, so a fast runner's
+      // splits do not each carry up to a second of rounding.
+      const step = grid[s] - grid[s - 1];
+      const at = step > 0 ? s - 1 + (target - grid[s - 1]) / step : s;
+      out.push(Number((at - previousS).toFixed(1)));
+      previousS = at;
+      target += splitM;
+    }
+  }
+  return out;
 }
 
 function powerToSecondGrid(samples: { t: number; watts: number }[]): number[] {
@@ -431,6 +460,7 @@ export function deriveActivity({ sport, startedAt, endedAt, samples }: DeriveInp
     avgCadence: histogramMean(cadenceHist),
     cadenceHist,
     pbEfforts,
+    kmSplitS: kilometreSplits(distanceGrid),
     powerBests,
     decoupling: computeDecoupling(samples, startedAt, endedAt),
     elevation: thinElevation(points),
@@ -461,6 +491,7 @@ export function manualDerived(opts: {
     avgCadence: null,
     cadenceHist: null,
     pbEfforts: {},
+    kmSplitS: [],
     powerBests: {},
     decoupling: null,
     elevation: [0, 0],

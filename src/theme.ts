@@ -45,7 +45,44 @@ export const color = {
   chartAxis: '#2A2E32',
   scrubLine: '#F2F4F5',
   pbMarker: '#4F9E6A',
+
+  // Medals. Three metals, desaturated far enough to sit in a dark palette without
+  // turning the screen into a trophy cabinet — they mark data, like everything else
+  // that is allowed colour here.
+  medalGold: '#D6A63C',
+  medalSilver: '#A7B0B6',
+  medalBronze: '#B0733F',
+
+  // The pace ramp the track is drawn in: this session's slowest stretches through its
+  // typical ones to its fastest. Relative to the session, so the colours say where the
+  // hill was rather than what shape you are in.
+  paceSlow: '#4F7CA6',
+  paceMid: '#E4E7E9',
+  paceFast: '#4FB3A8',
+
+  mapInk: '#0A0B0C',
 } as const;
+
+function mix(from: string, to: string, f: number): string {
+  const channel = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
+  const at = (i: number) => Math.round(channel(from, i) + (channel(to, i) - channel(from, i)) * f);
+  return `rgb(${at(0)}, ${at(1)}, ${at(2)})`;
+}
+
+/** The colour of a stretch of track that was `tone` fast — 0 the slowest of the
+ *  session, 1 the fastest. Two stops rather than a rainbow: the eye reads one hue
+ *  moving through neutral far better than it reads five, and the map has medals and
+ *  markers on it that need to stay the loudest things there. */
+export function paceColor(tone: number): string {
+  const t = Math.max(0, Math.min(1, tone));
+  return t < 0.5 ? mix(color.paceSlow, color.paceMid, t * 2) : mix(color.paceMid, color.paceFast, (t - 0.5) * 2);
+}
+
+export const medalColor: Record<'gold' | 'silver' | 'bronze', string> = {
+  gold: color.medalGold,
+  silver: color.medalSilver,
+  bronze: color.medalBronze,
+};
 
 export const zoneColors = [color.zone1, color.zone2, color.zone3, color.zone4, color.zone5];
 

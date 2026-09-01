@@ -3,6 +3,7 @@ import { color, font } from '../theme';
 import * as S from '../styles';
 import { Label, ScreenHeader } from '../components/primitives';
 import { ActivityRow } from '../components/ActivityRow';
+import { awardMedals } from '../lib/medals';
 import { useUnits } from '../hooks/useUnits';
 import { fmtEuroDate, hoursMinutes, startOfWeek } from '../lib/stats';
 import { MAX_COMPARE } from '../lib/compare';
@@ -34,6 +35,7 @@ export function Activities({
   const [picking, setPicking] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
 
+  const medals = useMemo(() => awardMedals(activities), [activities]);
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return activities.filter((a) => {
@@ -195,7 +197,7 @@ export function Activities({
                       </span>
                     </button>
                   ) : (
-                    <ActivityRow key={a.id} activity={a} onOpen={() => onActivity(a.id)} />
+                    <ActivityRow key={a.id} activity={a} medals={medals.get(a.id) ?? []} onOpen={() => onActivity(a.id)} />
                   );
                 })}
               </div>

@@ -206,8 +206,50 @@ await page.waitForTimeout(700);
 await shot(page, '26b-compare-from-detail');
 check('the chosen pair is compared', await page.getByText('reference · ').isVisible());
 
+// The map, on a screen of its own: it is the largest thing on a session, and a tap
+// takes it fullscreen, where it can be dragged and zoomed.
 await page.goBack();
 await page.waitForTimeout(500);
+await page.getByRole('button', { name: 'Open the map full screen' }).click();
+await page.waitForTimeout(900);
+await shot(page, '23b-map-fullscreen');
+check('the map opens on a screen of its own', await page.getByRole('button', { name: 'Zoom in' }).isVisible());
+const framedAt = await page.locator('img[src*="tile.openstreetmap.org"]').first().getAttribute('src');
+await page.getByRole('button', { name: 'Zoom in' }).click();
+await page.waitForTimeout(600);
+await shot(page, '23c-map-zoomed');
+check('zooming in asks for a closer tile', (await page.locator('img[src*="tile.openstreetmap.org"]').first().getAttribute('src')) !== framedAt);
+check('a zoomed map offers the whole route back', await page.getByRole('button', { name: 'Fit the whole route' }).isVisible());
+await page.getByRole('button', { name: 'Fit the whole route' }).click();
+await page.waitForTimeout(400);
+await page.goBack();
+await page.waitForTimeout(600);
+
+// A session that repeats a route long enough to have earned medals.
+await page.goto(BASE);
+await page.waitForTimeout(600);
+await page.getByRole('button', { name: /^All \d+ sessions →$/ }).click();
+await page.waitForTimeout(500);
+const decorated = page.locator('.ct-row', { has: page.locator('svg[width="13"]') });
+check('the log marks the sessions that earned something', (await decorated.count()) > 0);
+if (await decorated.count()) {
+  await decorated.first().click();
+  await page.waitForTimeout(1200);
+  await shot(page, '23d-activity-medals');
+  check('a session says what it won', await page.getByText(/Achievements/).first().isVisible());
+  await page.evaluate(() => document.querySelector('.ct-scroll').scrollBy(0, 700));
+  await page.waitForTimeout(400);
+  await shot(page, '23e-activity-medal-list');
+  await page.goBack();
+  await page.waitForTimeout(500);
+}
+
+await page.goto(BASE);
+await page.waitForTimeout(600);
+await page.getByRole('button', { name: /^All \d+ sessions →$/ }).click();
+await page.waitForTimeout(500);
+await page.locator('.ct-row').first().click();
+await page.waitForTimeout(900);
 await page.getByRole('button', { name: 'Edit' }).click();
 await page.waitForTimeout(400);
 await shot(page, '26c-activity-edit');

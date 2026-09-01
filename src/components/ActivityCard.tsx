@@ -1,8 +1,10 @@
 import { color, font } from '../theme';
 import * as S from '../styles';
 import { RouteSilhouette } from './primitives';
+import { MedalBadge } from './medals';
 import { useUnits } from '../hooks/useUnits';
 import { avgSpeedMps, durationS, elevationProfile, fmtClock, fmtTimeOfDay, whenLabel } from '../lib/stats';
+import type { Medal } from '../lib/medals';
 import type { Activity } from '../types';
 
 /** One session as the Overview shows it: what it was, when it was, and the three
@@ -11,7 +13,7 @@ import type { Activity } from '../types';
  *  The dense `ActivityRow` is still what the log, a route's repeats and a figure's
  *  contributors use; this is the same session read at arm's length, which is what a
  *  start screen is for. */
-export function ActivityCard({ activity, onOpen, now }: { activity: Activity; onOpen: () => void; now: number }) {
+export function ActivityCard({ activity, onOpen, now, medals = [] }: { activity: Activity; onOpen: () => void; now: number; medals?: Medal[] }) {
   const units = useUnits();
   const speed = avgSpeedMps(activity);
   // A flat profile — a treadmill, a manual entry, a device that reported no altitude —
@@ -43,6 +45,7 @@ export function ActivityCard({ activity, onOpen, now }: { activity: Activity; on
         <span style={{ flex: 1, textAlign: 'right', fontFamily: font.mono, fontSize: 11, color: color.textFaint, ...S.mono }}>
           {whenLabel(activity.startedAt, now)} · {fmtTimeOfDay(activity.startedAt)}
         </span>
+        <MedalBadge medals={medals} />
         <span className="ct-cue-dot" style={{ fontSize: 13, lineHeight: 1, paddingBottom: 1 }}>
           ›
         </span>

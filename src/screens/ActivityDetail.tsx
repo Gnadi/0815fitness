@@ -4,10 +4,12 @@ import { color, font, zoneColors, ZONE_NAMES } from '../theme';
 import * as S from '../styles';
 import { ActionButton, Field, Label, ScreenHeader, Segmented } from '../components/primitives';
 import { CompareSeriesChart, ElevationProfile, HistogramBars, ZoneBar } from '../components/charts';
-import { TileMap } from '../components/TileMap';
+import { RouteMap } from '../components/RouteMap';
+import { MedalIcon, MedalRow, MedalTally } from '../components/medals';
 import { useUnits } from '../hooks/useUnits';
 import { buildTrace, metricsFor, splitLengthForSport, splitsFor, type Split, type Trace } from '../lib/compare';
 import { deriveActivity } from '../lib/derived';
+import { mapPins, medalsFor, type Medal } from '../lib/medals';
 import { downloadFile, exportFileName, toGpx } from '../lib/backup';
 import { getSamples } from '../lib/storage';
 import {
@@ -38,6 +40,7 @@ export function ActivityDetail({
   onEdit,
   onDelete,
   onCompare,
+  onMap,
 }: {
   activity: Activity | null;
   activities: Activity[];
@@ -46,6 +49,7 @@ export function ActivityDetail({
   onEdit: (a: Activity) => void;
   onDelete: (id: string) => void;
   onCompare: (ids: string[]) => void;
+  onMap: (id: string) => void;
 }) {
   const units = useUnits();
   // Keyed by the activity it was loaded for, so opening a second session never shows
@@ -80,6 +84,19 @@ export function ActivityDetail({
   const metrics = useMemo(() => (full ? metricsFor(full) : null), [full]);
   const zones = useMemo(() => (activity ? zoneSecondsForActivity(activity, settings) : []), [activity, settings]);
   const stress = useMemo(() => (activity ? activityStress(activity, settings) : null), [activity, settings]);
+  // What this session was worth against the sessions that came before it. Read off the
+  // stored derivations of the whole log, so it costs one pass and no sample streams.
+  const medals = useMemo(() => (activity ? medalsFor(activity, activities) : []), [activity, activities]);
+  const medalsByKm = useMemo(() => new Map(medals.filter((m) => m.km != null).map((m) => [m.km as number, m])), [medals]);
+  const pins = useMemo(() => mapPins(medals).map((m) => ({ km: m.km as number, tier: m.tier, label: m.label })), [medals]);
+  // Everything that speaks for the whole session, and only the first handful of the
+  // kilometres inside it: a loop whose every section was a best is a wall of rows, and
+  // the splits table below marks all of them anyway.
+  const listedMedals = useMemo(() => {
+    const sections = medals.filter((m) => m.kind === 'segment');
+    return [...medals.filter((m) => m.kind !== 'segment'), ...sections.slice(0, 6)];
+  }, [medals]);
+  const hiddenSections = medals.filter((m) => m.kind === 'segment').length - 6;
 
   if (!activity || !metrics) {
     return (
@@ -171,19 +188,35 @@ export function ActivityDetail({
           />
         ) : (
           <>
-            <div style={{ ...sectionStyle, border: `1px solid ${color.border}`, borderRadius: 8, overflow: 'hidden', gap: 0 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, background: color.dividerHairline }}>
+            {/* The session, the way it is actually read: the two or three figures
+                anyone looks for, and then the map — full width, edge to edge, the
+                largest thing on the screen. A tap opens it on a screen of its own. */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ padding: '0 16px', display: 'flex', alignItems: 'flex-end', gap: 20, flexWrap: 'wrap', rowGap: 12 }}>
                 {headline.map((m) => (
-                  <div key={m.label} style={{ background: color.surface, padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <div key={m.label} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                     <Label>{m.label}</Label>
-                    <span style={{ ...S.metric, fontWeight: 600, color: color.text }}>{m.value}</span>
+                    <span style={{ ...S.metricLarge, color: color.text }}>{m.value}</span>
                     <span style={{ fontFamily: font.mono, fontSize: 11, color: color.textFaint }}>{m.unit}</span>
                   </div>
                 ))}
+                {medals.length > 0 && (
+                  <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
+                    <Label>Achievements</Label>
+                    <MedalTally medals={medals} size={20} />
+                  </div>
+                )}
               </div>
+
               {samples && samples.points.length >= 2 && (
-                <div style={{ background: color.surfaceSunk, borderTop: `1px solid ${color.dividerHairline}` }}>
-                  <TileMap points={samples.points} height={220} tiles={settings.mapTiles} />
+                <div style={{ background: color.surfaceSunk, borderTop: `1px solid ${color.dividerHairline}`, borderBottom: `1px solid ${color.dividerHairline}` }}>
+                  <RouteMap
+                    points={samples.points}
+                    height={300}
+                    tiles={settings.mapTiles}
+                    medals={pins}
+                    onExpand={() => onMap(activity.id)}
+                  />
                   {track.gaps > 0 && (
                     <div style={{ padding: '9px 12px 11px', borderTop: `1px solid ${color.dividerHairline}`, display: 'flex', flexDirection: 'column', gap: 4 }}>
                       <span style={{ ...S.caption, color: color.warning, lineHeight: 1.45, textWrap: 'pretty' }}>
@@ -199,13 +232,36 @@ export function ActivityDetail({
                   )}
                 </div>
               )}
+
               {activity.derived.elevation.length > 2 && (
-                <div style={{ background: color.surfaceSunk, borderTop: `1px solid ${color.dividerHairline}`, padding: '10px 12px 0' }}>
+                <div style={{ ...sectionStyle, gap: 4 }}>
                   <Label>Elevation · {units.fmtElevation(activity.ascent)} {units.elevationUnit} ascent</Label>
                   <ElevationProfile elevations={activity.derived.elevation} />
                 </div>
               )}
             </div>
+
+            {medals.length > 0 && (
+              <div style={sectionStyle}>
+                <Label>Achievements · against everything before this session</Label>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {listedMedals.map((medal, i) => (
+                    <div key={medal.key} style={{ borderTop: i > 0 ? `1px solid ${color.dividerHairline}` : undefined }}>
+                      <MedalRow medal={medal} />
+                    </div>
+                  ))}
+                </div>
+                {hiddenSections > 0 && (
+                  <span style={{ ...S.caption, color: color.textMuted }}>
+                    …and {hiddenSections} more {hiddenSections === 1 ? 'kilometre' : 'kilometres'}, marked on the map and in the splits.
+                  </span>
+                )}
+                <span style={{ ...S.caption, color: color.textFaint, lineHeight: 1.45, textWrap: 'pretty' }}>
+                  A medal is ranked against the sessions older than this one, and takes three earlier attempts before it is worth
+                  awarding — so it is what the session was worth on the day, and nothing recorded since can take it away.
+                </span>
+              </div>
+            )}
 
             {activity.notes && (
               <div style={sectionStyle}>
@@ -263,7 +319,9 @@ export function ActivityDetail({
               </div>
             )}
 
-            {splits.length > 1 && <SplitsTable splits={splits} run={run} splitM={splitM} />}
+            {splits.length > 1 && (
+              <SplitsTable splits={splits} run={run} splitM={splitM} medalsByKm={splitM === 1000 ? medalsByKm : new Map()} />
+            )}
 
             {activity.laps.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -396,7 +454,23 @@ function SeriesSection({ trace, run }: { trace: Trace; run: boolean }) {
   );
 }
 
-function SplitsTable({ splits, run, splitM }: { splits: Split[]; run: boolean; splitM: number }) {
+/** The splits, with the sections that earned a medal marked in the table they are read
+ *  in — the medal belongs to a row here as much as to a pin on the map.
+ *
+ *  Only when the table is cut in kilometres, because that is the section a medal is
+ *  awarded over: a table in miles, or in five-kilometre blocks for a long ride, is not
+ *  the same stretch of road and must not claim to be. */
+function SplitsTable({
+  splits,
+  run,
+  splitM,
+  medalsByKm,
+}: {
+  splits: Split[];
+  run: boolean;
+  splitM: number;
+  medalsByKm: Map<number, Medal>;
+}) {
   const units = useUnits();
   const perSplit = splitM / units.splitM;
   const paces = splits.map((s) => s.paceS).filter((p) => p > 0);
@@ -411,6 +485,7 @@ function SplitsTable({ splits, run, splitM }: { splits: Split[]; run: boolean; s
       </Label>
       <div style={S.tableHeaderRow}>
         <span style={{ ...S.monoTick, width: 28 }}>#</span>
+        {medalsByKm.size > 0 && <span style={{ ...S.monoTick, width: 16 }} aria-hidden />}
         <span style={{ ...S.monoTick, flex: 1, textAlign: 'right' }}>{run ? 'PACE' : 'SPEED'}</span>
         {anyGap && <span style={{ ...S.monoTick, flex: 1, textAlign: 'right' }}>GAP</span>}
         <span style={{ ...S.monoTick, width: 48, textAlign: 'right' }}>ASC</span>
@@ -421,10 +496,16 @@ function SplitsTable({ splits, run, splitM }: { splits: Split[]; run: boolean; s
         // so a hard kilometre reads at a glance without reading the number.
         const span = Math.max(1, slowest - fastest);
         const share = split.paceS > 0 ? 1 - (split.paceS - fastest) / span : 0;
+        const medal = medalsByKm.get(split.index);
         return (
           <div key={split.index} style={{ ...S.tableRow, position: 'relative', overflow: 'hidden' }}>
             <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${(share * 100).toFixed(1)}%`, background: color.metricPace, opacity: 0.07 }} />
-            <span style={{ ...S.tableNum, width: 28, position: 'relative', color: color.textMuted }}>{split.index}</span>
+            <span style={{ ...S.tableNum, width: 28, position: 'relative', color: medal ? color.text : color.textMuted }}>{split.index}</span>
+            {medalsByKm.size > 0 && (
+              <span style={{ width: 16, position: 'relative', display: 'flex', alignItems: 'center' }} title={medal ? `${medal.label} · ${medal.detail}` : undefined}>
+                {medal && <MedalIcon tier={medal.tier} size={12} />}
+              </span>
+            )}
             <span style={{ ...S.tableNum, flex: 1, textAlign: 'right', position: 'relative', color: color.text }}>
               {run ? units.fmtPace(split.paceS) : units.fmtSpeed(1000 / split.paceS)}
             </span>

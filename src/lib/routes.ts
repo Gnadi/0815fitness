@@ -59,6 +59,20 @@ export function isSameRoute(a: RouteSignature, b: RouteSignature): boolean {
   return routeOffsetM(a, b) <= matchToleranceM(longer);
 }
 
+/** Which way round two matching tracks were covered, or null when they are not the
+ *  same route at all.
+ *
+ *  A route is a route in either direction, and for the whole loop that is the right
+ *  answer. Sections are not: the fourth kilometre of a loop run backwards is a
+ *  different stretch of road from the fourth kilometre run forwards, so anything that
+ *  compares one section with another has to know which way it was run. */
+export function routeDirection(a: RouteSignature, b: RouteSignature): 'forward' | 'reverse' | null {
+  if (!isSameRoute(a, b)) return null;
+  const pa = signaturePoints(a);
+  const pb = signaturePoints(b);
+  return meanOffset(pa, pb) <= meanOffset(pa, reversed(pb)) ? 'forward' : 'reverse';
+}
+
 export interface RouteCluster {
   id: string;
   name: string;

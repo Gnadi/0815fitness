@@ -43,6 +43,8 @@ export interface RecorderSnapshot {
   /** Mean of every recorded power sample, kept as a running total rather than summed
    *  out of `power` on each read — that array grows for the whole ride. */
   avgPowerW: number | null;
+  /** How long since the last accepted fix, or null before the first one lands. */
+  secondsSinceFix: number | null;
 }
 
 /** Everything a session in progress would lose if the app went away.
@@ -395,7 +397,15 @@ export class Recorder {
       livePower: this.livePower,
       liveCadence: this.liveCadence,
       avgPowerW: this.power.length > 0 ? this.powerSumW / this.power.length : null,
+      secondsSinceFix: this.secondsSinceLastFix(),
     };
+  }
+
+  /** Seconds since the GPS last reported, which is how a stretch of lost track is
+   *  measured the moment the app comes back rather than after it is saved. */
+  secondsSinceLastFix(): number | null {
+    const last = this.points[this.points.length - 1];
+    return last ? Math.max(0, (this.now() - last.t) / 1000) : null;
   }
 
   private elapsedFrom(t: number): number {

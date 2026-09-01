@@ -72,6 +72,11 @@ await page.getByRole('button', { name: 'RECORD' }).click();
 await page.waitForTimeout(1200);
 await shot(page, '07-prestart');
 
+// Pre-start says what browser GPS will and will not do before the session starts. This
+// Chromium grants no wake lock, so it is the denied wording that appears here.
+const wakeNote = await page.getByText(/screen/i).first().isVisible();
+console.log(`${wakeNote ? 'ok  ' : 'FAIL'}: pre-start says what the screen has to do`);
+
 await page.getByRole('button', { name: 'START' }).click();
 
 // Walk the simulated position along a route so distance, pace and laps accrue.

@@ -56,7 +56,10 @@ export function RecordingSession({
   onFinish: (draft: ActivityDraft) => void;
 }) {
   const units = useUnits();
-  const { snapshot, actions } = useRecorder(sport, true, { autoPauseMps: settings.autoPauseMps, restore });
+  const { snapshot, actions, trackLossS, dismissTrackLoss } = useRecorder(sport, true, {
+    autoPauseMps: settings.autoPauseMps,
+    restore,
+  });
   useWakeLock(true);
   const [mapOpen, setMapOpen] = useState(false);
   const autoPausedSince = useRef<number | null>(null);
@@ -149,6 +152,16 @@ export function RecordingSession({
         <Banner text={`AUTO-PAUSED · NO MOVEMENT ${fmtClock(autoPauseSeconds)}`} />
       )}
       {snapshot.status !== 'autoPaused' && waitingForFix && <Banner text="ACQUIRING FIX · DISTANCE HELD" />}
+
+      {/* The app was off screen, so the browser stopped telling it where it was. Said
+          here, mid-session, rather than left to be discovered on the save screen. */}
+      {trackLossS != null && (
+        <Banner
+          text={`NO FIXES FOR ${fmtClock(trackLossS)} · APP WAS IN THE BACKGROUND`}
+          detail="That stretch was not recorded. Keep this screen open and the track continues."
+          onDismiss={dismissTrackLoss}
+        />
+      )}
 
       <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         <Label>{heroLabel}</Label>
@@ -329,27 +342,39 @@ export function RecordingSession({
   );
 }
 
-function Banner({ text }: { text: string }) {
-  return (
-    <div
-      style={{
-        margin: '0 16px 12px',
-        padding: '10px 12px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        background: 'rgba(201,144,60,0.14)',
-        border: `1px solid ${color.warning}`,
-        borderRadius: 4,
-      }}
-    >
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color.warning} strokeWidth="2" strokeLinecap="round">
+function Banner({ text, detail, onDismiss }: { text: string; detail?: string; onDismiss?: () => void }) {
+  const body = (
+    <>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color.warning} strokeWidth="2" strokeLinecap="round" style={{ flex: 'none', marginTop: detail ? 1 : 0 }}>
         <circle cx="12" cy="12" r="9" />
         <path d="M12 8v4" />
         <path d="M12 16h.01" />
       </svg>
-      <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 500, letterSpacing: '.06em', color: color.warning }}>{text}</span>
-    </div>
+      <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left' }}>
+        <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 500, letterSpacing: '.06em', color: color.warning }}>{text}</span>
+        {detail && <span style={{ fontSize: 12, lineHeight: 1.4, color: color.textMuted, textWrap: 'pretty' }}>{detail}</span>}
+      </span>
+      {onDismiss && <span style={{ fontFamily: font.mono, fontSize: 11, color: color.textFaint, flex: 'none' }}>TAP</span>}
+    </>
+  );
+  const style: CSSProperties = {
+    margin: '0 16px 12px',
+    padding: '10px 12px',
+    display: 'flex',
+    alignItems: detail ? 'flex-start' : 'center',
+    gap: 10,
+    width: 'calc(100% - 32px)',
+    boxSizing: 'border-box',
+    background: 'rgba(201,144,60,0.14)',
+    border: `1px solid ${color.warning}`,
+    borderRadius: 4,
+  };
+  return onDismiss ? (
+    <button onClick={onDismiss} style={{ ...style, cursor: 'pointer' }} aria-label={`${text}. Tap to dismiss.`}>
+      {body}
+    </button>
+  ) : (
+    <div style={style}>{body}</div>
   );
 }
 

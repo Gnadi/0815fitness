@@ -99,6 +99,75 @@ describe('the recorder', () => {
     expect(recorder.snapshot().currentLapNo).toBe(3);
   });
 
+  describe('how long since the GPS last said anything', () => {
+    it('has nothing to report before the first fix', () => {
+      const recorder = new Recorder('run');
+      recorder.start();
+      expect(recorder.secondsSinceLastFix()).toBeNull();
+      recorder.stop();
+    });
+
+    it('measures the silence from the last accepted fix', () => {
+      const recorder = new Recorder('run');
+      recorder.start();
+      recorder.addGeoSample(fix(0, 0));
+      vi.setSystemTime(START + 372_000);
+      expect(recorder.secondsSinceLastFix()).toBeCloseTo(372, 0);
+      recorder.stop();
+    });
+
+    it('counts a fix it kept but did not trust with distance', () => {
+      const recorder = new Recorder('run');
+      recorder.start();
+      recorder.addGeoSample(fix(0, 0));
+      // Coarse, but still a fix: it is on the track, so the silence restarts from it.
+      vi.setSystemTime(START + 60_000);
+      recorder.addGeoSample(fix(60, 30, { accuracy: 120 }));
+      expect(recorder.secondsSinceLastFix()).toBeCloseTo(0, 1);
+      recorder.stop();
+    });
+  });
+
+  describe('what an uncertain fix is allowed to do', () => {
+    it('keeps a coarse fix on the track instead of discarding it', () => {
+      const recorder = new Recorder('run');
+      recorder.start();
+      recorder.addGeoSample(fix(0, 0, { accuracy: 80 }));
+      recorder.addGeoSample(fix(1, 3, { accuracy: 80 }));
+      expect(recorder.snapshot().points).toHaveLength(2);
+      // Three metres is well inside an eighty-metre error, so it earns no distance.
+      expect(recorder.snapshot().distanceM).toBe(0);
+      recorder.stop();
+    });
+
+    it('lets a coarse fix earn distance once the movement outruns its error', () => {
+      const recorder = new Recorder('run');
+      recorder.start();
+      recorder.addGeoSample(fix(0, 0, { accuracy: 60 }));
+      recorder.addGeoSample(fix(30, 120, { accuracy: 60 }));
+      expect(recorder.snapshot().distanceM).toBeCloseTo(120, 0);
+      recorder.stop();
+    });
+
+    it('still drops a fix that is pure noise', () => {
+      const recorder = new Recorder('run');
+      recorder.start();
+      recorder.addGeoSample(fix(0, 0));
+      recorder.addGeoSample(fix(1, 3, { accuracy: 900 }));
+      expect(recorder.snapshot().points).toHaveLength(1);
+      recorder.stop();
+    });
+
+    it('reports the signal as poor for a coarse fix even though it keeps it', () => {
+      const recorder = new Recorder('run');
+      recorder.start();
+      recorder.addGeoSample(fix(0, 0, { accuracy: 120 }));
+      expect(recorder.snapshot().gpsOk).toBe(false);
+      expect(recorder.snapshot().points).toHaveLength(1);
+      recorder.stop();
+    });
+  });
+
   describe('checkpoints', () => {
     it('carries everything a session in progress holds', () => {
       const recorder = new Recorder('ride');

@@ -200,7 +200,21 @@ So the app distinguishes what it recorded from what it inferred:
   actually cover; the detail screen reports it, and explains the cause when there are
   gaps.
 - **Pre-start says it first**, because it is worth knowing before setting off rather than
-  after.
+  after — and it says it having actually taken a screen wake lock, so a browser that
+  cannot hold one, or a phone whose battery saver refuses it, is a stronger warning than
+  a phone that can. `denied` is not theoretical: Chrome refuses a wake lock under battery
+  saver, which is exactly what someone turns on before a long ride.
+- **And it says it again during the session, not after.** Coming back to the app is the
+  moment the loss is measurable, so returning to a recording that has heard nothing from
+  the GPS for longer than the gap threshold raises a banner saying how long — rather than
+  leaving it to be discovered on the save screen.
+
+There is no way around this on the web. The Geolocation API is exposed to `Window` only,
+never to a service worker, so there is no surface to record position from the background;
+Chromium's *Intent to implement: Background Geolocation for Progressive Web-Apps* was
+filed in 2016 and has never shipped. Installing to the home screen changes nothing — a
+standalone PWA is still a page, and it is suspended like one. The screen wake lock is the
+whole mitigation, which is why the app takes one and reports whether it got it.
 
 ## Where the log lives
 

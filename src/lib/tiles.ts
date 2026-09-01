@@ -121,6 +121,66 @@ export function thinTrack<T>(points: T[], max = 600): T[] {
   return out;
 }
 
+/** Thins a track, but remembers where the fixes stopped.
+ *
+ *  Gaps are found on the full track and then carried onto the thinned one, because
+ *  thinning a long ride can put more than `gapS` between two kept points on its own —
+ *  and a stride is not a gap. */
+export function thinTrackWithGaps(points: GeoSample[], max = 600, gapS = 20): { point: GeoSample; gapBefore: boolean }[] {
+  if (points.length === 0) return [];
+  const stride = points.length <= max ? 1 : Math.ceil(points.length / max);
+  const out: { point: GeoSample; gapBefore: boolean }[] = [];
+  let pendingGap = false;
+  for (let i = 0; i < points.length; i++) {
+    if (i > 0 && (points[i].t - points[i - 1].t) / 1000 > gapS) pendingGap = true;
+    const keep = i % stride === 0 || i === points.length - 1;
+    if (!keep) continue;
+    out.push({ point: points[i], gapBefore: pendingGap && out.length > 0 });
+    pendingGap = false;
+  }
+  return out;
+}
+
+export interface TrackPaths {
+  /** The stretches the GPS actually recorded. */
+  recorded: string;
+  /** The straight lines across stretches it did not — an assumption, drawn as one. */
+  inferred: string;
+}
+
+/** The track as two paths: what was recorded, and what was only joined up.
+ *
+ *  A phone that stopped reporting for twenty minutes leaves two fixes and a straight
+ *  line between them. Drawing that line like any other stretch of road claims a route
+ *  that was never recorded, so it is split out and drawn as the guess it is. */
+export function trackPaths(points: GeoSample[], view: TileView, gapS = 20): TrackPaths {
+  const thinned = thinTrackWithGaps(points, 600, gapS);
+  let recorded = '';
+  let inferred = '';
+  let penDown = false;
+  for (let i = 0; i < thinned.length; i++) {
+    const { x, y } = projectToView(thinned[i].point, view);
+    const here = `${x.toFixed(1)} ${y.toFixed(1)}`;
+    if (i === 0) {
+      recorded += `M${here} `;
+      penDown = true;
+      continue;
+    }
+    if (thinned[i].gapBefore) {
+      const previous = projectToView(thinned[i - 1].point, view);
+      inferred += `M${previous.x.toFixed(1)} ${previous.y.toFixed(1)} L${here} `;
+      // The recorded path restarts on the far side of the gap rather than running
+      // through it.
+      recorded += `M${here} `;
+      penDown = true;
+      continue;
+    }
+    recorded += `${penDown ? 'L' : 'M'}${here} `;
+    penDown = true;
+  }
+  return { recorded: recorded.trim(), inferred: inferred.trim() };
+}
+
 export function tileUrl(tile: TileRef): string {
   return `https://tile.openstreetmap.org/${tile.z}/${tile.x}/${tile.y}.png`;
 }

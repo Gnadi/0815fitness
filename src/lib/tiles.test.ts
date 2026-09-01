@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { latToWorldY, lonToWorldX, planTiles, projectToView, thinTrack, TILE_SIZE, tileUrl } from './tiles';
+import { latToWorldY, lonToWorldX, planTiles, projectToView, thinTrack, thinTrackWithGaps, TILE_SIZE, tileUrl, trackPaths } from './tiles';
 import { makeTrack } from './testFixtures';
 
 const startedAt = Date.parse('2026-05-01T08:00:00Z');
@@ -101,5 +101,51 @@ describe('drawing the track', () => {
 describe('the tile server', () => {
   it('addresses OpenStreetMap over https', () => {
     expect(tileUrl({ z: 14, x: 8807, y: 5681, left: 0, top: 0 })).toBe('https://tile.openstreetmap.org/14/8807/5681.png');
+  });
+});
+
+describe('drawing a track that has holes in it', () => {
+  const at = (second: number, lat: number) => ({ t: Date.parse('2026-05-01T08:00:00Z') + second * 1000, lat, lon: 14.28 });
+  const view = planTiles([at(0, 48.30), at(1, 48.34)], 358, 220)!;
+
+  it('draws a continuous track as one recorded stroke and nothing inferred', () => {
+    const points = Array.from({ length: 40 }, (_, i) => at(i, 48.3 + i * 0.001));
+    const paths = trackPaths(points, view, 20);
+    expect(paths.inferred).toBe('');
+    expect(paths.recorded.match(/M/g)).toHaveLength(1);
+  });
+
+  it('lifts the recorded stroke across a gap and draws the guess separately', () => {
+    // Ten fixes, twenty minutes of nothing, ten more.
+    const first = Array.from({ length: 10 }, (_, i) => at(i, 48.3 + i * 0.001));
+    const second = Array.from({ length: 10 }, (_, i) => at(1200 + i, 48.32 + i * 0.001));
+    const paths = trackPaths([...first, ...second], view, 20);
+    // Two recorded strokes, and one straight line joining them.
+    expect(paths.recorded.match(/M/g)).toHaveLength(2);
+    expect(paths.inferred.match(/M/g)).toHaveLength(1);
+    expect(paths.inferred).toContain('L');
+  });
+
+  it('draws two fixes far apart as a guess and no recorded stroke between them', () => {
+    const paths = trackPaths([at(0, 48.3), at(1161, 48.34)], view, 20);
+    expect(paths.inferred).not.toBe('');
+    // Both endpoints are moves, so nothing is claimed as recorded route.
+    expect(paths.recorded.includes('L')).toBe(false);
+  });
+
+  it('does not mistake a thinning stride for a gap', () => {
+    // An hour at 1 Hz thins to a stride well over the twenty-second gap threshold; the
+    // gaps are found on the full track, so none of these strides count as one.
+    const points = Array.from({ length: 3600 }, (_, i) => at(i, 48.3 + i * 0.00001));
+    const marked = thinTrackWithGaps(points, 600, 20);
+    expect(marked.length).toBeLessThanOrEqual(601);
+    expect(marked.some((m) => m.gapBefore)).toBe(false);
+  });
+
+  it('keeps the first and last fix through thinning', () => {
+    const points = Array.from({ length: 2000 }, (_, i) => at(i, 48.3 + i * 0.00001));
+    const marked = thinTrackWithGaps(points, 600, 20);
+    expect(marked[0].point).toBe(points[0]);
+    expect(marked[marked.length - 1].point).toBe(points[points.length - 1]);
   });
 });

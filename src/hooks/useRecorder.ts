@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Recorder, type RecorderCheckpoint, type RecorderSnapshot } from '../lib/recorder';
 import { CHECKPOINT_INTERVAL_MS, clearCheckpoint, saveCheckpoint } from '../lib/session';
+import { TRACK_GAP_S } from '../lib/derived';
 import type { Sport } from '../types';
 
 export interface RecorderOptions {
@@ -21,6 +22,8 @@ export function useRecorder(sport: Sport, armed: boolean, options: RecorderOptio
   const [snapshot, setSnapshot] = useState<RecorderSnapshot>(() => recorder.snapshot());
   const watchId = useRef<number | null>(null);
   const wasArmed = useRef(false);
+  /** A stretch the GPS went quiet for, noticed the moment the app is looked at again. */
+  const [trackLossS, setTrackLossS] = useState<number | null>(null);
 
   useEffect(() => {
     const unsub = recorder.subscribe(setSnapshot);
@@ -72,14 +75,22 @@ export function useRecorder(sport: Sport, armed: boolean, options: RecorderOptio
     };
     const handle = setInterval(write, CHECKPOINT_INTERVAL_MS);
     // Backgrounding the app is the moment before it is most likely to be killed, so the
-    // freshest possible checkpoint is written on the way out.
-    const onHidden = () => {
-      if (document.visibilityState === 'hidden') write();
+    // freshest possible checkpoint is written on the way out. Coming back is the moment
+    // to say what was missed: a browser stops reporting locations to a page that is not
+    // on screen, so a stretch of the ride simply was not recorded, and the person should
+    // hear that now rather than discover it on the save screen.
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        write();
+        return;
+      }
+      const since = recorder.secondsSinceLastFix();
+      if (since != null && since > TRACK_GAP_S) setTrackLossS(since);
     };
-    document.addEventListener('visibilitychange', onHidden);
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       clearInterval(handle);
-      document.removeEventListener('visibilitychange', onHidden);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [armed, recorder]);
 
@@ -111,5 +122,5 @@ export function useRecorder(sport: Sport, armed: boolean, options: RecorderOptio
     [recorder],
   );
 
-  return { snapshot, actions };
+  return { snapshot, actions, trackLossS, dismissTrackLoss: () => setTrackLossS(null) };
 }

@@ -3,6 +3,7 @@ import { color, font } from '../theme';
 import * as S from '../styles';
 import { Label, SensorChip } from '../components/primitives';
 import { useGpsFix } from '../hooks/useGpsFix';
+import { useWakeLock } from '../hooks/useWakeLock';
 import { isBluetoothSupported } from '../lib/ble';
 import type { Sport } from '../types';
 import type { SensorSet } from '../App';
@@ -37,6 +38,10 @@ export function PreStart({
   onBack: () => void;
 }) {
   const fix = useGpsFix(true);
+  // Held here as well as while recording, both because someone waiting for a fix should
+  // not watch the screen sleep, and because taking it now is the only honest way to find
+  // out whether it can be taken at all — Chrome refuses one under battery saver.
+  const wakeLock = useWakeLock(true);
   const run = sport === 'run';
   const locked = fix.status === 'locked';
   const bleOk = isBluetoothSupported();
@@ -187,6 +192,33 @@ export function PreStart({
       </div>
 
       <span style={{ flex: 1 }} />
+
+      {/* The one thing about browser GPS worth knowing before setting off rather than
+          after: a page that is not on screen stops being told where it is. The screen
+          wake lock is what keeps it on screen, so whether it was granted changes how
+          much of a warning this is. */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 9,
+          padding: '10px 12px',
+          border: `1px solid ${wakeLock === 'held' ? color.border : color.warning}`,
+          background: wakeLock === 'held' ? 'none' : 'rgba(201,144,60,0.1)',
+          borderRadius: 8,
+        }}
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color.warning} strokeWidth="2" strokeLinecap="round" style={{ flex: 'none', marginTop: 1 }}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 8v5M12 16.5v.01" />
+        </svg>
+        <span style={{ fontSize: 12, lineHeight: 1.45, color: wakeLock === 'held' ? color.textMuted : color.warning, textWrap: 'pretty' }}>
+          {wakeLock === 'denied'
+            ? 'The screen cannot be kept awake — battery saver usually refuses it. The display will sleep, and the track stops the moment it does. Turn battery saver off, or expect the map to join the gaps with straight lines.'
+            : wakeLock === 'unsupported'
+              ? 'This browser cannot keep the screen awake, so the display will sleep on its own and the track stops when it does. Set the phone’s screen timeout long, or expect gaps.'
+              : 'Keep this screen open. The screen is being held awake, but the browser only reports your position while the app is showing — locking the phone or switching apps stops the track until you come back.'}
+        </span>
+      </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
         <button

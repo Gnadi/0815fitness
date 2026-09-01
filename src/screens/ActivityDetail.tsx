@@ -93,6 +93,7 @@ export function ActivityDetail({
   const run = activity.sport === 'run';
   const zoneTotal = zones.reduce((a, b) => a + b, 0);
   const cadenceHist = activity.derived.cadenceHist;
+  const track = activity.derived.track ?? { fixes: 0, longestGapS: 0, gaps: 0, coverage: 0, medianIntervalS: 0 };
   const sameSport = activities.filter((a) => a.sport === activity.sport && a.id !== activity.id);
 
   const headline: { label: string; value: string; unit: string }[] = [
@@ -116,6 +117,18 @@ export function ActivityDetail({
     ...(metrics.decouplingPct != null ? [{ label: 'Decoupling', value: `${metrics.decouplingPct.toFixed(1)} %` }] : []),
     ...(stress ? [{ label: 'Training stress', value: `${Math.round(stress.value)} pts · from ${stress.source === 'power' ? 'power' : stress.source === 'hr' ? 'heart rate' : 'effort'}` }] : []),
     { label: 'Effort', value: `${activity.effort}/10 · ${EFFORT_WORDS[activity.effort - 1]}` },
+    ...(activity.hasSamples
+      ? [
+          {
+            label: 'GPS fixes',
+            value:
+              track.medianIntervalS > 0
+                ? `${track.fixes} · one every ${track.medianIntervalS < 1.5 ? 'second' : `${Math.round(track.medianIntervalS)} s`}`
+                : String(track.fixes),
+          },
+        ]
+      : []),
+    ...(track.gaps > 0 ? [{ label: 'Longest GPS gap', value: fmtClock(track.longestGapS) }] : []),
     { label: 'Recorded', value: activity.source === 'manual' ? 'Entered by hand' : activity.source === 'imported' ? 'Imported' : 'On this device' },
   ];
 
@@ -168,9 +181,22 @@ export function ActivityDetail({
                   </div>
                 ))}
               </div>
-              {samples && samples.points.length > 2 && (
+              {samples && samples.points.length >= 2 && (
                 <div style={{ background: color.surfaceSunk, borderTop: `1px solid ${color.dividerHairline}` }}>
                   <TileMap points={samples.points} height={220} tiles={settings.mapTiles} />
+                  {track.gaps > 0 && (
+                    <div style={{ padding: '9px 12px 11px', borderTop: `1px solid ${color.dividerHairline}`, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span style={{ ...S.caption, color: color.warning, lineHeight: 1.45, textWrap: 'pretty' }}>
+                        {track.fixes === 2
+                          ? 'Only two GPS fixes were recorded, so the dashed line is a straight guess between them, not the route you took.'
+                          : `The GPS stopped reporting ${track.gaps} ${track.gaps === 1 ? 'time' : 'times'} — the longest for ${fmtClock(track.longestGapS)}. The dashed stretches are straight guesses, not recorded route.`}
+                      </span>
+                      <span style={{ ...S.caption, color: color.textFaint, lineHeight: 1.45, textWrap: 'pretty' }}>
+                        A browser only receives locations while the app is on screen. Locking the phone or switching away stops the
+                        track, and the distance for those stretches is the straight line, so it reads short.
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
               {activity.derived.elevation.length > 2 && (

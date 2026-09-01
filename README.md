@@ -176,6 +176,46 @@ thing in the app that talks to the network, and it is built to stay that way:
   need an account and a key. Attribution is on the map, as the tile server's terms
   require.
 
+## What the app does not know about your route
+
+A browser only receives locations while the page is on screen. Lock the phone or switch
+apps mid-ride and `watchPosition` stops: you can come back to two fixes twenty minutes
+apart. Joining them with a line drawn like any other stretch of road claims a route that
+was never recorded — a 4 km straight line across a city, at the distance of the crow's
+flight rather than the roads ridden.
+
+So the app distinguishes what it recorded from what it inferred:
+
+- **An uncertain fix is kept, not discarded.** Accuracy decides whether a fix is trusted
+  with *distance*, not whether it is recorded at all — a fix good to eighty metres still
+  says which road you were on. Below 50 m it counts normally; between 50 m and 200 m it
+  is drawn but only earns distance for movement larger than its own error, so a phone
+  drifting inside its accuracy circle does not ride kilometres; past 200 m it is noise
+  and is dropped. Previously *anything* over 50 m was thrown away, which is the other way
+  a ride came back as two points.
+- **Stretches with no fixes are drawn as the guess they are** — thin, dashed and dimmed,
+  with the recorded track lifting its pen across them.
+- **The session says so.** `TrackQuality` in the stored derivation carries the fix count,
+  the longest gap, how many there were and what share of the elapsed time the fixes
+  actually cover; the detail screen reports it, and explains the cause when there are
+  gaps.
+- **Pre-start says it first**, because it is worth knowing before setting off rather than
+  after — and it says it having actually taken a screen wake lock, so a browser that
+  cannot hold one, or a phone whose battery saver refuses it, is a stronger warning than
+  a phone that can. `denied` is not theoretical: Chrome refuses a wake lock under battery
+  saver, which is exactly what someone turns on before a long ride.
+- **And it says it again during the session, not after.** Coming back to the app is the
+  moment the loss is measurable, so returning to a recording that has heard nothing from
+  the GPS for longer than the gap threshold raises a banner saying how long — rather than
+  leaving it to be discovered on the save screen.
+
+There is no way around this on the web. The Geolocation API is exposed to `Window` only,
+never to a service worker, so there is no surface to record position from the background;
+Chromium's *Intent to implement: Background Geolocation for Progressive Web-Apps* was
+filed in 2016 and has never shipped. Installing to the home screen changes nothing — a
+standalone PWA is still a page, and it is suspended like one. The screen wake lock is the
+whole mitigation, which is why the app takes one and reports whether it got it.
+
 ## Where the log lives
 
 Activities are stored in IndexedDB, split in two: a **summary** per activity — the

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { color, font } from '../theme';
+import { TRACK_GAP_S } from '../lib/derived';
 import { TrackMap } from './charts';
-import { planTiles, projectToView, TILE_SIZE, tileUrl, trackPath } from '../lib/tiles';
+import { planTiles, projectToView, TILE_SIZE, tileUrl, trackPaths } from '../lib/tiles';
 import type { GeoSample } from '../types';
 
 const WIDTH = 358;
@@ -22,7 +23,7 @@ export function TileMap({ points, height, tiles: tilesEnabled = true }: { points
   const [loaded, setLoaded] = useState(0);
 
   const view = useMemo(() => (tilesEnabled ? planTiles(points, WIDTH, height) : null), [points, height, tilesEnabled]);
-  const path = useMemo(() => (view ? trackPath(points, view) : ''), [points, view]);
+  const paths = useMemo(() => (view ? trackPaths(points, view, TRACK_GAP_S) : null), [points, view]);
 
   // Every tile refused: no network, a blocked request, a server saying no. The drawn map
   // is not a degraded version of this one — it is what the app showed before there were
@@ -72,9 +73,22 @@ export function TileMap({ points, height, tiles: tilesEnabled = true }: { points
         role="img"
         aria-label="The recorded route"
       >
+        {/* A stretch the GPS never recorded is a straight line the app guessed, so it is
+            drawn as a guess: thin, dashed and dimmed, under the recorded track. */}
+        {paths?.inferred && (
+          <path
+            d={paths.inferred}
+            stroke={color.textFaint}
+            strokeWidth={1.5}
+            strokeDasharray="5 5"
+            fill="none"
+            strokeLinecap="round"
+            opacity={0.85}
+          />
+        )}
         {/* Drawn twice: a dark casing under the line so it stays legible over any tile. */}
-        <path d={path} stroke="rgba(0,0,0,0.55)" strokeWidth={5} fill="none" strokeLinejoin="round" strokeLinecap="round" />
-        <path d={path} stroke={color.metricPace} strokeWidth={2.5} fill="none" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={paths?.recorded} stroke="rgba(0,0,0,0.55)" strokeWidth={5} fill="none" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={paths?.recorded} stroke={color.metricPace} strokeWidth={2.5} fill="none" strokeLinejoin="round" strokeLinecap="round" />
         {start && <circle cx={start.x} cy={start.y} r={5} fill={color.positive} stroke="#000000" strokeWidth={1.5} />}
         {end && <circle cx={end.x} cy={end.y} r={5} fill={color.accent} stroke="#000000" strokeWidth={1.5} />}
       </svg>

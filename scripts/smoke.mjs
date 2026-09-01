@@ -125,9 +125,13 @@ await page.getByRole('button', { name: 'Streak detail' }).click();
 await page.waitForTimeout(400);
 await shot(page, '15-stat-streak');
 
+// The load and volume windows hang off the analysis rather than the start screen:
+// the Overview keeps the week and the sessions, everything deeper is a screen away.
 await page.getByRole('button', { name: 'Back to overview' }).click();
 await page.waitForTimeout(300);
-await page.getByRole('button', { name: 'Load balance detail' }).click();
+await page.getByText('Analyse →').click();
+await page.waitForTimeout(400);
+await page.getByRole('button', { name: 'Load detail →' }).click();
 await page.waitForTimeout(400);
 await shot(page, '16-stat-load');
 await page.getByRole('button', { name: 'Compare →' }).click();
@@ -162,7 +166,7 @@ const check = (label, passed) => {
 
 await page.goto(BASE);
 await page.waitForTimeout(600);
-await page.getByRole('button', { name: /^All \d+ →$/ }).click();
+await page.getByRole('button', { name: /^All \d+ sessions →$/ }).click();
 await page.waitForTimeout(500);
 await shot(page, '21-history');
 
@@ -193,7 +197,7 @@ check('a saved session can be deleted', await page.getByRole('button', { name: '
 
 await page.goto(BASE);
 await page.waitForTimeout(600);
-await page.getByRole('button', { name: /^All \d+ →$/ }).click();
+await page.getByRole('button', { name: /^All \d+ sessions →$/ }).click();
 await page.waitForTimeout(400);
 await page.getByRole('button', { name: '+ Manual' }).click();
 await page.waitForTimeout(400);
@@ -225,7 +229,11 @@ await shot(page, '31-settings-imperial');
 await page.getByRole('button', { name: 'Back', exact: true }).click();
 await page.waitForTimeout(500);
 await shot(page, '32-overview-imperial');
-check('switching units restates the Overview', await page.getByText('mi run').isVisible());
+// The Overview's week strip and its session cards both carry the unit, so a switch
+// has to reach the start screen rather than only the screens that analyse it.
+const runFigure = await page.getByRole('button', { name: 'Run distance detail' }).innerText();
+const firstCard = await page.locator('.ct-card').first().innerText();
+check('switching units restates the Overview', runFigure.includes('mi') && firstCard.includes('mi'));
 await page.getByRole('button', { name: 'Settings' }).click();
 await page.waitForTimeout(400);
 await page.getByRole('button', { name: 'KM · M' }).click();
@@ -236,7 +244,7 @@ await page.waitForTimeout(300);
 const tilesBefore = tilesServed;
 await page.getByRole('button', { name: 'Back', exact: true }).click();
 await page.waitForTimeout(300);
-await page.getByRole('button', { name: /^All \d+ →$/ }).click();
+await page.getByRole('button', { name: /^All \d+ sessions →$/ }).click();
 await page.waitForTimeout(400);
 await page.locator('.ct-row').first().click();
 await page.waitForTimeout(900);

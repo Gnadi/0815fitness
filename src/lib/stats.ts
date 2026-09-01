@@ -54,6 +54,19 @@ export function fmtDayMonth(t: number): string {
   return `${p(d.getDate())}.${p(d.getMonth() + 1)}`;
 }
 
+/** Weekday names, Monday first, in the abbreviated form the whole app counts in. */
+export const WEEKDAY_LABELS = ['MO', 'DI', 'MI', 'DO', 'FR', 'SA', 'SO'];
+
+/** When a session happened, said the way a person would: today and yesterday by name,
+ *  the last week by weekday, anything older by its date. */
+export function whenLabel(t: number, reference = Date.now()): string {
+  const days = Math.round((startOfDay(reference) - startOfDay(t)) / DAY_MS);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days > 1 && days < 7) return WEEKDAY_LABELS[(new Date(t).getDay() + 6) % 7];
+  return fmtDayMonth(t);
+}
+
 export function fmtTimeOfDay(t: number): string {
   const d = new Date(t);
   const p = (n: number) => String(n).padStart(2, '0');

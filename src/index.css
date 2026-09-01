@@ -1,7 +1,10 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: #0F1011;
+  /* The page behind the app carries the app's own background, so on a wide screen the
+     content column has no visible edge — no frame, no letterbox, nothing that reads
+     like the app has been pasted into a window. */
+  background: #0B0C0D;
   font-family: 'IBM Plex Sans', -apple-system, system-ui, sans-serif;
   font-feature-settings: 'tnum' 1;
   color: #F2F4F5;
@@ -68,9 +71,10 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   color: inherit;
   cursor: pointer;
   background: #141618;
-  border: 1px solid #26292D;
-  border-radius: 8px;
-  transition: background-color 120ms cubic-bezier(0.2, 0, 0, 1), border-color 120ms cubic-bezier(0.2, 0, 0, 1);
+  border: 1px solid #212427;
+  border-radius: 12px;
+  transition: background-color 120ms cubic-bezier(0.2, 0, 0, 1), border-color 120ms cubic-bezier(0.2, 0, 0, 1),
+    transform 120ms cubic-bezier(0.2, 0, 0, 1);
 }
 .ct-card:hover {
   background: #1C1F22;
@@ -79,6 +83,17 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 .ct-card:active {
   background: #1C1F22;
   border-color: #8B84F7;
+  transform: scale(0.994);
+}
+
+/* A control that is only a control when you reach for it: no chrome at rest, a soft
+   wash under the pointer. The week figures and the links under them use it. */
+.ct-quiet {
+  transition: background-color 120ms cubic-bezier(0.2, 0, 0, 1), color 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+.ct-quiet:hover {
+  background: #1C1F22;
+  color: #F2F4F5;
 }
 
 .ct-cue {

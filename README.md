@@ -114,7 +114,7 @@ src/
     pwa.ts          service-worker registration and the persistent-storage request
   hooks/            useGpsFix, useRecorder, useBleSensors, useWakeLock, useNavStack,
                     useUnits / UnitsProvider
-  components/       PhoneFrame, primitives, ActivityRow, charts, TileMap
+  components/       AppShell, primitives, ActivityRow, ActivityCard, charts, TileMap
   screens/          Overview, Activities, ActivityDetail, ManualEntry, Settings,
                     Analyse (load/zones/records/routes/plan), RouteDetail, StatDetail,
                     Compare, PreStart, RecordingSession, Save
@@ -136,14 +136,20 @@ replace rather than stack and hold their position against a back press.
 
 ## Reading a figure, comparing two sessions
 
-Every number on the Overview opens its own detail: the week distance, the four cards
-(time, ascent, ride, sessions), the streak, the volume bars and the load ratio. Each
-detail shows the figure in its window, the twelve weeks behind it, a table of the last
-eight, and the sessions that add up to it — plus a note on how it is computed, because
-a number nobody can account for is not worth showing.
+The Overview is the log's front page rather than its dashboard: the week in one strip,
+then the last eight sessions as cards — what each one was, when it was, its distance,
+time and pace or power, over its own elevation profile. Everything that goes deeper is
+one screen away.
+
+Every figure still opens its own detail. The week strip carries run, ride, time,
+sessions and the streak; the load, volume and ascent windows hang off *Analyse → Load*,
+where the charts they belong to already are. Each detail shows the figure in its window,
+the twelve weeks behind it, a table of the last eight, and the sessions that add up to
+it — plus a note on how it is computed, because a number nobody can account for is not
+worth showing.
 
 Two or three sessions of the same sport can be read side by side, from the Overview's
-*Compare*, from any session row, or from a stat detail's contributors. The first one
+*Compare*, from any session row or card, or from a stat detail's contributors. The first one
 picked is the reference every difference is measured against. The comparison puts them
 on one distance axis — pace (or speed), elevation and heart rate overlaid — with a
 metric table and per-kilometre splits under it. Pace comes from the time it took to

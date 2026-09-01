@@ -56,7 +56,7 @@ export interface RecorderSnapshot {
 
 /** Everything a session in progress would lose if the app went away.
  *
- *  A recording lived only in memory, so a reload, a browser tab evicted under memory
+ *  A recording lived only in memory, so a reload, an app evicted under memory
  *  pressure or a crash two hours into a long ride took the whole session with it — the
  *  one moment in the app where the data cannot be recovered by any other means. The
  *  recorder writes one of these to the database every few seconds; the next launch

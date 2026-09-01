@@ -1,10 +1,13 @@
+import { Capacitor } from '@capacitor/core';
+import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import type { Activity, ActivitySamples, Settings } from '../types';
 import { deriveActivity, emptySamples, manualDerived } from './derived';
 import { getManySamples, makeId, splitLegacyActivity } from './storage';
 
 /** Getting the log off the device, and back onto one.
  *
- *  Everything here is local: a file the browser hands to the person, and a file they
+ *  Everything here is local: a file the app hands to the person, and a file they
  *  hand back. It is the only way a training log survives a cleared site, a lost phone or
  *  a move to a new one, and the only route out to anything else — which for a training
  *  file means GPX. */
@@ -230,18 +233,44 @@ export function parseGpx(text: string, fallbackName = 'Imported activity'): {
   return { name, sport, samples };
 }
 
-// ── handing files to the browser ──────────────────────────────────
-export function downloadFile(name: string, mime: string, contents: string): void {
-  const url = URL.createObjectURL(new Blob([contents], { type: mime }));
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = name;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  // Revoked on the next turn of the loop rather than immediately: Safari has not
-  // finished with the URL when `click()` returns.
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+// ── handing a file to the person ──────────────────────────────────
+
+/** Writes the export and offers it to whatever the phone can send it to.
+ *
+ *  On the web this was an anchor with a `download` attribute, which a WebView ignores
+ *  silently — the export would simply not have happened, and the export is the only way
+ *  a log leaves the device. So the file is written to the app's cache and handed to the
+ *  Android share sheet, where it can go to Drive, to a mail draft, to a cable.
+ *
+ *  Cache rather than documents on purpose: once it has been shared it is a copy, and
+ *  Android may reclaim it whenever it likes. The log itself is in the database. */
+export async function downloadFile(name: string, mime: string, contents: string): Promise<void> {
+  if (!Capacitor.isNativePlatform()) {
+    // `npm run dev` on a desktop, where an anchor is still the way out.
+    const url = URL.createObjectURL(new Blob([contents], { type: mime }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = name;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return;
+  }
+
+  const { uri } = await Filesystem.writeFile({
+    path: name,
+    data: contents,
+    directory: Directory.Cache,
+    encoding: Encoding.UTF8,
+  });
+
+  try {
+    await Share.share({ title: name, url: uri, dialogTitle: 'Export from Contour' });
+  } catch {
+    // Dismissing the share sheet throws. The file is written either way, and a person
+    // who changed their mind does not need to be told so.
+  }
 }
 
 export function exportFileName(prefix: string, at = Date.now(), extension = 'json'): string {

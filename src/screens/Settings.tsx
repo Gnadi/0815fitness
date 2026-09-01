@@ -74,7 +74,7 @@ export function SettingsScreen({
     setBusy(true);
     try {
       const payload = await buildExport(activities, settings);
-      downloadFile(exportFileName('contour-log'), 'application/json', JSON.stringify(payload));
+      await downloadFile(exportFileName('contour-log'), 'application/json', JSON.stringify(payload));
       setMessage(`Exported ${activities.length} ${activities.length === 1 ? 'session' : 'sessions'}.`);
     } catch {
       setMessage('The export could not be written.');
@@ -430,7 +430,7 @@ export function SettingsScreen({
           {message && <span style={{ fontSize: 13, color: color.textMuted }}>{message}</span>}
           <span style={{ ...S.caption, color: color.textFaint, textWrap: 'pretty' }}>
             The export is one file holding every session with its full track and sensor streams, plus these settings. It is the only
-            copy that survives a cleared browser or a new phone — nothing here is sent anywhere.
+            copy that survives an uninstall or a new phone — nothing here is sent anywhere.
           </span>
 
           {activities.some((a) => a.demo) && (

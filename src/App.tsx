@@ -27,6 +27,7 @@ import {
 import { clearCheckpoint, isWorthRecovering, loadCheckpoint } from './lib/session';
 import type { RecorderCheckpoint } from './lib/recorder';
 import { useNavStack } from './hooks/useNavStack';
+import { onHardwareBack, onRecordShortcut, styleSystemBars } from './lib/shell';
 import { UnitsProvider } from './hooks/UnitsProvider';
 import type { StatKey } from './lib/statDetails';
 import type { Activity, ActivitySamples, Settings, Sport } from './types';
@@ -62,7 +63,7 @@ export interface SensorSet {
 export default function App() {
   // Screen state is a stack shared with the browser's history: back — the button or the
   // gesture — pops it, so a detail returns to what it was opened from.
-  const { view, push, replace, back, resetToRoot } = useNavStack(ROOT, holdsItsScreen);
+  const { view, depth, push, replace, back, resetToRoot } = useNavStack(ROOT, holdsItsScreen);
   const [sport, setSport] = useState<Sport>('run');
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -112,19 +113,47 @@ export default function App() {
     saveSettings(settings);
   }, [settings]);
 
-  // The installed app's icon carries a "Record" shortcut, which opens the app at
-  // `?screen=record`. Push pre-start over the Overview rather than replacing it, so
-  // backing out of a shortcut launch still lands somewhere, and drop the query so a
-  // reload — or a later launch from the plain icon — opens the Overview.
-  const shortcutHandled = useRef(false);
-  useEffect(() => {
-    if (shortcutHandled.current) return;
-    shortcutHandled.current = true;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('screen') !== 'record') return;
-    window.history.replaceState(window.history.state, '', window.location.pathname);
+  // The launcher icon carries a "Record" shortcut, which opens the app at
+  // `contour://record`. Push pre-start over the Overview rather than replacing it, so
+  // backing out of a shortcut launch still lands somewhere. Guarded rather than run
+  // once, because the shortcut can also be tapped while the app is already in recents,
+  // and opening a second pre-start over a running session would be nonsense.
+  const openRecord = useCallback(() => {
+    setSessionKey((k) => k + 1);
     push({ screen: 'pre' });
   }, [push]);
+  // The shortcut listener is registered once and outlives any particular view, so the
+  // view it consults is held in a ref rather than captured.
+  const viewRef = useRef(view);
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
+  useEffect(
+    () =>
+      onRecordShortcut(() => {
+        const current = viewRef.current.screen;
+        if (current === 'pre' || holdsItsScreen(viewRef.current)) return;
+        openRecord();
+      }),
+    [openRecord],
+  );
+
+  // Android's back gesture. The WebView's history already tracks the screen stack, and
+  // the popstate handler in useNavStack knows to refuse one inside a recording, so back
+  // is simply forwarded — except at the root, where there is nothing left to pop and the
+  // right answer is to leave the app in recents rather than tear it down.
+  useEffect(
+    () =>
+      onHardwareBack(() => {
+        if (depth === 0) return { handled: false };
+        back();
+        return { handled: true };
+      }),
+    [depth, back],
+  );
+
+  // The system bars are painted once, on the way in.
+  useEffect(() => styleSystemBars(), []);
 
   const openStat = useCallback((statKey: StatKey) => push({ screen: 'stat', statKey }), [push]);
   const openCompare = useCallback((ids: string[]) => push({ screen: 'cmp', ids }), [push]);

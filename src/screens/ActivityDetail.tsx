@@ -132,9 +132,9 @@ export function ActivityDetail({
     { label: 'Recorded', value: activity.source === 'manual' ? 'Entered by hand' : activity.source === 'imported' ? 'Imported' : 'On this device' },
   ];
 
-  const exportGpx = () => {
+  const exportGpx = async () => {
     if (!samples || samples.points.length === 0) return;
-    downloadFile(
+    await downloadFile(
       exportFileName(activity.sport === 'run' ? 'run' : 'ride', activity.startedAt, 'gpx'),
       'application/gpx+xml',
       toGpx(activity, samples),

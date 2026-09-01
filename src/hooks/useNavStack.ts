@@ -21,6 +21,9 @@ function entryOf(state: unknown): Entry | undefined {
 
 export interface NavStack<V> {
   view: V;
+  /** How deep the current view sits. Zero is the root, which is where Android's back
+   *  gesture stops being navigation and becomes leaving the app. */
+  depth: number;
   /** Opens a view over the current one — browser back returns to what it covered. */
   push: (view: V) => void;
   /** Swaps the current view without deepening the stack: a step inside one flow. */
@@ -36,7 +39,11 @@ export function useNavStack<V>(root: V, isTrapped: (view: V) => boolean): NavSta
   // render cycle; `view` is the render-visible copy of whatever the ref points at.
   const nav = useRef<{ stack: V[]; index: number }>({ stack: [root], index: 0 });
   const [view, setView] = useState<V>(root);
-  const show = useCallback(() => setView(nav.current.stack[nav.current.index]), []);
+  const [depth, setDepth] = useState(0);
+  const show = useCallback(() => {
+    setView(nav.current.stack[nav.current.index]);
+    setDepth(nav.current.index);
+  }, []);
 
   // Named when the app mounts rather than during render: an id that changed under a
   // re-render would orphan the entries already stamped with the old one.
@@ -126,5 +133,5 @@ export function useNavStack<V>(root: V, isTrapped: (view: V) => boolean): NavSta
     }
   }, [root, show, stamp]);
 
-  return { view, push, replace, back, resetToRoot };
+  return { view, depth, push, replace, back, resetToRoot };
 }

@@ -1,8 +1,18 @@
-// Real Web Bluetooth GATT wiring for the three sensor kinds the brief calls out:
-// heart rate strap, cycling power meter, and cadence (bike crank via CSC, or a
-// running foot pod via RSC). Web Bluetooth only exists in Chromium browsers over
-// HTTPS/localhost — callers should treat `isBluetoothSupported()` as the gate for
-// showing anything beyond a permanently-absent chip.
+// GATT wiring for the three sensor kinds the brief calls out: heart rate strap, cycling
+// power meter, and cadence (bike crank via CSC, or a running foot pod via RSC).
+//
+// The transport is native. Web Bluetooth does not exist in Android's System WebView, so
+// the pivot would have taken heart rate, power and cadence with it had this stayed on
+// `navigator.bluetooth`. What did not have to change is everything below the transport:
+// the service UUIDs and the four parsers are the Bluetooth SIG's formats, not the
+// browser's, and they read the same bytes off either stack.
+//
+// It is a fair trade rather than a loss. Web Bluetooth was Chromium-only and needed the
+// page in front of you; the native client pairs from a real system scan, and because a
+// recording holds a foreground service, notifications now keep arriving with the screen
+// off — so a strap records the whole ride instead of the parts you looked at.
+import { BleClient, numberToUUID } from '@capacitor-community/bluetooth-le';
+import { Capacitor } from '@capacitor/core';
 
 export const GATT = {
   heartRate: { service: 0x180d, measurement: 0x2a37 },
@@ -11,8 +21,13 @@ export const GATT = {
   runningSpeedCadence: { service: 0x1814, measurement: 0x2a53 },
 };
 
+/** Whether this build can talk to a sensor at all.
+ *
+ *  On a phone the answer is always yes — whether Bluetooth is switched *on* is a
+ *  different question, and one the connect attempt asks. It is false only in a desktop
+ *  browser running `npm run dev`, where the chips stay permanently absent. */
 export function isBluetoothSupported(): boolean {
-  return typeof navigator !== 'undefined' && 'bluetooth' in navigator;
+  return Capacitor.isNativePlatform();
 }
 
 export function parseHeartRate(data: DataView): number {
@@ -81,45 +96,49 @@ interface ConnectOpts {
   onState: (state: BleState, deviceName: string | null) => void;
 }
 
-/** Requests a device advertising `serviceUuid`, connects GATT, and subscribes to
- *  notifications on `characteristicUuid`. Reports state transitions via onState so
- *  the UI can drive the same connected/searching/absent chip the design specifies. */
+/** Requests a device advertising `serviceUuid`, connects it, and subscribes to
+ *  notifications on `characteristicUuid`. Reports state transitions via onState so the
+ *  UI can drive the same connected/searching/absent chip the design specifies.
+ *
+ *  The shape of this function is unchanged from the Web Bluetooth version, deliberately:
+ *  `useBleSensors` and every screen above it never learned which stack was underneath,
+ *  and they still have not. */
 export async function connectBleSensor(opts: ConnectOpts): Promise<BleSensorHandle | null> {
   if (!isBluetoothSupported()) {
     opts.onState('absent', null);
     return null;
   }
   opts.onState('searching', null);
+
+  const service = numberToUUID(opts.serviceUuid);
+  const characteristic = numberToUUID(opts.characteristicUuid);
+
   try {
-    const device = await navigator.bluetooth.requestDevice({
-      filters: [{ services: [opts.serviceUuid] }],
-      optionalServices: [opts.serviceUuid],
-    });
+    // Asserted at the manifest too: the app never derives a position from a scan. It has
+    // GPS, and saying so keeps the scan permission from dragging location in with it.
+    await BleClient.initialize({ androidNeverForLocation: true });
+
+    const device = await BleClient.requestDevice({ services: [service], optionalServices: [service] });
     const name = device.name ?? null;
 
-    const handleDisconnect = () => opts.onState('absent', name);
-    device.addEventListener('gattserverdisconnected', handleDisconnect);
-
-    if (!device.gatt) throw new Error('No GATT server on device');
-    const server = await device.gatt.connect();
-    const service = await server.getPrimaryService(opts.serviceUuid);
-    const characteristic = await service.getCharacteristic(opts.characteristicUuid);
-    await characteristic.startNotifications();
-    characteristic.addEventListener('characteristicvaluechanged', () => {
-      const value = characteristic.value;
-      if (value) opts.onValue(value);
-    });
+    // A strap that has slipped, a meter that has gone to sleep between intervals: the
+    // chip goes back to absent and the pairing button becomes available again, which is
+    // the same thing gattserverdisconnected did.
+    await BleClient.connect(device.deviceId, () => opts.onState('absent', name));
+    await BleClient.startNotifications(device.deviceId, service, characteristic, opts.onValue);
 
     opts.onState('connected', name);
     return {
       disconnect: () => {
-        device.removeEventListener('gattserverdisconnected', handleDisconnect);
-        if (device.gatt?.connected) device.gatt.disconnect();
+        void BleClient.stopNotifications(device.deviceId, service, characteristic).catch(() => {});
+        void BleClient.disconnect(device.deviceId).catch(() => {});
         opts.onState('absent', name);
       },
     };
   } catch {
-    // User cancelled the chooser, or no matching/paired device — back to absent.
+    // The chooser was dismissed, Bluetooth is off, the permission was refused, or no
+    // matching device answered — all of which leave the session recording everything
+    // else, so none of them is worth more than an absent chip.
     opts.onState('absent', null);
     return null;
   }

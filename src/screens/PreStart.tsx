@@ -225,7 +225,7 @@ export function PreStart({
           ))}
         </div>
         {fix.status === 'denied' && (
-          <span style={{ ...S.caption, color: color.critical }}>Location permission is off. Grant it in the browser to record distance and pace.</span>
+          <span style={{ ...S.caption, color: color.critical }}>Location permission is off. Grant it to record distance and pace.</span>
         )}
       </div>
 
@@ -245,7 +245,7 @@ export function PreStart({
         </div>
         {!bleOk && (
           <span style={{ ...S.caption, color: color.textFaint }}>
-            This browser has no Web Bluetooth. Pace, distance and elevation still record from GPS.
+            Sensors need the app on a phone. Pace, distance and elevation still record from GPS.
           </span>
         )}
       </div>

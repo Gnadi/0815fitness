@@ -34,6 +34,79 @@ export interface Lap {
   endDist: number;
 }
 
+/** The sample streams of one activity — the second-by-second record.
+ *
+ *  Stored apart from the summary because they are essentially all of the bytes: an hour
+ *  of riding with a strap, a meter and a cadence sensor is four streams at roughly 1 Hz,
+ *  which is some hundreds of kilobytes, against a summary measured in hundreds of bytes.
+ *  Every aggregate screen reads summaries; only the screens that draw one session — its
+ *  detail, a comparison — load the streams, and only for the sessions they draw. */
+export interface ActivitySamples {
+  id: string;
+  points: GeoSample[];
+  hr: HrSample[];
+  power: PowerSample[];
+  cadence: CadenceSample[];
+}
+
+/** Seconds spent at each heart rate, from `lo` bpm upwards.
+ *
+ *  The zone boundaries a distribution is cut at depend on the max heart rate — or the
+ *  threshold — in settings, and those change: someone's first real max-effort session
+ *  moves them. Storing seconds *per zone* would freeze every past session against
+ *  whatever the setting was on the day it was saved; storing seconds *per bpm* lets any
+ *  zone model be applied to the whole history at once, for a few hundred bytes. */
+export interface HrHistogram {
+  lo: number;
+  seconds: number[];
+}
+
+/** Everything about one activity that is derived by walking its samples.
+ *
+ *  Computed once, when the activity is saved or imported, and stored with the summary,
+ *  so that reading a season of history does not mean parsing a season of samples. What
+ *  goes in here is only ever settings-independent: the ingredients, never a figure that
+ *  a later change to max heart rate, threshold or FTP would silently invalidate. */
+export interface ActivityDerived {
+  version: number;
+  movingS: number;
+  hrHist: HrHistogram | null;
+  avgHr: number | null;
+  maxHr: number | null;
+  avgPower: number | null;
+  /** Normalised power: the 30 s rolling average raised to the fourth, meaned, rooted. */
+  normalizedPower: number | null;
+  avgCadence: number | null;
+  /** Seconds spent at each cadence, from `lo` rpm — the same argument as `hrHist`. */
+  cadenceHist: HrHistogram | null;
+  /** Fastest time over each PB distance, keyed by `PB_DISTANCES` key. */
+  pbEfforts: Record<string, number>;
+  /** Mean maximal power over each window, keyed by `POWER_DURATIONS` key. */
+  powerBests: Record<string, number>;
+  decoupling: number | null;
+  /** Altitude along the track, thinned for the silhouettes and profiles. */
+  elevation: number[];
+  /** Flat-equivalent distance in metres: what the run would have measured on the level
+   *  for the same energetic cost. Null when there is no usable altitude. */
+  gapDistanceM: number | null;
+  /** The track reduced to a fixed-length, start-relative shape, for matching repeats. */
+  route: RouteSignature | null;
+}
+
+/** A track reduced to `ROUTE_POINTS` evenly spaced offsets in metres from its start,
+ *  which is enough to tell one loop from another and cheap enough to hold for every
+ *  activity at once. */
+export interface RouteSignature {
+  lat: number;
+  lon: number;
+  totalM: number;
+  /** Interleaved east/north offsets in metres: [e0, n0, e1, n1, …]. */
+  shape: number[];
+}
+
+export type ActivitySource = 'recorded' | 'manual' | 'imported';
+
+/** One activity, without its samples: what every list, rollup and chart reads. */
 export interface Activity {
   id: string;
   sport: Sport;
@@ -43,28 +116,51 @@ export interface Activity {
   notes: string;
   effort: number; // 1-10
   gearId: string | null;
-  points: GeoSample[];
   laps: Lap[];
-  hr: HrSample[];
-  power: PowerSample[];
-  cadence: CadenceSample[];
   distance: number; // metres, final cumulative
   ascent: number; // metres
+  source: ActivitySource;
+  /** False for a manual entry, which has figures but no track to draw or re-derive. */
+  hasSamples: boolean;
+  derived: ActivityDerived;
   demo?: boolean;
+}
+
+/** An activity with its streams loaded — what the detail and comparison screens work on. */
+export interface FullActivity extends Activity {
+  samples: ActivitySamples;
 }
 
 export interface GearItem {
   id: string;
   sport: Sport;
   name: string;
+  /** Distance already on it before the log started, in kilometres. */
+  offsetKm: number;
+  /** Kilometres after which it should be replaced, or null for no limit. */
+  limitKm: number | null;
+  retired: boolean;
 }
 
-export interface PlanEntry {
-  sessionIdx: number;
-}
+export type Units = 'metric' | 'imperial';
+
+/** Which heart rate the zones are cut against: a percentage of max, or of threshold. */
+export type ZoneModel = 'maxhr' | 'lthr';
+
+/** How a week's training load is measured: kilometres, or training stress. */
+export type LoadModel = 'distance' | 'stress';
 
 export interface Settings {
   maxHr: number;
+  /** Lactate threshold heart rate, when it is known. */
+  lthr: number | null;
+  zoneModel: ZoneModel;
+  /** Functional threshold power, when it is known. */
+  ftp: number | null;
+  units: Units;
+  loadModel: LoadModel;
   gear: GearItem[];
   plan: number[]; // 7 entries, Mon..Sun — index into PLANNED_SESSIONS
+  /** Speed under which the recorder auto-pauses, in metres per second. */
+  autoPauseMps: number;
 }

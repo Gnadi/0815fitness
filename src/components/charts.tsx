@@ -319,6 +319,8 @@ export function CompareSeriesChart({
   fmtY,
   minSpan = 0,
   height = 150,
+  toXUnit = (metres: number) => metres / 1000,
+  xUnitLabel = 'km',
 }: {
   series: { color: string; values: (number | null)[] }[];
   bucketM: number;
@@ -329,6 +331,9 @@ export function CompareSeriesChart({
    *  chart that dramatises a couple of seconds. */
   minSpan?: number;
   height?: number;
+  /** The distance axis is drawn in whatever unit the app is set to. */
+  toXUnit?: (metres: number) => number;
+  xUnitLabel?: string;
 }) {
   const W = 390;
   const X0 = 40;
@@ -368,8 +373,8 @@ export function CompareSeriesChart({
   };
 
   const yTicks = [max - pad, (min + max) / 2, min + pad];
-  const totalKm = (count * bucketM) / 1000;
-  const xTicks = [0, 0.5, 1].map((f) => ({ f, km: totalKm * f }));
+  const totalX = toXUnit(count * bucketM);
+  const xTicks = [0, 0.5, 1].map((f) => ({ f, x: totalX * f }));
 
   return (
     <svg viewBox={`0 0 ${W} ${height}`} width="100%" height={height} style={{ display: 'block' }}>
@@ -394,9 +399,68 @@ export function CompareSeriesChart({
           fontSize={10}
           textAnchor={t.f === 0 ? 'start' : t.f === 1 ? 'end' : 'middle'}
         >
-          {t.km.toFixed(t.km >= 10 ? 0 : 1)} km
+          {t.x.toFixed(t.x >= 10 ? 0 : 1)} {xUnitLabel}
         </text>
       ))}
     </svg>
+  );
+}
+
+
+/** Time spent at each value of a sampled signal — how a cadence or a heart rate was
+ *  actually distributed, rather than the single average that hides whether it was
+ *  steady or swung either side of it. */
+export function HistogramBars({
+  hist,
+  height = 96,
+  accent = color.metricCadence,
+  markers = [],
+  fmtX = (v: number) => String(Math.round(v)),
+}: {
+  hist: { lo: number; seconds: number[] };
+  height?: number;
+  accent?: string;
+  /** Values to call out on the axis — the median, the quartiles. */
+  markers?: { value: number; label: string }[];
+  fmtX?: (v: number) => string;
+}) {
+  const W = 358;
+  const H = height;
+  const axis = 16;
+  const peak = Math.max(1, ...hist.seconds);
+  const n = hist.seconds.length;
+  const barW = W / n;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" width="100%" height={H} style={{ display: 'block' }}>
+      {hist.seconds.map((seconds, i) => {
+        const h = (seconds / peak) * (H - axis);
+        return <rect key={i} x={i * barW} y={H - axis - h} width={Math.max(0.6, barW - 0.4)} height={h} fill={accent} opacity={0.75} />;
+      })}
+      <line x1={0} x2={W} y1={H - axis} y2={H - axis} stroke={color.chartAxis} strokeWidth={1} />
+      {markers.map((m) => {
+        const x = ((m.value - hist.lo) / Math.max(1, n - 1)) * W;
+        return (
+          <g key={m.label}>
+            <line x1={x} x2={x} y1={0} y2={H - axis} stroke={color.text} strokeWidth={1} strokeDasharray="2 3" />
+            <text x={Math.min(W - 4, Math.max(2, x))} y={H - 4} fill={color.textFaint} fontFamily={font.mono} fontSize={9} textAnchor="middle">
+              {fmtX(m.value)}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/** One session's time in each heart-rate zone, as a single stacked bar. */
+export function ZoneBar({ seconds, colors, height = 12 }: { seconds: number[]; colors: string[]; height?: number }) {
+  const total = seconds.reduce((a, b) => a + b, 0);
+  if (total <= 0) return null;
+  return (
+    <div style={{ display: 'flex', height, borderRadius: 3, overflow: 'hidden', background: color.surfaceSunk }}>
+      {seconds.map((s, i) => (
+        <span key={i} style={{ width: `${(s / total) * 100}%`, background: colors[i] }} />
+      ))}
+    </div>
   );
 }

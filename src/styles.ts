@@ -169,3 +169,16 @@ export const cardStack: CSSProperties = {
   gap: 10,
   padding: '0 16px',
 };
+
+/** The well every text, number and date field on the settings, manual-entry and edit
+ *  screens sits in — the same one the save screen's title has always used. */
+export const input: CSSProperties = {
+  width: '100%',
+  boxSizing: 'border-box',
+  padding: '11px 12px',
+  background: color.surface,
+  border: `1px solid ${color.border}`,
+  borderRadius: radius.sm,
+  color: color.text,
+  fontSize: 15,
+};

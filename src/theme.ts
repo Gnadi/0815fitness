@@ -92,4 +92,13 @@ export const motion = {
 
 // HR zones as % of max HR — used to bucket real BLE heart-rate samples.
 export const HR_ZONE_BOUNDS = [0, 0.6, 0.7, 0.8, 0.9, 1.2];
+
+// The same five zones cut against lactate threshold heart rate instead. Threshold is
+// the intensity the zones are actually *about*, and it moves with fitness while max
+// heart rate barely does — so anyone who knows theirs gets a truer distribution here.
+export const LTHR_ZONE_BOUNDS = [0, 0.81, 0.9, 0.94, 1.0, 1.3];
+
 export const ZONE_NAMES = ['Z1 recov', 'Z2 aerob', 'Z3 tempo', 'Z4 thresh', 'Z5 vo₂max'];
+
+// Power zones as % of FTP, on the same five-band shape as the heart-rate zones.
+export const POWER_ZONE_BOUNDS = [0, 0.55, 0.75, 0.9, 1.05, 2.5];

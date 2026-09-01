@@ -1,8 +1,9 @@
 // Synthetic sample history — used only behind an explicit "Load sample history" action
 // on the empty-state screens, so Overview/Analyse have something real to compute over
 // before the user has recorded anything themselves. Never seeded automatically.
-import type { Activity, GeoSample, HrSample, PowerSample, CadenceSample, Sport } from '../types';
+import type { Activity, ActivitySamples, GeoSample, HrSample, PowerSample, CadenceSample, Sport } from '../types';
 import { makeId } from './storage';
+import { deriveActivity } from './derived';
 import { cumulativeDistance, totalAscent } from './geo';
 
 function mulberry32(seed: number) {
@@ -118,9 +119,14 @@ function sessionFor(dow: number, rand: () => number, ramp: number): SessionPlan 
   }
 }
 
-export function generateDemoHistory(maxHr: number, weeks = 13): Activity[] {
+export interface DemoEntry {
+  activity: Activity;
+  samples: ActivitySamples;
+}
+
+export function generateDemoHistory(maxHr: number, weeks = 13): DemoEntry[] {
   const rand = mulberry32(20260830);
-  const activities: Activity[] = [];
+  const entries: DemoEntry[] = [];
   const totalDays = weeks * 7;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -140,34 +146,51 @@ export function generateDemoHistory(maxHr: number, weeks = 13): Activity[] {
 
     const speedMps = plan.sport === 'run' ? 1000 / (plan.paceSecPerKm ?? 320) : ((plan.speedKmh ?? 30) * 1000) / 3600;
     const nominalM = plan.km * 1000;
-    const points = genPath(nominalM, speedMps, startedAt, dayOffset + weekIdx * 7);
+
+    // The day of the week picks the route, and the route picks the shape — so the same
+    // loop comes back week after week, at the distance that week's volume calls for,
+    // and the sample history has real repeats in it to read.
+    const names = ROUTE_NAMES[plan.sport];
+    const nameIdx = dow % names.length;
+    const name = names[nameIdx];
+    const points = genPath(nominalM, speedMps, startedAt, nameIdx * 7 + (plan.sport === 'run' ? 0 : 3));
     const distance = cumulativeDistance(points);
     const durationS = (points[points.length - 1].t - startedAt) / 1000;
 
-    const names = ROUTE_NAMES[plan.sport];
-    const name = names[Math.floor(rand() * names.length)];
     const hour = new Date(startedAt).getHours();
     const timeOfDay = hour < 11 ? 'Morning' : hour < 17 ? 'Midday' : 'Evening';
 
-    activities.push({
-      id: makeId(),
-      sport: plan.sport,
-      startedAt,
-      endedAt: startedAt + durationS * 1000,
-      title: `${timeOfDay} ${plan.sport === 'run' ? 'Run' : 'Ride'} · ${name}`,
-      notes: '',
-      effort: plan.hrPct > 0.82 ? 8 : plan.hrPct > 0.7 ? 6 : 4,
-      gearId: plan.sport === 'run' ? 'g-run-1' : 'g-ride-1',
+    const id = makeId();
+    const samples: ActivitySamples = {
+      id,
       points,
-      laps: [],
       hr: genHr(startedAt, durationS, plan.hrPct, maxHr, rand),
       power: plan.sport === 'ride' ? genPower(startedAt, durationS, plan.watts ?? 210, rand) : [],
       cadence: genCadence(startedAt, durationS, plan.sport === 'run' ? 174 + rand() * 6 : 86 + rand() * 6, rand),
-      distance,
-      ascent: Math.round(totalAscent(points)),
-      demo: true,
+    };
+    const endedAt = startedAt + durationS * 1000;
+
+    entries.push({
+      activity: {
+        id,
+        sport: plan.sport,
+        startedAt,
+        endedAt,
+        title: `${timeOfDay} ${plan.sport === 'run' ? 'Run' : 'Ride'} · ${name}`,
+        notes: '',
+        effort: plan.hrPct > 0.82 ? 8 : plan.hrPct > 0.7 ? 6 : 4,
+        gearId: plan.sport === 'run' ? 'g-run-1' : 'g-ride-1',
+        laps: [],
+        distance,
+        ascent: Math.round(totalAscent(points)),
+        source: 'recorded',
+        hasSamples: true,
+        derived: deriveActivity({ sport: plan.sport, startedAt, endedAt, samples }),
+        demo: true,
+      },
+      samples,
     });
   }
 
-  return activities.sort((a, b) => b.startedAt - a.startedAt);
+  return entries.sort((a, b) => b.activity.startedAt - a.activity.startedAt);
 }

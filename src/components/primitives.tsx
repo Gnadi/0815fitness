@@ -125,3 +125,121 @@ export function SectionHeader({ children, right }: { children: ReactNode; right?
     </div>
   );
 }
+
+/** The header every screen below the Overview shares: back, title, and one optional
+ *  action on the right. */
+export function ScreenHeader({ title, onBack, right }: { title: ReactNode; onBack: () => void; right?: ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '0 16px 10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+        <button
+          onClick={onBack}
+          aria-label="Back"
+          style={{ background: 'none', border: 'none', color: color.textFaint, cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 6px 0 0' }}
+        >
+          ‹
+        </button>
+        <span style={{ ...S.title, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</span>
+      </div>
+      {right}
+    </div>
+  );
+}
+
+/** A row of mutually exclusive choices, used wherever a setting has three or fewer. */
+export function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  ariaLabel?: string;
+}) {
+  return (
+    <div role="group" aria-label={ariaLabel} style={{ display: 'flex', gap: 4 }}>
+      {options.map((option) => {
+        const on = option.value === value;
+        return (
+          <button
+            key={option.value}
+            onClick={() => onChange(option.value)}
+            aria-pressed={on}
+            style={{
+              flex: 1,
+              height: 38,
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontFamily: font.mono,
+              fontSize: 12,
+              fontWeight: 500,
+              letterSpacing: '.04em',
+              ...(on
+                ? { background: color.accentWash, color: color.accent, border: `1px solid ${color.accent}` }
+                : { background: color.surface, color: color.textMuted, border: `1px solid ${color.border}` }),
+            }}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A labelled text or number field, in the same well the save screen's title sits in. */
+export function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: ReactNode;
+  hint?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <Label>{label}</Label>
+      {children}
+      {hint && <span style={{ fontSize: 12, lineHeight: 1.4, color: color.textFaint }}>{hint}</span>}
+    </div>
+  );
+}
+
+/** A button that reads as an action rather than a link: bordered, quiet, full width. */
+export function ActionButton({
+  onClick,
+  children,
+  tone = 'neutral',
+  disabled,
+}: {
+  onClick: () => void;
+  children: ReactNode;
+  tone?: 'neutral' | 'accent' | 'critical';
+  disabled?: boolean;
+}) {
+  const stroke = tone === 'accent' ? color.accent : tone === 'critical' ? color.critical : color.border;
+  const text = tone === 'accent' ? color.accent : tone === 'critical' ? color.critical : color.text;
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        width: '100%',
+        height: 44,
+        borderRadius: 6,
+        background: 'none',
+        border: `1px solid ${stroke}`,
+        color: text,
+        fontSize: 14,
+        fontWeight: 600,
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      {children}
+    </button>
+  );
+}

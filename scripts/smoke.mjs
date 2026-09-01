@@ -128,14 +128,90 @@ await page.evaluate(() => document.querySelector('.ct-scroll').scrollBy(0, 900))
 await page.waitForTimeout(300);
 await shot(page, '20-compare-splits');
 
-// The browser's own back button is wired to the app's screen stack, so a detail
-// returns to the Overview instead of leaving the app. Nothing to photograph here,
-// so this last part asserts.
+// The history, one session on its own, the routes it repeats and the settings that
+// decide how all of it is measured.
 let failed = 0;
 const check = (label, passed) => {
   console.log(`${passed ? 'ok  ' : 'FAIL'}: ${label}`);
   if (!passed) failed++;
 };
+
+await page.goto(BASE);
+await page.waitForTimeout(600);
+await page.getByRole('button', { name: /^All \d+ →$/ }).click();
+await page.waitForTimeout(500);
+await shot(page, '21-history');
+
+await page.getByLabel('Search the log').fill('Pöstlingberg');
+await page.waitForTimeout(400);
+await shot(page, '22-history-search');
+check('search narrows the log', (await page.locator('.ct-row').count()) > 0);
+await page.getByLabel('Search the log').fill('');
+await page.waitForTimeout(300);
+
+await page.locator('.ct-row').first().click();
+await page.waitForTimeout(700);
+await shot(page, '23-activity-detail');
+check('a session opens on its own', await page.getByText('Moving time').isVisible());
+await page.evaluate(() => document.querySelector('.ct-scroll').scrollBy(0, 900));
+await page.waitForTimeout(400);
+await shot(page, '24-activity-charts');
+await page.evaluate(() => document.querySelector('.ct-scroll').scrollBy(0, 1200));
+await page.waitForTimeout(400);
+await shot(page, '25-activity-splits');
+
+await page.getByRole('button', { name: 'Edit' }).click();
+await page.waitForTimeout(400);
+await shot(page, '26-activity-edit');
+check('a saved session can be deleted', await page.getByRole('button', { name: 'Delete this session' }).isVisible());
+
+await page.goto(BASE);
+await page.waitForTimeout(600);
+await page.getByRole('button', { name: /^All \d+ →$/ }).click();
+await page.waitForTimeout(400);
+await page.getByRole('button', { name: '+ Manual' }).click();
+await page.waitForTimeout(400);
+await shot(page, '27-manual-entry');
+
+await page.goto(BASE);
+await page.waitForTimeout(600);
+await page.getByText('Analyse →').click();
+await page.waitForTimeout(400);
+await page.getByRole('button', { name: 'ROUTES' }).click();
+await page.waitForTimeout(700);
+await shot(page, '28-analyse-routes');
+const routeRows = page.locator('.ct-row');
+check('repeated routes are grouped', (await routeRows.count()) > 0);
+if (await routeRows.count()) {
+  await routeRows.first().click();
+  await page.waitForTimeout(700);
+  await shot(page, '29-route-detail');
+}
+
+await page.goto(BASE);
+await page.waitForTimeout(600);
+await page.getByRole('button', { name: 'Settings' }).click();
+await page.waitForTimeout(500);
+await shot(page, '30-settings');
+await page.getByRole('button', { name: 'MI · FT' }).click();
+await page.waitForTimeout(400);
+await shot(page, '31-settings-imperial');
+await page.getByRole('button', { name: 'Back', exact: true }).click();
+await page.waitForTimeout(500);
+await shot(page, '32-overview-imperial');
+check('switching units restates the Overview', await page.getByText('mi run').isVisible());
+await page.getByRole('button', { name: 'Settings' }).click();
+await page.waitForTimeout(400);
+await page.getByRole('button', { name: 'KM · M' }).click();
+await page.waitForTimeout(300);
+await page.getByRole('button', { name: 'TRAINING STRESS' }).click();
+await page.waitForTimeout(300);
+await page.getByRole('button', { name: 'Back', exact: true }).click();
+await page.waitForTimeout(500);
+await shot(page, '33-overview-stress-load');
+await page.getByText('Analyse →').click();
+await page.waitForTimeout(600);
+await shot(page, '34-analyse-load-stress');
 
 await page.goto(BASE);
 await page.waitForTimeout(500);

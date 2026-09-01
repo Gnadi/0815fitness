@@ -1,12 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Recorder, type RecorderSnapshot } from '../lib/recorder';
+import { Recorder, type RecorderCheckpoint, type RecorderSnapshot } from '../lib/recorder';
+import { CHECKPOINT_INTERVAL_MS, clearCheckpoint, saveCheckpoint } from '../lib/session';
 import type { Sport } from '../types';
+
+export interface RecorderOptions {
+  autoPauseMps?: number;
+  /** A session interrupted by a crash or a reload, picked up where it stopped. */
+  restore?: RecorderCheckpoint | null;
+}
 
 /** Owns a Recorder for the lifetime of a recording session: starts a real GPS watch
  *  the moment `armed` becomes true, feeds every position straight into the recorder,
- *  and tears the watch down when the session ends. */
-export function useRecorder(sport: Sport, armed: boolean) {
-  const [recorder] = useState(() => new Recorder(sport));
+ *  and tears the watch down when the session ends.
+ *
+ *  It also writes the session to the database every few seconds, so that the recording
+ *  survives whatever happens to the tab. */
+export function useRecorder(sport: Sport, armed: boolean, options: RecorderOptions = {}) {
+  const { autoPauseMps, restore } = options;
+  const [recorder] = useState(() => new Recorder(sport, autoPauseMps));
   const [snapshot, setSnapshot] = useState<RecorderSnapshot>(() => recorder.snapshot());
   const watchId = useRef<number | null>(null);
   const wasArmed = useRef(false);
@@ -22,7 +33,8 @@ export function useRecorder(sport: Sport, armed: boolean) {
     // re-runs (StrictMode's double-mount included) so the track never silently stops.
     if (!wasArmed.current) {
       wasArmed.current = true;
-      recorder.start();
+      if (restore) recorder.restore(restore);
+      else recorder.start();
     }
     if (!('geolocation' in navigator)) return;
 
@@ -47,6 +59,28 @@ export function useRecorder(sport: Sport, armed: boolean) {
       navigator.geolocation.clearWatch(id);
       if (watchId.current === id) watchId.current = null;
     };
+  }, [armed, recorder, restore]);
+
+  // Checkpoint on a timer rather than on every sample: a write per fix would be a write
+  // a second for hours, and what a recovery needs is the last few seconds, not the last
+  // few metres.
+  useEffect(() => {
+    if (!armed) return;
+    const write = () => {
+      const checkpoint = recorder.toCheckpoint();
+      if (checkpoint) void saveCheckpoint(checkpoint);
+    };
+    const handle = setInterval(write, CHECKPOINT_INTERVAL_MS);
+    // Backgrounding the app is the moment before it is most likely to be killed, so the
+    // freshest possible checkpoint is written on the way out.
+    const onHidden = () => {
+      if (document.visibilityState === 'hidden') write();
+    };
+    document.addEventListener('visibilitychange', onHidden);
+    return () => {
+      clearInterval(handle);
+      document.removeEventListener('visibilitychange', onHidden);
+    };
   }, [armed, recorder]);
 
   const actions = useMemo(
@@ -64,6 +98,10 @@ export function useRecorder(sport: Sport, armed: boolean) {
           watchId.current = null;
         }
         recorder.stop();
+        // The checkpoint is dropped here, not after the save screen: from this point the
+        // draft is held by the app, and offering it again on the next launch would
+        // duplicate whatever the person decides to do with it.
+        void clearCheckpoint();
         return recorder.snapshot();
       },
       feedHr: (bpm: number) => recorder.addHr(bpm),

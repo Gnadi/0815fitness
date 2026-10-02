@@ -120,6 +120,19 @@ describe('Transferfenster', () => {
     }
   })
 
+  it('der gewählte Profivertrag wird am Fensterende nicht überschrieben', () => {
+    let c = createCareer({ ...input, seed: 21 })
+    let guard = 0
+    while (!(c.fenster === 'sommer' && c.angebote.some((a) => a.art === 'profivertrag')) && guard++ < 20_000) c = bot(c, { wechseln: false })
+    const wahl = c.angebote[c.angebote.length - 1]
+    c = Aktionen.annehmen(c, wahl.id)
+    const vertrag = c.vertrag
+    while (c.fenster && guard++ < 40_000) c = bot(c, { wechseln: false })
+    expect(c.vereinId).toBe(wahl.vereinId)
+    expect(c.vertrag?.gehalt).toBe(vertrag?.gehalt)
+    expect(c.vertrag?.rolle).toBe(wahl.rolle)
+  })
+
   it('Gesamtstärke wird nie ungültig', () => {
     const c = spieleSaisons(createCareer(input), 3)
     expect(overall(c.spieler)).toBeGreaterThan(30)

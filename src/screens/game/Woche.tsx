@@ -83,6 +83,7 @@ export function Woche({ c, zuVertrag }: { c: Career; zuVertrag: () => void }) {
           <button className="btn" onClick={() => simuliere(4)}>4 Wochen ⏩</button>
           <button className="btn" onClick={() => simuliere(12)}>12 Wochen ⏩</button>
         </div>
+        <button className="btn" onClick={() => simuliere(80)}>Bis zum nächsten Halt ⏩⏩</button>
         <label className="check">
           <input type="checkbox" checked={c.einstellungen.autoSzenen} onChange={(e) => autoSzenen(e.target.checked)} />
           <span>Schlüsselszenen bei Simulation automatisch (sichere Option)</span>

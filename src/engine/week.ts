@@ -9,7 +9,7 @@ import { oeffneFenster, schliesseFenster } from './transfers'
 import { FOCUS, trainingDeltas } from './training'
 import { paarungFuerWoche, verbucheErgebnis } from './wettbewerbe'
 import { wochenEinkommen } from './wirtschaft'
-import { simuliereSpieltag, tabelleEintragen } from './welt'
+import { simuliereSpieltag } from './welt'
 import { pruefeErfolge } from './erfolge'
 import type { Career, Einsatz, Injury, MatchState, TrainingFocus, WeekReport } from './types'
 
@@ -194,7 +194,7 @@ function beendeWoche(c: Career, rng: Rng, m: MatchState | null, einsatz: Einsatz
     const note = gespielt ? berechneNote(c, m, tore, gegentore) : null
     const minuten = !gespielt ? 0 : einsatz === 'startelf' ? (m.frueherEnde ? rng.int(25, 75) : 90) : 25
 
-    const v = verbucheErgebnis(c, rng, m.wettbewerb, m.gegnerId, m.heim, tore, gegentore, m.eigeneStaerke, m.gegnerStaerke, tabelleEintragen)
+    const v = verbucheErgebnis(c, rng, m.wettbewerb, m.gegnerId, m.heim, tore, gegentore, m.eigeneStaerke, m.gegnerStaerke)
     saison = v.saison
     hinweise.push(...v.hinweise)
     if (v.titel.length) {

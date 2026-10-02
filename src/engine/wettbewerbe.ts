@@ -4,7 +4,7 @@ import { EUROPA_NAMEN, POKAL_NAMEN } from './kalender'
 import type { Paarung } from './match'
 import { clamp } from './rating'
 import type { Rng } from './rng'
-import { gauss, jugendAbzug } from './welt'
+import { gauss, jugendAbzug, tabelleEintragen } from './welt'
 import type { Career, EuropaStatus, TurnierStatus } from './types'
 
 const EUROPA_KO: Record<number, { status: EuropaStatus; name: string }> = {
@@ -173,7 +173,6 @@ export function verbucheErgebnis(
   gegentore: number,
   eigene: number,
   gegner: number,
-  tabelleEintragen: (t: Career['saison']['tabelle'], h: string, a: string, th: number, ta: number) => void,
 ): Verbucht {
   const s = structuredClone(c.saison)
   const hinweise: string[] = []

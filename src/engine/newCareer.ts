@@ -1,5 +1,7 @@
 import { createRng } from './rng'
-import { SAVE_VERSION } from '../storage/saves'
+import { overall } from './rating'
+import { neueSaisonStats } from './season'
+import { SAVE_VERSION } from './version'
 import type { Archetype, Background, Career, Foot, Player, Position, Skills, Traits } from './types'
 
 export interface NewCareerInput {
@@ -87,7 +89,26 @@ export function createCareer(input: NewCareerInput, startSaison = 2026): Career 
     uhr: { saison: startSaison, woche: 1 },
     spieler,
     vereinId: '', // wird in Meilenstein 4 (Vereine) vergeben
+    ...startZustand(spieler, startSaison),
     flags: {},
     log: [],
+  }
+}
+
+/** Dynamischer Spielzustand eines frischen Spielers; auch Basis für Migrationen. */
+export function startZustand(spieler: Player, saison: number) {
+  const verein = { name: 'Jugendmannschaft', staerke: Math.round(overall(spieler)) }
+  return {
+    verein,
+    form: 50,
+    verletzung: null,
+    sperre: 0,
+    training: 'ausgewogen' as const,
+    phase: 'planung' as const,
+    match: null,
+    bericht: null,
+    saisonBericht: null,
+    saisonStats: neueSaisonStats(spieler, saison, verein),
+    historie: [],
   }
 }

@@ -80,10 +80,24 @@ echte Profis kommen höchstens als Randfiguren vor.
   mehrere Spielstände, JSON-Export/-Import. Bei großen Weltdaten Wechsel auf IndexedDB möglich.
 - **UI:** Mobile-first, Dark-Theme, Safe-Areas, offlinefähig.
 
+## Wochenschleife (Stand Meilenstein 2)
+
+- Eine Saison hat 40 Wochen: 34 Spieltage, danach 6 Wochen Sommerpause (nur Training).
+- **Training:** Fokus bestimmt Skill-Zuwachs (abhängig von Alter, Potenzial, Professionalität, Fitness und Positionsrelevanz).
+  Fitness wird durch Training und Spiele verbraucht und regeneriert sich teilweise von selbst. Wer zu müde ist, spielt schlechter und verletzt sich eher.
+- **Einsatz:** Startelf, Einwechslung oder nicht im Spiel – abhängig von Stärke im Verhältnis zum Verein, Trainer-Beziehung und Form.
+- **Spiel:** Basisergebnis aus Teamstärken (Poisson), dazu 0–2 Schlüsselszenen mit Entscheidungen (Risiko: sicher/mittel/riskant),
+  die Tore, Vorlagen, Karten, Verletzungen und die Note beeinflussen. Erfolgschance hängt von Skills, Selbstvertrauen, Fitness und Gegner ab.
+- **Saisonende:** Alterung ab 29 (Tempo/Physis zuerst), Saisonbilanz, Entwicklung der Skills.
+- Spielzustand (`phase`: planung, szene, bericht, saisonende, karriereende) liegt im Spielstand, ein Neuladen setzt genau dort fort.
+- `src/engine/sim.ts` spielt Karrieren automatisch (Tests/Balancing).
+
 ## Meilensteine
 
 1. **Fundament** ✅ Projekt, PWA, Charaktererstellung, Datenmodell, Speichern/Laden, Tests.
-2. **Wochenschleife:** Training, simulierte Spiele mit Schlüsselszenen, Attributentwicklung, Alterung.
+2. **Wochenschleife** ✅ Training mit 7 Fokus-Optionen, Fitness/Form/Verletzungen, simulierte Spiele mit Schlüsselszenen
+   (12 Szenen, positionsabhängig), Noten, Boulevard-Schlagzeilen, Saison-Bilanz, Alterung, Karriereende ab 30 möglich.
+   *Platzhalter bis Meilenstein 4:* ein fiktiver Verein („Jugendmannschaft“) mit fester Stärke und generierte Gegner.
 3. **Ereignisengine:** Bedingungen, Optionen, Folgen, Ketten, erste 30–50 Ereignisse.
 4. **Vereine und Transfers:** Ligadaten Welle 1, Tabellen, Auf-/Abstieg, Angebote, Verträge, Berater.
 5. **Risiko-Themen und Medien:** Wetten, Doping, Skandale, Sponsoren.

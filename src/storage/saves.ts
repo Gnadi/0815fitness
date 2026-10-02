@@ -1,7 +1,6 @@
+import { migrate } from '../engine/migrate'
 import type { Career } from '../engine/types'
 
-/** Aktuelle Version des Spielstand-Formats. Bei Änderungen erhöhen und in `migrate` behandeln. */
-export const SAVE_VERSION = 1
 const PREFIX = 'karriere:save:'
 
 /** Minimales Storage-Interface, damit sich localStorage später gegen IndexedDB tauschen lässt. */
@@ -18,11 +17,6 @@ export interface SaveSummary {
   name: string
   saison: number
   geaendert: number
-}
-
-function migrate(raw: Career): Career {
-  // Platz für künftige Migrationen: if (raw.version < 2) { ... }
-  return { ...raw, version: SAVE_VERSION }
 }
 
 export function createSaveStorage(store: KeyValueStore) {

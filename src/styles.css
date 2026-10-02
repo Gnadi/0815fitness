@@ -57,3 +57,28 @@ legend { color: var(--muted); font-size: 0.9rem; padding: 0 0 6px; }
 .bar { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
 .bar > div { height: 100%; background: var(--accent); }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Spiel-Ansichten */
+.head { display: flex; flex-direction: column; gap: 2px; }
+.head h1 { margin: 0; font-size: 1.5rem; }
+.head p { margin: 0; }
+.pill { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; height: 32px; padding: 0 10px; border-radius: 16px; font-weight: 700; }
+.pill.ovr { background: var(--accent); color: #05210f; }
+.meter { display: grid; grid-template-columns: 96px 1fr 28px; align-items: center; gap: 8px; margin: 4px 0; font-size: 0.85rem; }
+.alert { margin: 8px 0 0; padding: 8px 10px; border-radius: 8px; background: rgba(255, 107, 107, 0.12); color: #ffb3b3; font-size: 0.9rem; }
+.focus { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 8px; }
+.focus .choice { text-align: center; padding: 12px 8px; }
+.choice.disabled { opacity: 0.5; cursor: not-allowed; }
+.match h2 { margin-top: 4px; }
+.options { display: flex; flex-direction: column; gap: 8px; }
+.btn.option { display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; }
+.risk { font-size: 0.75rem; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.risk.sicher { color: #7fe3a3; border-color: #2c6b45; }
+.risk.mittel { color: #ffd479; border-color: #7a6228; }
+.risk.riskant { color: #ff9f9f; border-color: #7a3030; }
+.outcome { border-color: var(--accent); }
+.result { text-align: center; }
+.score { font-size: 2.6rem; font-weight: 800; margin: 4px 0; font-variant-numeric: tabular-nums; }
+.headline { margin: 0; padding: 10px 12px; border-left: 4px solid var(--accent); background: rgba(61, 220, 132, 0.08); font-weight: 600; }
+.news { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; }
+.card > h2:first-child { margin-top: 0; }

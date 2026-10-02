@@ -53,6 +53,13 @@ const BACKGROUND: Record<Background, { geld: number; disziplin: number; ehrgeiz:
 
 const clamp = (n: number, lo = 1, hi = 100) => Math.max(lo, Math.min(hi, n))
 
+/** Potenzial schief verteilt: die meisten Talente bleiben Durchschnitt, wenige werden Weltklasse. */
+function wuerfelPotenzial(archetyp: Archetype, rng: ReturnType<typeof createRng>): number {
+  const basis = 50 + 45 * rng.next() ** 1.6
+  const mod = archetyp === 'akademietalent' ? 5 : archetyp === 'spaetzuender' ? rng.int(0, 6) : rng.int(-4, 6)
+  return Math.round(clamp(basis + mod, 45, 96))
+}
+
 export function createCareer(input: NewCareerInput, startSaison = 2026): Career {
   const seed = input.seed ?? Math.floor(Math.random() * 2 ** 32)
   const rng = createRng(seed)
@@ -81,7 +88,7 @@ export function createCareer(input: NewCareerInput, startSaison = 2026): Career 
     archetyp: input.archetyp,
     skills,
     traits,
-    potenzial: input.archetyp === 'akademietalent' ? rng.int(65, 92) : rng.int(55, 95),
+    potenzial: wuerfelPotenzial(input.archetyp, rng),
     geld: bg.geld,
   }
 

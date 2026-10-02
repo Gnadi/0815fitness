@@ -61,10 +61,11 @@ export function simuliereWochen(c: Career, n: number): SimErgebnis {
   let wochen = 0
   let grund = ''
   let guard = 0
+  const fensterBeiStart = c.fenster
   while (wochen < n && guard++ < 2000) {
     if (c.phase === 'planung') {
-      if (wochen > 0 && c.fenster && c.angebote.length > 0) { grund = 'Transferangebote'; break }
-      if (wochen > 0 && c.fenster === 'sommer' && (c.vertrag === null || c.saison.jugend)) { grund = 'Vertrag nötig'; break }
+      if (c.fenster && c.fenster !== fensterBeiStart && c.angebote.length > 0) { grund = 'Transferangebote'; break }
+      if (c.fenster === 'sommer' && c.fenster !== fensterBeiStart && (c.vertrag === null || c.saison.jugend)) { grund = 'Vertrag nötig'; break }
       const fokus: TrainingFocus = c.spieler.traits.fitness < 50 && !c.verletzung ? 'regeneration' : c.training
       const hadVerletzung = c.verletzung !== null
       c = startWeek(c, fokus)

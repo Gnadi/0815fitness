@@ -65,6 +65,13 @@ export function VertragTab({ c }: { c: Career }) {
         ) : <p className="alert">Du bist vereinslos. Im Sommerfenster findest du Angebote.</p>}
       </section>
 
+      {!c.fenster && c.angebote.some((a) => a.art === 'verlaengerung') && (
+        <>
+          <h2 className="section">Vertragsangebot</h2>
+          {c.angebote.filter((a) => a.art === 'verlaengerung').map((a) => <AngebotKarte key={a.id} a={a} c={c} />)}
+        </>
+      )}
+
       {c.fenster ? (
         <>
           <h2 className="section">Angebote ({c.angebote.length})</h2>

@@ -72,6 +72,7 @@ export function trainingDeltas(c: Career, focus: TrainingFocus): Partial<Record<
   const talent = 0.6 + (p.potenzial / 100) * 0.8
   const pro = 0.8 + p.traits.professionalitaet / 250
   const fit = 0.6 + (0.4 * p.traits.fitness) / 100
+  const praxis = 0.9 + 0.2 * c.spielpraxis
   const posW = POSITION_WEIGHTS[p.position]
   const out: Partial<Record<keyof Skills, number>> = {}
 
@@ -79,8 +80,8 @@ export function trainingDeltas(c: Career, focus: TrainingFocus): Partial<Record<
     const w = def.gewichte === 'position' ? Math.min(1.3, (posW[k] ?? 0) * 3.2) + 0.1 : (def.gewichte[k] ?? 0)
     if (w <= 0) continue
     const relevanz = 0.8 + 2 * (posW[k] ?? 0)
-    const spielraum = clamp((p.potenzial + 8 - p.skills[k]) / 20, 0, 1)
-    out[k] = BASE * w * relevanz * altersfaktor(a) * talent * pro * fit * spielraum
+    const spielraum = clamp((p.potenzial + 3 - p.skills[k]) / 20, 0, 1)
+    out[k] = BASE * w * relevanz * altersfaktor(a) * talent * pro * fit * praxis * spielraum
   }
   return out
 }

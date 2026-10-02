@@ -50,7 +50,8 @@ export function wochenEinkommen(c: Career): number {
   if (!c.vertrag) return 0
   if (c.saison.jugend) return Math.round((c.vertrag.gehalt * 0.9) / 52)
   const lebensstil = Number(c.flags.lebensstil ?? 0)
-  return Math.round((c.vertrag.gehalt * 0.6 - 9_000 - lebensstil) / 52)
+  const sponsor = c.flags.sponsor === true ? c.spieler.traits.ruf * 1_500 + c.spieler.traits.fanbeliebtheit * 500 : 0
+  return Math.round((c.vertrag.gehalt * 0.6 + sponsor - 9_000 - lebensstil) / 52)
 }
 
 export const spielerOverall = (c: Career): number => overall(c.spieler)
@@ -141,6 +142,26 @@ export function erzeugeAngebote(c: Career, rng: Rng, o: AngebotOptionen): Angebo
       verhandelt: 0,
     }
   })
+}
+
+/** Angebot eines bestimmten Vereins (z. B. Verlängerung oder Rückkehr des alten Klubs). */
+export function vereinsAngebot(c: Career, rng: Rng, vereinId: string, art: AngebotArt): Angebot {
+  const p = c.spieler
+  const a = alter(p.geburtsdatum, c.uhr.saison)
+  const wert = marktwert(p, c.uhr.saison)
+  const berater = 1 + Number(c.flags.beraterGuete ?? 1) * 0.04
+  const ov = overall(p)
+  const staerke = c.welt.staerke[vereinId]
+  return {
+    id: neueId(),
+    art,
+    vereinId,
+    gehalt: Math.round((gehaltBei(vereinId, wert, c.welt) * berater * (0.95 + rng.next() * 0.2)) / 1000) * 1000,
+    jahre: jahreFuer(a, rng),
+    rolle: rolleFuer(ov, staerke),
+    ablose: 0,
+    verhandelt: 0,
+  }
 }
 
 /** Garantiert mindestens ein Angebot: schwächster Verein des Heimatlandes (oder irgendeiner). */

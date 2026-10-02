@@ -31,13 +31,31 @@ export function Woche({ c, zuVertrag }: { c: Career; zuVertrag: () => void }) {
   const trainieren = useCareer((s) => s.trainieren)
   const simuliere = useCareer((s) => s.simuliere)
   const autoSzenen = useCareer((s) => s.autoSzenen)
+  const apply = useCareer((s) => s.apply)
   const [focus, setFocus] = useState<TrainingFocus>(c.training)
   const verletzt = c.verletzung !== null
   const s = c.saisonStats
 
   return (
     <>
+      {c.flags.tutorialGesehen !== true && (
+        <section className="card tutorial">
+          <h2>So spielst du</h2>
+          <ul className="news">
+            <li>Wähle jede Woche deinen Trainingsfokus und starte die Woche. Training baut Skills auf, kostet aber Fitness.</li>
+            <li>In Spielen entscheidest du Schlüsselszenen: sicher, mittel oder riskant. Dein Können, Selbstvertrauen und deine Fitness bestimmen den Ausgang.</li>
+            <li>Dazwischen passieren Dinge: Kabine, Privatleben, Medien, Verlockungen. Jede Entscheidung hat Folgen, manchmal erst viel später.</li>
+            <li>In Transferfenstern bekommst du Angebote (Tab „Vertrag“). Mit ⏩ simulierst du mehrere Wochen am Stück.</li>
+          </ul>
+          <button className="btn small-text" onClick={() => apply((x) => ({ ...x, flags: { ...x.flags, tutorialGesehen: true } }))}>Verstanden</button>
+        </section>
+      )}
+
       <Status c={c} />
+
+      {!c.fenster && c.angebote.some((a) => a.art === 'verlaengerung') && (
+        <button className="banner" onClick={zuVertrag}>📝 Dein Verein hat dir ein neues Vertragsangebot vorgelegt</button>
+      )}
 
       {c.fenster && (
         <button className="banner" onClick={zuVertrag}>

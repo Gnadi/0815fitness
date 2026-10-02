@@ -4,7 +4,7 @@ import { applyTraits } from './match'
 import { alter, overall } from './rating'
 import type { Rng } from './rng'
 import { aktuelleLiga, baueSaison } from './saisonAufbau'
-import { jugendGehalt, erzeugeAngebote, marktwert, notAngebot, verhandle } from './wirtschaft'
+import { jugendGehalt, erzeugeAngebote, marktwert, notAngebot, vereinsAngebot, verhandle } from './wirtschaft'
 import { simuliereSpieltag } from './welt'
 import type { Angebot, Career, Personen, SeasonStats } from './types'
 
@@ -70,10 +70,7 @@ export function oeffneFenster(c: Career, rng: Rng, fenster: 'sommer' | 'winter')
     next.angebote = [
       ...erzeugeAngebote(next, rng, { art: 'vereinslos', anzahl: rng.int(2, 4) + wunsch, ausser: [alt] }),
     ]
-    if (rng.chance(0.6)) {
-      const alter_ = erzeugeAngebote({ ...next, vereinId: alt }, rng, { art: 'vereinslos', anzahl: 1, ausser: [], minStaerke: c.welt.staerke[alt] - 0.01, maxStaerke: c.welt.staerke[alt] + 0.01 })
-      if (alter_[0]) next.angebote.push({ ...alter_[0], vereinId: alt })
-    }
+    if (rng.chance(0.6)) next.angebote.push(vereinsAngebot(next, rng, alt, 'vereinslos'))
     hinweise.push(`Dein Vertrag bei ${VEREINE[alt].name} ist ausgelaufen. Du bist vereinslos.`)
   } else if (next.vertrag && !c.saison.jugend) {
     next.angebote = erzeugeAngebote(next, rng, { art: 'transfer', anzahl: rng.int(0, 3) + wunsch, ausser: [next.vereinId] })

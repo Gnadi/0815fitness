@@ -1,4 +1,4 @@
-# Karriere-Simulator – Konzept
+# Karriere-Simulator – Konzept & Architektur
 
 Privates, rein textbasiertes Fußball-Karriere-Spiel. Man schlüpft mit 16 in die Rolle eines Spielers und
 trifft bis zum Karriereende Entscheidungen: Vereinswechsel, Privatleben, Kabine, Medien, Moral.
@@ -8,97 +8,80 @@ Läuft nur im Browser (mobile-first, PWA), alle Daten liegen lokal.
 
 | Thema | Entscheidung |
 |---|---|
-| Vereine/Ligen | Echte Vereine, kein Lizenzthema (privates Spiel) |
+| Vereine/Ligen | Echte Vereine, kein Lizenzthema (privates Spiel); Stärken sind Näherungswerte |
 | Ton | Mix aus ernst und Boulevard, darf unterhaltsam und überzogen sein |
-| Darstellung | Rein textbasiert, kein Match-Visual, Avatar nur minimal |
+| Darstellung | Rein textbasiert, kein Match-Visual, kein Avatar |
 | Spiele | Ergebnis + Schlüsselszenen, keine Minuten-Simulation |
 | Moral/Risiko | Doping, Wetten, Manipulation, Steuertricks – mit Konsequenzen, aber man kann damit durchkommen |
 | Sprache/Plattform | Nur Deutsch, nur mobil, als PWA |
-| Länder | Alle 55 UEFA-Verbände, in Wellen (siehe unten) |
-| Speicherung | Nur Browser, keine Datenbank/kein Backend |
+| Länder | Alle 55 UEFA-Verbände (937 Vereine in 68 Ligen) |
+| Speicherung | Nur Browser (localStorage), Export/Import als JSON |
 
 ## Spielablauf
 
-Ein Jahr hat ca. 40 Wochen. Pro Woche: **Trainingsfokus wählen → Spiel (Ergebnis + Schlüsselszenen) → ggf. Ereignis mit Entscheidung.**
+Der Kalender einer Saison besteht aus Wochen: Ligaspieltage, eingestreute Pokal- und Europapokalwochen,
+Winterpause (Transferfenster), ggf. ein Turnier (EM/WM) und die Sommerpause (Transferfenster).
+Pro Woche: **Trainingsfokus wählen → Spiel (Ergebnis + Schlüsselszenen) → ggf. Ereignis mit Entscheidung.**
+Mit „⏩ Wochen simulieren“ lassen sich mehrere Wochen am Stück spielen (hält bei Ereignissen, Angeboten, Verletzungen).
 
-- **Karrierephasen:** Jugend (16–18), Durchbruch, Prime, Spätphase, Karriereende (danach Trainer/Experte/Rente).
-- **Karriereende:** Zusammenfassung mit Statistiken, Titeln, Rekorden und Hall-of-Fame-Wertung.
-- **Schlüsselszenen:** Einzelne Momente im Spiel mit Entscheidung (Elfmeter selbst schießen oder abgeben, Foul ziehen, Schwalbe, Jubel …).
+### Karrierephasen
+- **Jugend (16–17):** U19 eines selbst gewählten Vereins (Stärke des Vereins −12), Jugendliga ohne Auf-/Abstieg.
+  Am Ende der zweiten Jugendsaison: Profivertrag (Angebote des Heimatvereins und anderer Klubs).
+- **Profi (ab 18):** Liga, nationaler Pokal, Europapokal (Champions/Europa/Conference League), Nationalmannschaft.
+- **Spätphase:** Alterung ab 29, Karriereende freiwillig ab 30, spätestens mit 40.
+- **Ende:** Ruhm-Punkte, Klassifizierung (Randnotiz … Jahrhundertspieler), Titel, Statistiken, Erfolge.
 
 ### Charaktererstellung
-Land, Name, Position, starker Fuß, **Herkunft** (Arbeiterfamilie / Fußballer-Familie / Akademiker-Haushalt) und
-**Spielertyp** (Straßenfußballer / Akademie-Talent / Spätzünder). Beides setzt Start-Boni und -Mali. Das Potenzial bleibt verdeckt.
+Heimatland, Name, Jugendverein, Position, starker Fuß, **Herkunft** (Arbeiterfamilie / Fußballer-Familie / Akademiker)
+und **Spielertyp** (Straßenfußballer / Akademie-Talent / Spätzünder). Das Potenzial bleibt verdeckt (nur eine unscharfe Sternewertung der Scouts).
 
 ## Spielermodell
+- **Skills (1–100):** Tempo, Schuss, Pass, Dribbling, Defensive, Physis, Technik, Positionsspiel → positionsgewichtete Gesamtstärke.
+- **Traits (0–100):** Moral, Selbstvertrauen, Disziplin, Professionalität, Ehrgeiz, Ruf, Fans, Trainer-Beziehung, Kabine, Fitness, Gesundheit, Privatglück.
+- **Sonstiges:** Geld, Marktwert, Form, Spielpraxis, Verletzungen, Sperren, Berater-Güte, Lebensstil, Partner/Kinder.
 
-- **Skills (1–100):** Tempo, Schuss, Pass, Dribbling, Defensive, Physis, Technik, Positionsspiel.
-- **Traits (0–100):** Moral, Selbstvertrauen, Disziplin, Professionalität, Ehrgeiz, Ruf, Fanbeliebtheit,
-  Trainer-Beziehung, Kabine, Fitness, Gesundheit, Privatglück.
-- **Sonstiges:** Geld, verdecktes Potenzial, Form pro Spiel, Verletzungsanfälligkeit.
+## Wochenschleife
+- **Training:** 7 Fokus-Optionen. Zuwachs hängt von Alter, Potenzial, Professionalität, Fitness, Spielpraxis und Positionsrelevanz ab.
+  Fitness wird durch Training und Spiele verbraucht und regeneriert sich teilweise; Müdigkeit senkt Leistung und erhöht das Verletzungsrisiko.
+- **Einsatz:** Startelf, Einwechslung oder nicht im Spiel, abhängig von Stärke vs. Mannschaft, Vertragsrolle, Trainer-Beziehung und Form.
+- **Spiel:** Basisergebnis (Poisson aus Teamstärken) + 0–2 Schlüsselszenen (12 Szenen, positionsabhängig) mit Risikostufen.
+  Szenen beeinflussen Tore, Vorlagen, Karten, Verletzungen und die Note. K.-o.-Spiele kennen Elfmeterschießen.
 
-Definiert in `src/engine/types.ts`, Start-Werte in `src/engine/newCareer.ts`.
+## Welt
+- **Ligen:** Jede Liga hat einen Doppel-/Mehrfachrundenspielplan. Nur die Liga des Spielers wird wöchentlich simuliert, alle anderen am Saisonende.
+- **Auf-/Abstieg** für alle Länder mit mehreren Ligastufen, Vereinsstärken entwickeln sich (Rückkehr zum Ankerwert + Zufall + Platzierung).
+- **Pokale:** nationaler K.-o.-Pokal; **Europa:** Ligaphase mit 8 Spielen (Punkteschwellen), dann K.-o.-Runden; Teilnehmer aus den Abschlusstabellen.
+- **Nationalmannschaft:** Nominierung per Ereignis, Länderspiele, EM/WM alle zwei Jahre (Gruppenphase + K.-o.).
+- **Wirtschaft:** Marktwert (Stärke, Alter, Potenzial, Ruf), Gehälter je Land/Liga/Vereinsstärke, Netto-Wocheneinkommen, Lebensstil-Kosten.
 
-## Ereignissystem (Herzstück)
+## Verträge & Transfers
+- Transferfenster im Winter und Sommer erzeugen Angebote (Transfer, Leihe, Profivertrag, vereinslos).
+- Angebote lassen sich annehmen, ablehnen oder nachverhandeln (Gehalt/Rolle/Laufzeit, Absage-Risiko). Wechselwunsch erhöht die Angebotszahl, belastet aber Trainer und Kabine.
+- Vertragsende → vereinslos; zum Fensterende wird automatisch das beste Angebot gewählt.
+- Winterwechsel in andere Ligen: die neue Liga wird bis zum aktuellen Spieltag nachsimuliert.
 
-Ereignisse sind datengetriebene Karten (TypeScript/JSON) mit:
-- **Bedingungen** (Alter, Phase, Werte, Verein, Flags aus früheren Entscheidungen),
-- **Gewichtung** (wie wahrscheinlich in einer Woche),
-- **Optionen** mit sofortigen Effekten, **verzögerten Folgen** und optionalen **Zufallswürfen**, die von Werten abhängen.
+## Ereignissystem
+Ereignisse sind datengetriebene Karten (`src/data/events/*`, 116 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
+Würfen (Skills/Traits/feste Chance), Effekten und **Folgeereignissen** (verzögerte Ketten):
 
-**Ereignisketten** verbinden Entscheidungen zu Geschichten (die Party mit 17 holt dich Monate später ein).
-Bei Regelbrüchen gibt es immer einen Erwischt-Wurf: Es kann gut gehen, die Wahrscheinlichkeit hängt von Ruf, Disziplin, Umfeld und Glück ab.
+- **Jugend, Kabine, Trainer, Privat, Familie, Medien, Karriere, Verein, Gesundheit**
+- **Risiko-Ketten:** Sportwetten → Sucht → Erpressung → Spielmanipulation → Ermittlungen; Doping-Angebot → Kontrolle;
+  Steuertrick → Razzia; Fremdgehen → Erpressung; Bestechung. Jede Ketten-Stufe hat einen Erwischt-Wurf – man kann damit durchkommen.
+- Folgen: Sperren, Ruf-/Fan-Verlust, Sponsor weg, Geldstrafen bis hin zum erzwungenen Karriereende.
 
-| Kategorie | Beispiele |
-|---|---|
-| Kabine | Streit mit dem Kapitän, Mobbing gegen den Neuen, Mannschaftsabend, Gehaltsneid, Cliquen |
-| Trainer | Bankplatz, Disziplinforderung, Taktikstreit, Trainerwechsel |
-| Privat | Beziehung, kranke Familie, Party vor dem Spiel, Führerschein, Haus, Schule/Ausbildung |
-| Medien | Interview-Fettnäpfchen, Shitstorm, Sponsorenangebot, Gerüchte |
-| Karriere | Vertragsverhandlung, Berater, Leihe, Transferangebote, Nationalmannschaft |
-| Moral/Risiko | Wetten, Doping, Spielmanipulation, Steuertricks |
-| Verletzung | Kreuzbandriss, Comeback früh oder geduldig |
-
-## Länder und Ligadaten
-
-Die Engine ist länderunabhängig: **Ein Land hinzufügen = eine Datendatei hinzufügen** (Ligen, Vereine mit Stärke 1–100, Stadt, Rivalen).
-Alle 55 UEFA-Verbände sind in `src/data/countries.ts` angelegt; spielbar sind die Länder bis zur `AKTIVE_WELLE`.
-
-- **Welle 1:** DE, AT, CH, EN, ES, IT, FR (mehrere Ligastufen)
-- **Welle 2:** NL, PT, BE, TR, SC, GR, DK, NO, SE, PL, CZ, HR, RS, UA, RO, HU, IL (1. und teils 2. Liga)
-- **Welle 3:** übrige Verbände (nur 1. Liga)
-
-Vereinsstärken und Kader sind Näherungswerte und im Datensatz jederzeit anpassbar. Andere Spieler werden generiert,
-echte Profis kommen höchstens als Randfiguren vor.
+## Erfolge & Ruhm
+38 Erfolge, Auszeichnungen (Weltfußballer, Spieler des Jahres), Ruhm-Punkte aus Titeln (gewichtet nach Einsatzzeit), Toren, Länderspielen,
+Spitzenstärke, Erfolgen, abzüglich Skandalen.
 
 ## Technik
-
 - **Stack:** React 19, Vite, TypeScript, Zustand, React Router (HashRouter), vite-plugin-pwa, Vitest.
-- **Struktur:** `src/engine` (reine Spiellogik, ohne UI, getestet), `src/data` (Inhalte), `src/storage` (Spielstände),
+- **Struktur:** `src/engine` (reine Spiellogik, getestet), `src/data` (Vereine, Namen, Szenen, Ereignisse), `src/storage` (Spielstände),
   `src/store` (Zustand), `src/screens` (UI).
-- **Zufall:** Seed-basiert (`src/engine/rng.ts`), Zustand wird im Spielstand mitgespeichert.
-- **Speichern:** localStorage hinter einem kleinen Interface (`src/storage/saves.ts`), versioniertes Format mit Migrationen,
-  mehrere Spielstände, JSON-Export/-Import. Bei großen Weltdaten Wechsel auf IndexedDB möglich.
-- **UI:** Mobile-first, Dark-Theme, Safe-Areas, offlinefähig.
+- **Zufall:** Seed-basiert, Zustand liegt im Spielstand. Alle Spieleraktionen sind reine Funktionen (`src/engine/aktionen.ts`).
+- **Speichern:** localStorage hinter einem Interface, versioniertes Format (ältere Stände werden abgelehnt), Export/Import.
+- **Tests:** Daten-Integrität, Spielplan-/Welt-Invarianten, Karriere-Läufe für alle 55 Länder, Fuzzing mit zufälligen Entscheidungen.
+- **Bot/Simulation:** `src/engine/sim.ts` spielt Karrieren automatisch (Tests, Balancing).
 
-## Wochenschleife (Stand Meilenstein 2)
-
-- Eine Saison hat 40 Wochen: 34 Spieltage, danach 6 Wochen Sommerpause (nur Training).
-- **Training:** Fokus bestimmt Skill-Zuwachs (abhängig von Alter, Potenzial, Professionalität, Fitness und Positionsrelevanz).
-  Fitness wird durch Training und Spiele verbraucht und regeneriert sich teilweise von selbst. Wer zu müde ist, spielt schlechter und verletzt sich eher.
-- **Einsatz:** Startelf, Einwechslung oder nicht im Spiel – abhängig von Stärke im Verhältnis zum Verein, Trainer-Beziehung und Form.
-- **Spiel:** Basisergebnis aus Teamstärken (Poisson), dazu 0–2 Schlüsselszenen mit Entscheidungen (Risiko: sicher/mittel/riskant),
-  die Tore, Vorlagen, Karten, Verletzungen und die Note beeinflussen. Erfolgschance hängt von Skills, Selbstvertrauen, Fitness und Gegner ab.
-- **Saisonende:** Alterung ab 29 (Tempo/Physis zuerst), Saisonbilanz, Entwicklung der Skills.
-- Spielzustand (`phase`: planung, szene, bericht, saisonende, karriereende) liegt im Spielstand, ein Neuladen setzt genau dort fort.
-- `src/engine/sim.ts` spielt Karrieren automatisch (Tests/Balancing).
-
-## Meilensteine
-
-1. **Fundament** ✅ Projekt, PWA, Charaktererstellung, Datenmodell, Speichern/Laden, Tests.
-2. **Wochenschleife** ✅ Training mit 7 Fokus-Optionen, Fitness/Form/Verletzungen, simulierte Spiele mit Schlüsselszenen
-   (12 Szenen, positionsabhängig), Noten, Boulevard-Schlagzeilen, Saison-Bilanz, Alterung, Karriereende ab 30 möglich.
-   *Platzhalter bis Meilenstein 4:* ein fiktiver Verein („Jugendmannschaft“) mit fester Stärke und generierte Gegner.
-3. **Ereignisengine:** Bedingungen, Optionen, Folgen, Ketten, erste 30–50 Ereignisse.
-4. **Vereine und Transfers:** Ligadaten Welle 1, Tabellen, Auf-/Abstieg, Angebote, Verträge, Berater.
-5. **Risiko-Themen und Medien:** Wetten, Doping, Skandale, Sponsoren.
-6. **Politur:** Statistiken, Karriereende, Balancing, weitere Länderwellen, Achievements.
+## Ideen für später
+Trainerkarriere nach dem Karriereende, mehr Ereignisse (je Land), Spielerrat-Streik als Kette, Lebensstil-Käufe, Transfers mit Kaufoption,
+zweite Nationalität, IndexedDB bei sehr großen Spielständen.

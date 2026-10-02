@@ -35,7 +35,12 @@ export function legende(c: Career): Legende {
   const g = gesamtStats(c)
   const peak = Math.max(overall(c.spieler), ...alleStats(c).map((s) => s.overallEnde))
   let p = 0
-  for (const t of c.laufbahn.titel) p += TITEL_PUNKTE(t.name)
+  for (const t of c.laufbahn.titel) {
+    // Wer kaum gespielt hat, bekommt nur einen Teil des Ruhms (WM/EM zählen voll).
+    const spiele = alleStats(c).filter((s) => s.saison === t.saison).reduce((a, s) => a + s.spiele, 0)
+    const anteil = /^(WM|EM)/.test(t.name) ? 1 : Math.max(0.25, Math.min(1, spiele / 18))
+    p += TITEL_PUNKTE(t.name) * anteil
+  }
   p += c.laufbahn.auszeichnungen.length * 15
   p += g.tore * 0.2 + g.vorlagen * 0.1 + g.spiele * 0.03
   p += c.laufbahn.laenderspiele * 0.25 + c.laufbahn.laenderspielTore * 0.3

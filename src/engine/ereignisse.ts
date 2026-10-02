@@ -6,7 +6,7 @@ import { applyTraits } from './match'
 import { clamp } from './rating'
 import { SKILL_KEYS } from './rating'
 import type { Rng } from './rng'
-import { erzeugeAngebote } from './wirtschaft'
+import { erzeugeAngebote, vereinsAngebot } from './wirtschaft'
 import { fuehreWechselAus, neueMitarbeiter } from './transfers'
 import type { AktionName } from '../data/events/types'
 import type { Angebot, Career, Skills, Traits } from './types'
@@ -186,10 +186,7 @@ function fuehreAktionAus(c: Career, name: AktionName, rng: Rng): { c: Career; wi
       return { c: { ...c, flags: { ...c.flags, beraterGuete: clamp(Number(c.flags.beraterGuete ?? 1) + 1, 1, 5) } }, wirkung: ['Berater wird besser'] }
     case 'verlaengerung-anbieten': {
       if (!c.vertrag || !c.vereinId) return { c, wirkung: [] }
-      const a = erzeugeAngebote({ ...c, vereinId: '' }, rng, { art: 'verlaengerung', anzahl: 1, ausser: [], minStaerke: c.welt.staerke[c.vereinId] - 0.01, maxStaerke: c.welt.staerke[c.vereinId] + 0.01 })[0]
-      const angebot: Angebot = a
-        ? { ...a, vereinId: c.vereinId, art: 'verlaengerung' }
-        : { id: `v${c.wochenGesamt}`, art: 'verlaengerung', vereinId: c.vereinId, gehalt: Math.round(c.vertrag.gehalt * 1.2), jahre: 3, rolle: c.vertrag.rolle, ablose: 0, verhandelt: 0 }
+      const angebot: Angebot = vereinsAngebot(c, rng, c.vereinId, 'verlaengerung')
       return { c: { ...c, angebote: [...c.angebote.filter((x) => x.art !== 'verlaengerung'), angebot] }, wirkung: ['Vertragsangebot im Menü „Vertrag“'] }
     }
     case 'nationalspieler':

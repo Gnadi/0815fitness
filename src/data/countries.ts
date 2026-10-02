@@ -9,7 +9,7 @@ export interface Country {
   welle: 1 | 2 | 3
 }
 
-export const AKTIVE_WELLE = 1
+export const AKTIVE_WELLE = 3
 
 const c = (id: string, name: string, flagge: string, welle: 1 | 2 | 3): Country => ({ id, name, flagge, welle })
 

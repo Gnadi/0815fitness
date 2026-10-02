@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { playableCountries } from '../data/countries'
+import { LAENDER, LIGEN, VEREINE, ligaIds } from '../data/clubs'
+import { COUNTRIES } from '../data/countries'
 import { useCareer } from '../store/careerStore'
 import type { Archetype, Background, Foot, Position } from '../engine/types'
 
@@ -19,20 +20,33 @@ const ARCHETYPES: [Archetype, string, string][] = [
   ['spaetzuender', 'Spätzünder', 'Körperlich stark, technisch noch unfertig.'],
 ]
 
+/** Verein, dessen U19 (Stärke − 12) etwa zum Startniveau eines 16-Jährigen passt. */
+function empfehlung(land: string): string {
+  const alle = Object.values(VEREINE).filter((v) => v.land === land)
+  return [...alle].sort((a, b) => Math.abs(a.basis - 60) - Math.abs(b.basis - 60))[0].id
+}
+
 export default function NewCareer() {
   const navigate = useNavigate()
   const start = useCareer((s) => s.start)
-  const countries = playableCountries()
+  const laender = useMemo(() => [...COUNTRIES].sort((a, b) => a.name.localeCompare(b.name, 'de')), [])
 
   const [vorname, setVorname] = useState('')
   const [nachname, setNachname] = useState('')
-  const [land, setLand] = useState(countries[0].id)
+  const [land, setLand] = useState('DE')
+  const [vereinId, setVereinId] = useState(() => empfehlung('DE'))
   const [position, setPosition] = useState<Position>('ST')
   const [fuss, setFuss] = useState<Foot>('rechts')
   const [hintergrund, setHintergrund] = useState<Background>('arbeiterfamilie')
   const [archetyp, setArchetyp] = useState<Archetype>('strassenfussballer')
 
   const valid = vorname.trim() !== '' && nachname.trim() !== ''
+  const verein = VEREINE[vereinId]
+
+  const wechsleLand = (l: string) => {
+    setLand(l)
+    setVereinId(empfehlung(l))
+  }
 
   return (
     <main className="screen">
@@ -42,17 +56,31 @@ export default function NewCareer() {
         onSubmit={(e) => {
           e.preventDefault()
           if (!valid) return
-          start({ vorname, nachname, nationalitaet: land, position, fuss, hintergrund, archetyp })
+          start({ vorname, nachname, nationalitaet: land, vereinId, position, fuss, hintergrund, archetyp })
           navigate('/spiel')
         }}
       >
         <label>Vorname<input value={vorname} onChange={(e) => setVorname(e.target.value)} autoComplete="off" /></label>
         <label>Nachname<input value={nachname} onChange={(e) => setNachname(e.target.value)} autoComplete="off" /></label>
-        <label>Land
-          <select value={land} onChange={(e) => setLand(e.target.value)}>
-            {countries.map((c) => <option key={c.id} value={c.id}>{c.flagge} {c.name}</option>)}
+        <label>Heimatland
+          <select value={land} onChange={(e) => wechsleLand(e.target.value)}>
+            {laender.map((c) => <option key={c.id} value={c.id}>{c.flagge} {c.name}</option>)}
           </select>
         </label>
+        <label>Jugendverein (U19)
+          <select value={vereinId} onChange={(e) => setVereinId(e.target.value)}>
+            {ligaIds(land).map((lid) => (
+              <optgroup key={lid} label={LIGEN[lid].name}>
+                {Object.values(VEREINE).filter((v) => v.ligaStart === lid).map((v) => (
+                  <option key={v.id} value={v.id}>{v.name} (Stärke {v.basis})</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+        <p className="muted small">
+          {LAENDER[land].ligen.length > 0 && verein && `${verein.name}: Die U19 hat etwa Stärke ${Math.round(verein.basis - 12)}. Du startest mit ca. 45–55. Starke Vereine heißen viel Konkurrenz, schwache viel Spielzeit.`}
+        </p>
         <label>Position
           <select value={position} onChange={(e) => setPosition(e.target.value as Position)}>
             {POSITIONS.map(([id, name]) => <option key={id} value={id}>{name}</option>)}

@@ -1,7 +1,7 @@
 import { SKILL_LABELS } from '../../engine/rating'
 import type { Career } from '../../engine/types'
 import { useCareer } from '../../store/careerStore'
-import { fmtDelta, fmtNote } from '../../ui/format'
+import { fmtDelta, fmtGeld, fmtNote } from '../../ui/format'
 
 export function Report({ c }: { c: Career }) {
   const weiter = useCareer((s) => s.weiter)
@@ -13,11 +13,10 @@ export function Report({ c }: { c: Career }) {
     <>
       {e && (
         <section className="card result">
-          <p className="muted">{e.heim ? 'Heimspiel' : 'Auswärtsspiel'} · {einsatzText[e.einsatz]}</p>
-          <p className="score">
-            {e.heim ? `${e.tore} : ${e.gegentore}` : `${e.gegentore} : ${e.tore}`}
-          </p>
+          <p className="muted">{e.label} · {e.heim ? 'Heim' : 'Auswärts'} · {einsatzText[e.einsatz]}</p>
+          <p className="score">{e.heim ? `${e.tore} : ${e.gegentore}` : `${e.gegentore} : ${e.tore}`}</p>
           <p>{e.heim ? `Dein Team – ${e.gegner}` : `${e.gegner} – Dein Team`}</p>
+          {e.elfmeter && <p className="muted">Nach Elfmeterschießen: {e.elfmeter === 'gewonnen' ? 'Weiter!' : 'Aus.'}</p>}
           {e.note !== null && (
             <p>
               Note <strong>{fmtNote(e.note)}</strong>
@@ -50,7 +49,8 @@ export function Report({ c }: { c: Career }) {
         ) : (
           <p className="muted">Kein Skill-Zuwachs, dafür Erholung.</p>
         )}
-        {b.hinweise.map((h, i) => <p key={i} className="alert">{h}</p>)}
+        {b.einkommen !== 0 && <p className="muted small">Wochenverdienst (netto): {fmtGeld(b.einkommen)}</p>}
+        {b.hinweise.map((h, i) => <p key={i} className={h.startsWith('🏆') ? 'achievement' : 'alert'}>{h}</p>)}
       </section>
 
       <button className="btn primary" onClick={weiter}>Weiter</button>

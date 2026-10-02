@@ -1,6 +1,11 @@
+import { VEREINE } from '../data/clubs'
 import { createRng } from './rng'
-import { overall } from './rating'
+import { baueSaison } from './saisonAufbau'
 import { neueSaisonStats } from './season'
+import { neueMitarbeiter } from './transfers'
+import { jugendGehalt } from './wirtschaft'
+import { createWelt } from './welt'
+import { betreteWoche } from './week'
 import { SAVE_VERSION } from './version'
 import type { Archetype, Background, Career, Foot, Player, Position, Skills, Traits } from './types'
 
@@ -8,6 +13,8 @@ export interface NewCareerInput {
   vorname: string
   nachname: string
   nationalitaet: string
+  /** Verein, dessen Jugend (U19) du angehörst. */
+  vereinId: string
   position: Position
   fuss: Foot
   hintergrund: Background
@@ -78,37 +85,55 @@ export function createCareer(input: NewCareerInput, startSaison = 2026): Career 
     geld: bg.geld,
   }
 
+  const welt = createWelt()
+  const verein = VEREINE[input.vereinId]
   const now = Date.now()
-  return {
+  const basis: Career = {
     id: `c${now.toString(36)}${rng.int(0, 1295).toString(36)}`,
     version: SAVE_VERSION,
     erstellt: now,
     geaendert: now,
     seed,
-    rngState: rng.state(),
+    rngState: 0,
     uhr: { saison: startSaison, woche: 1 },
+    wochenGesamt: 1,
     spieler,
-    vereinId: '', // wird in Meilenstein 4 (Vereine) vergeben
-    ...startZustand(spieler, startSaison),
-    flags: {},
-    log: [],
-  }
-}
-
-/** Dynamischer Spielzustand eines frischen Spielers; auch Basis für Migrationen. */
-export function startZustand(spieler: Player, saison: number) {
-  const verein = { name: 'Jugendmannschaft', staerke: Math.round(overall(spieler)) }
-  return {
-    verein,
+    vereinId: input.vereinId,
+    vertrag: { gehalt: jugendGehalt(input.vereinId), endeSaison: startSaison + 1, rolle: 'Jugend' },
+    leihe: null,
+    welt,
+    saison: undefined as never,
     form: 50,
+    spielpraxis: 0.5,
     verletzung: null,
     sperre: 0,
-    training: 'ausgewogen' as const,
-    phase: 'planung' as const,
+    training: 'ausgewogen',
+    phase: 'planung',
     match: null,
     bericht: null,
     saisonBericht: null,
-    saisonStats: neueSaisonStats(spieler, saison, verein),
+    saisonStats: undefined as never,
     historie: [],
+    fenster: null,
+    angebote: [],
+    wechselwunsch: false,
+    personen: neueMitarbeiter(verein.land, rng),
+    ereignis: null,
+    ereignisSchlange: [],
+    geplant: [],
+    ereignisZeiten: {},
+    laufbahn: { titel: [], auszeichnungen: [], laenderspiele: 0, laenderspielTore: 0, transfers: [], hoechsterMarktwert: 0, skandale: 0 },
+    erfolge: [],
+    einstellungen: { autoSzenen: false },
+    flags: { beraterGuete: 1 },
+    log: [],
   }
+  basis.saison = baueSaison(basis, rng, true)
+  basis.saisonStats = neueSaisonStats(spieler, startSaison, input.vereinId, basis.saison.ligaId)
+  basis.rngState = rng.state()
+
+  // Erste Woche betreten (kann bereits ein Ereignis auslösen)
+  const rng2 = createRng(basis.rngState)
+  const c = betreteWoche(basis, rng2, true)
+  return { ...c, rngState: rng2.state() }
 }

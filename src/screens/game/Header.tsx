@@ -1,12 +1,15 @@
+import { VEREINE } from '../../data/clubs'
 import { countryById } from '../../data/countries'
-import { alter } from '../../engine/rating'
+import { alter, overall } from '../../engine/rating'
 import type { Career } from '../../engine/types'
 import { saisonLabel } from '../../ui/format'
-import { overall } from '../../engine/rating'
 
 export function Header({ c }: { c: Career }) {
   const p = c.spieler
   const land = countryById(p.nationalitaet)
+  const verein = c.vereinId ? VEREINE[c.vereinId].name : 'vereinslos'
+  const slot = c.saison.kalender[c.uhr.woche - 1]
+  const woche = c.phase === 'saisonende' || c.phase === 'karriereende' ? 'Saisonende' : `Woche ${c.uhr.woche}/${c.saison.kalender.length}`
   return (
     <header className="head">
       <div className="row">
@@ -14,16 +17,18 @@ export function Header({ c }: { c: Career }) {
         <span className="pill ovr" title="Gesamtstärke">{Math.round(overall(p))}</span>
       </div>
       <p className="muted">
-        {land?.flagge} {p.position} · {alter(p.geburtsdatum, c.uhr.saison)} Jahre · {c.verein.name}
+        {land?.flagge} {p.position} · {alter(p.geburtsdatum, c.uhr.saison)} Jahre · {verein}
+        {c.saison.jugend && ' (U19)'}{c.leihe && ' (Leihe)'}
       </p>
       <p className="muted">
-        Saison {saisonLabel(c.uhr.saison)} · {c.phase === 'saisonende' ? 'Saisonende' : `Woche ${c.uhr.woche}/40`}
+        Saison {saisonLabel(c.uhr.saison)} · {woche}
+        {slot?.t === 'F' && slot.fenster && c.fenster ? ' · 🔁 Transferfenster offen' : ''}
       </p>
     </header>
   )
 }
 
-function Meter({ label, value }: { label: string; value: number }) {
+export function Meter({ label, value }: { label: string; value: number }) {
   const v = Math.max(0, Math.min(100, value))
   return (
     <div className="meter">

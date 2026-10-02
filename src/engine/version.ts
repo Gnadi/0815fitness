@@ -1,2 +1,2 @@
-/** Aktuelle Version des Spielstand-Formats. Bei Änderungen erhöhen und in `migrate.ts` behandeln. */
-export const SAVE_VERSION = 2
+/** Aktuelle Version des Spielstand-Formats. Ältere Spielstände sind nicht kompatibel. */
+export const SAVE_VERSION = 3

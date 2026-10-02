@@ -1,22 +1,8 @@
 import { SCENES, SCENE_BY_ID, type SceneEffect, type SceneOption } from '../data/scenes'
-import { OPPONENTS } from '../data/opponents'
 import { clamp, overall } from './rating'
 import type { Rng } from './rng'
-import type { Career, Einsatz, MatchState, Skills, Traits } from './types'
-
-export const SPIELTAGE = 34
-export const WOCHEN_PRO_SAISON = 40
-
-function poisson(rng: Rng, lambda: number): number {
-  const limit = Math.exp(-lambda)
-  let k = 0
-  let p = 1
-  do {
-    k++
-    p *= rng.next()
-  } while (p > limit)
-  return k - 1
-}
+import { poisson } from './welt'
+import type { Career, Einsatz, MatchState, Rolle, Skills, Traits, Wettbewerb } from './types'
 
 export function applyTraits(traits: Traits, delta: Partial<Traits> | undefined): Traits {
   if (!delta) return traits
@@ -25,10 +11,12 @@ export function applyTraits(traits: Traits, delta: Partial<Traits> | undefined):
   return out
 }
 
+const ROLLEN_BONUS: Record<Rolle, number> = { Stammspieler: 2, Rotation: 0, Perspektive: -2, Jugend: 0 }
+
 /** Würfelt, ob der Spieler spielt: Stammelf, Einwechslung oder gar nicht. */
-export function rolleEinsatz(c: Career, rng: Rng): Einsatz {
+export function rolleEinsatz(c: Career, rng: Rng, teamStaerke: number): Einsatz {
   const t = c.spieler.traits
-  const diff = overall(c.spieler) - c.verein.staerke
+  const diff = overall(c.spieler) - teamStaerke + (c.vertrag ? ROLLEN_BONUS[c.vertrag.rolle] : 0)
   const x = diff / 4 + (t.trainerBeziehung - 50) / 40 + (c.form - 50) / 60
   const pStart = clamp(1 / (1 + Math.exp(-x)), 0.03, 0.97)
   if (rng.chance(pStart)) return 'startelf'
@@ -54,26 +42,41 @@ function pickScenes(c: Career, rng: Rng, anzahl: number): string[] {
   return chosen
 }
 
-/** Nicht jedes Spiel hat Schlüsselszenen: Startelf 0–2, Einwechslung 0–1. */
-function szenenAnzahl(rng: Rng, einsatz: 'startelf' | 'einwechslung'): number {
-  if (einsatz === 'einwechslung') return rng.chance(0.5) ? 1 : 0
+/** Nicht jedes Spiel hat Schlüsselszenen: Startelf 0–2, Einwechslung 0–1. Wichtige Spiele eher mehr. */
+function szenenAnzahl(rng: Rng, einsatz: 'startelf' | 'einwechslung', wichtig: boolean): number {
+  if (einsatz === 'einwechslung') return rng.chance(wichtig ? 0.7 : 0.5) ? 1 : 0
   const r = rng.next()
-  return r < 0.2 ? 0 : r < 0.7 ? 1 : 2
+  const s = wichtig ? 0.1 : 0.2
+  return r < s ? 0 : r < 0.7 ? 1 : 2
 }
 
-export function neuesSpiel(c: Career, rng: Rng, einsatz: Exclude<Einsatz, 'nicht-eingesetzt'>, heim: boolean): MatchState {
-  const gegnerStaerke = clamp(c.verein.staerke + rng.int(-10, 10), 10, 99)
-  const diff = c.verein.staerke - gegnerStaerke + (heim ? 2 : -2)
-  const basisEigene = poisson(rng, 1.15 * Math.exp(diff / 35))
-  const basisGegner = poisson(rng, 1.15 * Math.exp(-diff / 35))
+export interface Paarung {
+  wettbewerb: Wettbewerb
+  label: string
+  gegnerId: string
+  gegner: string
+  gegnerStaerke: number
+  eigeneStaerke: number
+  heim: boolean
+  ko: boolean
+}
+
+export function neuesSpiel(c: Career, rng: Rng, einsatz: Exclude<Einsatz, 'nicht-eingesetzt'>, p: Paarung): MatchState {
+  const diff = p.eigeneStaerke - p.gegnerStaerke + (p.heim ? 2 : -2)
+  const wichtig = p.ko || p.wettbewerb === 'europa' || p.wettbewerb === 'turnier'
   return {
-    gegner: rng.pick(OPPONENTS),
-    gegnerStaerke,
-    heim,
+    wettbewerb: p.wettbewerb,
+    label: p.label,
+    gegnerId: p.gegnerId,
+    gegner: p.gegner,
+    gegnerStaerke: p.gegnerStaerke,
+    eigeneStaerke: p.eigeneStaerke,
+    heim: p.heim,
+    ko: p.ko,
     einsatz,
-    basisEigene,
-    basisGegner,
-    szenen: pickScenes(c, rng, szenenAnzahl(rng, einsatz)),
+    basisEigene: poisson(rng, 1.15 * Math.exp(diff / 35)),
+    basisGegner: poisson(rng, 1.15 * Math.exp(-diff / 35)),
+    szenen: pickScenes(c, rng, szenenAnzahl(rng, einsatz, wichtig)),
     index: 0,
     ausgang: null,
     eigeneTore: 0,

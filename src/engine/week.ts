@@ -1,14 +1,21 @@
+import { VEREINE } from '../data/clubs'
+import { starteEreignis, waehleEreignisse, wendeEffekteAn } from './ereignisse'
 import { schlagzeile } from './headlines'
-import { WOCHEN_PRO_SAISON, SPIELTAGE, applyTraits, berechneNote, neuesSpiel, rolleEinsatz, waehleOption } from './match'
+import { applyTraits, berechneNote, neuesSpiel, rolleEinsatz, waehleOption } from './match'
 import { SKILL_KEYS, alter, clamp } from './rating'
 import { createRng, type Rng } from './rng'
 import { beendeSaison } from './season'
+import { oeffneFenster, schliesseFenster } from './transfers'
 import { FOCUS, trainingDeltas } from './training'
+import { paarungFuerWoche, verbucheErgebnis } from './wettbewerbe'
+import { wochenEinkommen } from './wirtschaft'
+import { simuliereSpieltag, tabelleEintragen } from './welt'
+import { pruefeErfolge } from './erfolge'
 import type { Career, Einsatz, Injury, MatchState, TrainingFocus, WeekReport } from './types'
 
 const LOG_LIMIT = 80
 
-function withRng(c: Career, fn: (rng: Rng) => Career): Career {
+export function withRng(c: Career, fn: (rng: Rng) => Career): Career {
   const rng = createRng(c.rngState)
   const out = fn(rng)
   return { ...out, rngState: rng.state() }
@@ -41,6 +48,26 @@ function verletzungsChance(c: Career, gespielt: boolean): number {
   return Math.max(0.002, p * (2 - t.gesundheit / 100))
 }
 
+// ---------------------------------------------------------------- Wochenbeginn
+
+/**
+ * Wird beim Betreten einer neuen Woche aufgerufen: öffnet Transferfenster und löst Ereignisse aus.
+ * Danach steht das Spiel in Phase `ereignis` oder `planung`.
+ */
+export function betreteWoche(c: Career, rng: Rng, erstes = false): Career {
+  let next: Career = { ...c, phase: 'planung', wochenGesamt: erstes ? c.wochenGesamt : c.wochenGesamt + 1, ereignisSchlange: [] }
+  const slot = next.saison.kalender[next.uhr.woche - 1]
+  if (slot?.t === 'F' && slot.fenster && slot.erste && next.fenster !== slot.fenster) {
+    next = oeffneFenster(next, rng, slot.fenster)
+  }
+  const ids = waehleEreignisse(next, rng)
+  if (ids.length) {
+    next = { ...next, ereignisSchlange: ids.slice(1) }
+    next = starteEreignis(next, ids[0])
+  }
+  return next
+}
+
 /** Beginnt die Woche: Training, ggf. Reha, danach Spiel (mit Szenen) oder direkt der Wochenbericht. */
 export function startWeek(c: Career, focus: TrainingFocus): Career {
   if (c.phase !== 'planung') return c
@@ -64,6 +91,7 @@ export function startWeek(c: Career, focus: TrainingFocus): Career {
     const f0 = c.spieler.traits.fitness
     const fitness = clamp(f0 - def.ermuedung + 6 + 0.25 * (100 - f0))
     const privatglueck = clamp(c.spieler.traits.privatglueck + def.privatglueck)
+    const einkommen = wochenEinkommen(c)
 
     let verletzung = c.verletzung
     let trainingText = `Training: ${FOCUS[focus].name}`
@@ -79,17 +107,27 @@ export function startWeek(c: Career, focus: TrainingFocus): Career {
       }
     }
 
-    const matchtag = c.uhr.woche <= SPIELTAGE
+    // Spielfreie Wochen
+    const slot = c.saison.kalender[c.uhr.woche - 1]
+    if (slot?.t === 'F') trainingText = slot.fenster === 'winter' ? `Winterpause · ${trainingText}` : `Sommerpause · ${trainingText}`
+
+    let saison = c.saison
+    const paarung = paarungFuerWoche(c, rng)
+    if (slot?.t === 'L') {
+      saison = structuredClone(saison)
+      simuliereSpieltag(saison, c.welt, slot.n, rng, c.vereinId)
+    }
+
     let sperre = c.sperre
-    let einsatz: Einsatz | null = null
-    if (matchtag && !verletzt) {
+    let einsatz: Einsatz = 'nicht-eingesetzt'
+    if (paarung && !verletzt) {
       if (sperre > 0) {
         sperre -= 1
         hinweise.push('Gesperrt: Du musst dir das Spiel von der Tribüne ansehen.')
       } else {
-        einsatz = rolleEinsatz(c, rng)
+        einsatz = rolleEinsatz(c, rng, paarung.eigeneStaerke)
       }
-    } else if (matchtag && verletzt) {
+    } else if (paarung && verletzt) {
       hinweise.push('Verletzt: Du fehlst im Kader.')
     }
 
@@ -100,19 +138,20 @@ export function startWeek(c: Career, focus: TrainingFocus): Career {
       deltas,
       szenenLog: [],
       hinweise,
+      einkommen,
     }
     const c2: Career = {
       ...c,
       training: focus,
-      spieler: { ...c.spieler, skills, traits: { ...c.spieler.traits, fitness, privatglueck } },
+      saison,
+      spieler: { ...c.spieler, geld: c.spieler.geld + einkommen, skills, traits: { ...c.spieler.traits, fitness, privatglueck } },
       verletzung,
       sperre,
       bericht,
     }
 
-    if (einsatz === null) return beendeWoche(c2, rng, null, 'nicht-eingesetzt', verletzt)
-    const heim = c.uhr.woche % 2 === 1
-    const m = neuesSpiel(c2, rng, einsatz === 'startelf' ? 'startelf' : 'einwechslung', heim)
+    if (!paarung) return beendeWoche(c2, rng, null, 'nicht-eingesetzt', verletzt)
+    const m = neuesSpiel(c2, rng, einsatz === 'startelf' ? 'startelf' : 'einwechslung', paarung)
     if (einsatz === 'nicht-eingesetzt') return beendeWoche(c2, rng, m, einsatz, verletzt)
     if (m.szenen.length === 0) return beendeWoche(c2, rng, m, m.einsatz, verletzt)
     return { ...c2, phase: 'szene', match: m }
@@ -143,6 +182,9 @@ function beendeWoche(c: Career, rng: Rng, m: MatchState | null, einsatz: Einsatz
   let form = c.form
   let stats = c.saisonStats
   let sperre = c.sperre
+  let saison = c.saison
+  let spielpraxis = c.spielpraxis
+  let laufbahn = c.laufbahn
   let ergebnis: WeekReport['ergebnis']
   let kopf: string | undefined
 
@@ -152,16 +194,31 @@ function beendeWoche(c: Career, rng: Rng, m: MatchState | null, einsatz: Einsatz
     const note = gespielt ? berechneNote(c, m, tore, gegentore) : null
     const minuten = !gespielt ? 0 : einsatz === 'startelf' ? (m.frueherEnde ? rng.int(25, 75) : 90) : 25
 
+    const v = verbucheErgebnis(c, rng, m.wettbewerb, m.gegnerId, m.heim, tore, gegentore, m.eigeneStaerke, m.gegnerStaerke, tabelleEintragen)
+    saison = v.saison
+    hinweise.push(...v.hinweise)
+    if (v.titel.length) {
+      const verein = c.vereinId ? VEREINE[c.vereinId].name : ''
+      laufbahn = {
+        ...laufbahn,
+        titel: [...laufbahn.titel, ...v.titel.map((name) => ({ saison: c.uhr.saison, name, verein: m.wettbewerb === 'turnier' ? 'Nationalmannschaft' : verein }))],
+      }
+    }
+
     if (note !== null) {
       traits = applyTraits(traits, {
         moral: tore > gegentore ? 3 : tore < gegentore ? -2 : 0,
         selbstvertrauen: Math.round((note - 6) * 2.5),
         fanbeliebtheit: m.spielerTore * 2 + (note >= 8 ? 1 : 0) - (note <= 4.5 ? 1 : 0),
-        ruf: Math.round((m.spielerTore * 0.8 + (note - 6) * 0.3) * 10) / 10,
+        ruf: Math.round((m.spielerTore * 0.8 + (note - 6) * 0.3 + (m.wettbewerb === 'europa' || m.wettbewerb === 'turnier' ? 0.4 : 0)) * 10) / 10,
         trainerBeziehung: Math.round((note - 6) * 1.2 * 10) / 10,
         fitness: -Math.round(einsatz === 'startelf' ? (12 * minuten) / 90 : 5),
       })
       form = clamp(0.7 * form + 0.3 * (50 + (note - 6) * 20))
+      spielpraxis = 0.8 * spielpraxis + 0.2 * Math.min(1, minuten / 90)
+      if (m.wettbewerb === 'turnier') {
+        laufbahn = { ...laufbahn, laenderspiele: laufbahn.laenderspiele + 1, laenderspielTore: laufbahn.laenderspielTore + m.spielerTore }
+      }
       stats = {
         ...stats,
         spiele: stats.spiele + 1,
@@ -183,11 +240,13 @@ function beendeWoche(c: Career, rng: Rng, m: MatchState | null, einsatz: Einsatz
     } else {
       traits = applyTraits(traits, { moral: -1.5 })
       form = 0.9 * form + 0.1 * 50
+      spielpraxis = 0.9 * spielpraxis
     }
 
     ergebnis = {
-      gegner: m.gegner, heim: m.heim, tore, gegentore, einsatz, note,
+      label: m.label, gegner: m.gegner, heim: m.heim, tore, gegentore, einsatz, note,
       spielerTore: m.spielerTore, vorlagen: m.vorlagen, gelb: m.gelb, rot: m.rot,
+      elfmeter: v.elfmeter, weiter: v.weiter,
     }
     kopf = schlagzeile(
       { name: c.spieler.nachname, gegner: m.gegner, tore, gegentore, einsatz, note, spielerTore: m.spielerTore, vorlagen: m.vorlagen, rot: m.rot },
@@ -206,34 +265,52 @@ function beendeWoche(c: Career, rng: Rng, m: MatchState | null, einsatz: Einsatz
   const log = [...c.log]
   const prefix = `${saisonLabel(c.uhr.saison)}, Woche ${c.uhr.woche}: `
   if (kopf) log.push(prefix + kopf)
-  for (const h of hinweise.filter((x) => x.startsWith('Verletzung') || x.startsWith('Rote'))) log.push(prefix + h)
+  for (const h of hinweise.filter((x) => x.startsWith('Verletzung') || x.startsWith('Rote') || x.includes('sieger') || x.includes('Sieger'))) log.push(prefix + h)
 
-  return {
+  let flags = c.flags
+  if (m && m.spielerTore >= 3) flags = { ...flags, hattrick: true }
+  if (c.verletzung?.name === 'Kreuzbandriss' && verletzung === null) flags = { ...flags, comeback: true }
+
+  let out: Career = {
     ...c,
+    flags,
     spieler: { ...c.spieler, traits },
     form,
+    spielpraxis,
+    saison,
     saisonStats: stats,
+    laufbahn,
     sperre,
     verletzung,
     match: null,
     phase: 'bericht',
     log: log.slice(-LOG_LIMIT),
-    bericht: {
-      ...bericht,
-      ergebnis,
-      schlagzeile: kopf,
-      szenenLog: m?.szenenLog ?? [],
-      hinweise,
-    },
+    bericht: { ...bericht, ergebnis, schlagzeile: kopf, szenenLog: m?.szenenLog ?? [], hinweise },
   }
+  out = pruefeErfolge(out)
+  return out
 }
 
 /** Schließt den Wochenbericht ab und springt in die nächste Woche (oder das Saisonende). */
 export function weiter(c: Career): Career {
   if (c.phase !== 'bericht') return c
-  const woche = c.uhr.woche + 1
-  const next: Career = { ...c, bericht: null, uhr: { ...c.uhr, woche }, phase: 'planung' }
-  return woche > WOCHEN_PRO_SAISON ? beendeSaison(next) : next
+  return withRng(c, (rng) => {
+    let next: Career = { ...c, bericht: null }
+    const slot = next.saison.kalender[next.uhr.woche - 1]
+    if (slot?.t === 'F' && slot.letzte && next.fenster) next = schliesseFenster(next, rng)
+    const woche = next.uhr.woche + 1
+    if (woche > next.saison.kalender.length) return beendeSaison({ ...next, uhr: { ...next.uhr, woche: next.saison.kalender.length } }, rng)
+    return betreteWoche({ ...next, uhr: { ...next.uhr, woche } }, rng)
+  })
+}
+
+/** Nach einem Ereignis: nächstes aus der Schlange oder zurück zur Planung. */
+export function ereignisWeiter(c: Career): Career {
+  if (c.phase !== 'ereignis' || !c.ereignis || c.ereignis.gewaehlt === null) return c
+  if (c.flags.ende === true) return { ...c, ereignis: null, phase: 'karriereende' }
+  const [naechstes, ...rest] = c.ereignisSchlange
+  const basis: Career = { ...c, ereignis: null, phase: 'planung', ereignisSchlange: rest }
+  return naechstes ? starteEreignis(basis, naechstes) : basis
 }
 
 /** Beendet die Karriere freiwillig (ab 30). */
@@ -242,3 +319,5 @@ export function beendeKarriere(c: Career): Career {
   if (alter(c.spieler.geburtsdatum, c.uhr.saison) < 30) return c
   return { ...c, phase: 'karriereende' }
 }
+
+export { wendeEffekteAn }

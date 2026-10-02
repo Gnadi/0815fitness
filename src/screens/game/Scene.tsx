@@ -14,10 +14,10 @@ export function Scene({ c }: { c: Career }) {
   return (
     <>
       <section className="card match">
+        <p className="muted">{m.label}</p>
         <p className="muted">
-          {m.heim ? 'Heimspiel' : 'Auswärtsspiel'} gegen {m.gegner} · {m.einsatz === 'startelf' ? 'Startelf' : 'Eingewechselt'}
+          {m.heim ? 'Heim' : 'Auswärts'} gegen {m.gegner} · {m.einsatz === 'startelf' ? 'Startelf' : 'Eingewechselt'} · Szene {m.index + 1} von {m.szenen.length}
         </p>
-        <p className="muted">Szene {m.index + 1} von {m.szenen.length}</p>
         <h2>{scene.titel}</h2>
         <p>{scene.text.replaceAll('{gegner}', m.gegner)}</p>
       </section>

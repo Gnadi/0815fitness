@@ -4,6 +4,7 @@ import { FOCUS_LIST } from '../../engine/training'
 import type { Career, TrainingFocus } from '../../engine/types'
 import { useCareer } from '../../store/careerStore'
 import { Status } from './Header'
+import { TabellenKarte } from './Tabelle'
 
 /** Beschreibt, was in der aktuellen Woche ansteht. */
 export function vorschau(c: Career): string {
@@ -76,19 +77,23 @@ export function Woche({ c, zuVertrag }: { c: Career; zuVertrag: () => void }) {
           ))}
         </div>
         <p className="muted">{verletzt ? 'Reha ersetzt dein Training, bis du wieder fit bist.' : FOCUS_LIST.find((f) => f.id === focus)?.beschreibung}</p>
-        <button className="btn primary" onClick={() => trainieren(focus)}>
-          {verletzt ? 'Reha machen' : 'Woche starten'}
-        </button>
-        <div className="row split">
-          <button className="btn" onClick={() => simuliere(4)}>4 Wochen ⏩</button>
-          <button className="btn" onClick={() => simuliere(12)}>12 Wochen ⏩</button>
+        <div className="aktionen">
+          <button className="btn primary" onClick={() => trainieren(focus)}>
+            {verletzt ? 'Reha machen' : 'Woche starten'}
+          </button>
+          <div className="row split">
+            <button className="btn" onClick={() => simuliere(4)}>4 Wochen ⏩</button>
+            <button className="btn" onClick={() => simuliere(12)}>12 Wochen ⏩</button>
+          </div>
+          <button className="btn" onClick={() => simuliere(80)}>Bis zum nächsten Halt ⏩⏩</button>
         </div>
-        <button className="btn" onClick={() => simuliere(80)}>Bis zum nächsten Halt ⏩⏩</button>
         <label className="check">
           <input type="checkbox" checked={c.einstellungen.autoSzenen} onChange={(e) => autoSzenen(e.target.checked)} />
           <span>Schlüsselszenen bei Simulation automatisch (sichere Option)</span>
         </label>
       </section>
+
+      <TabellenKarte c={c} kompakt />
 
       <section className="card">
         <h2>Bilanz {c.saisonStats.verein}</h2>

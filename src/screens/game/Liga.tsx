@@ -1,7 +1,7 @@
 import { LAENDER, LIGEN, VEREINE } from '../../data/clubs'
 import { EUROPA_NAMEN } from '../../engine/kalender'
 import type { Career } from '../../engine/types'
-import { rangliste } from '../../engine/welt'
+import { TabellenKarte } from './Tabelle'
 
 const EUROPA_STATUS: Record<string, string> = {
   liga: 'Ligaphase', playoff: 'Playoff', achtel: 'Achtelfinale', viertel: 'Viertelfinale',
@@ -13,11 +13,7 @@ const TURNIER_STATUS: Record<string, string> = {
 
 export function LigaTab({ c }: { c: Career }) {
   const s = c.saison
-  const rang = rangliste(s.tabelle, s.teams)
   const liga = LIGEN[s.ligaId]
-  const ab = liga.ab
-  const eigen = rang.findIndex((r) => r.id === c.vereinId)
-  const europa = LAENDER[liga.land].europa
 
   // Nächste Spiele des eigenen Vereins
   const idx = s.teams.indexOf(c.vereinId)
@@ -28,40 +24,9 @@ export function LigaTab({ c }: { c: Career }) {
     if (sp) naechste.push({ tag: t, heim: sp[0] === idx, gegner: VEREINE[s.teams[sp[0] === idx ? sp[1] : sp[0]]].name })
   }
 
-  const zeigen = rang.length <= 20 ? rang : rang.filter((_, i) => i < 5 || i >= rang.length - 5 || Math.abs(i - eigen) <= 3)
-
   return (
     <>
-      <section className="card">
-        <h2>{s.jugend ? 'U19-Liga' : liga.name}</h2>
-        <p className="muted">
-          {s.jugend ? 'Jugendliga mit Vereinsmannschaften (ohne Auf- und Abstieg).' : `Platz ${eigen + 1} von ${rang.length}.`}
-        </p>
-        <div className="table-scroll">
-          <table className="tabelle">
-            <thead>
-              <tr><th>#</th><th>Verein</th><th>Sp</th><th>S</th><th>U</th><th>N</th><th>Tore</th><th>Pkt</th></tr>
-            </thead>
-            <tbody>
-              {zeigen.map((r) => {
-                const i = rang.indexOf(r)
-                const zone = !s.jugend && liga.ebene === 1 && i < europa[0] + europa[1] + europa[2] ? 'europa'
-                  : !s.jugend && ab > 0 && i >= rang.length - ab ? 'ab' : ''
-                return (
-                  <tr key={r.id} className={`${r.id === c.vereinId ? 'me' : ''} ${zone}`}>
-                    <td>{i + 1}</td>
-                    <td>{VEREINE[r.id].name}</td>
-                    <td>{r.zeile[0]}</td><td>{r.zeile[1]}</td><td>{r.zeile[2]}</td><td>{r.zeile[3]}</td>
-                    <td>{r.zeile[4]}:{r.zeile[5]}</td>
-                    <td><strong>{r.pkt}</strong></td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-        {!s.jugend && <p className="muted small">Grün: Europapokal · Rot: Abstieg</p>}
-      </section>
+      <TabellenKarte c={c} />
 
       <section className="card">
         <h2>Nächste Spiele</h2>

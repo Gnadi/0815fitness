@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { saves } from '../storage'
 import { useCareer } from '../store/careerStore'
 import { saisonLabel } from '../ui/format'
+import { ThemeAuswahl } from '../ui/ThemeAuswahl'
 
 export default function Home() {
   const navigate = useNavigate()
@@ -72,6 +73,7 @@ export default function Home() {
       <input ref={datei} type="file" accept="application/json" hidden onChange={(e) => importieren(e.target.files?.[0])} />
       <button className="btn" onClick={() => datei.current?.click()}>Spielstand importieren</button>
       {fehler && <p className="alert">{fehler}</p>}
+      <ThemeAuswahl />
       <p className="muted small">Alle Daten liegen nur in diesem Browser. Mit ⬇ sicherst du einen Spielstand als Datei.</p>
     </main>
   )

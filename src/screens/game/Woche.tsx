@@ -3,6 +3,7 @@ import { VEREINE } from '../../data/clubs'
 import { FOCUS_LIST } from '../../engine/training'
 import type { Career, TrainingFocus } from '../../engine/types'
 import { useCareer } from '../../store/careerStore'
+import { brauchtVertrag } from '../../engine/transfers'
 import { wochenEinkommen } from '../../engine/wirtschaft'
 import { fmtEuro } from '../../ui/format'
 import { Status } from './Header'
@@ -65,10 +66,10 @@ export function Woche({ c, zuVertrag }: { c: Career; zuVertrag: () => void }) {
         <button className="banner" onClick={zuVertrag}>📝 Dein Verein hat dir ein neues Vertragsangebot vorgelegt</button>
       )}
 
-      {c.fenster && (
+      {c.fenster && (c.angebote.length > 0 || brauchtVertrag(c)) && (
         <button className="banner" onClick={zuVertrag}>
           🔁 Transferfenster offen · {c.angebote.length} Angebot{c.angebote.length === 1 ? '' : 'e'}
-          {c.vertrag === null || (c.saison.jugend && c.fenster === 'sommer') ? ' · Vertrag nötig!' : ''}
+          {c.fenster === 'sommer' && brauchtVertrag(c) ? ' · Vertrag nötig!' : ''}
         </button>
       )}
 

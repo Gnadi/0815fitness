@@ -192,3 +192,23 @@ legend { color: var(--muted); font-size: 0.9rem; padding: 0 0 6px; }
 .pos { color: var(--ok-text); }
 .neg { color: var(--bad-text); }
 .tabbar button { padding: 0 2px; }
+
+/* Abstände zwischen Buttons in Karten */
+.card > .btn:not(:first-child), .card > .row.split { margin-top: 12px; }
+.card > p + .row.split { margin-top: 6px; }
+.aktionen > .btn, .aktionen > .row.split { margin-top: 0; }
+.offer .row.split + .row.split { margin-top: 10px; }
+.grid2 { margin-bottom: 4px; }
+
+/* Werte-Übersicht */
+.werte summary { cursor: pointer; list-style: none; }
+.werte summary::-webkit-details-marker { display: none; }
+.werte summary h2 { display: inline; margin: 0; }
+.werte summary::after { content: '▾'; float: right; color: var(--muted); }
+.werte:not([open]) summary::after { content: '▸'; }
+.werte .gruppe { margin: 10px 0 4px; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.7rem; }
+.meters2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; }
+.meter.kompakt { grid-template-columns: 78px 1fr 22px; gap: 6px; margin: 3px 0; font-size: 0.78rem; }
+.meter.kompakt > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.offer .liga { margin: 0 0 2px; font-weight: 600; }

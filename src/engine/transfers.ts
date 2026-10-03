@@ -22,6 +22,10 @@ export function neueMitarbeiter(land: string, rng: Rng, alt?: Personen): Persone
   }
 }
 
+/** Ohne Vertrag oder am Ende der Jugendzeit muss im Sommerfenster ein (Profi-)Vertrag her. */
+export const brauchtVertrag = (c: Career): boolean =>
+  c.fenster === 'sommer' && (c.vertrag === null || (c.vertrag.rolle === 'Jugend' && c.saison.jugend && alter(c.spieler.geburtsdatum, c.uhr.saison + 1) >= 18))
+
 export const schliesseStats = (c: Career): SeasonStats => ({ ...c.saisonStats, overallEnde: overall(c.spieler) })
 
 // ---------------------------------------------------------------- Fenster
@@ -89,9 +93,8 @@ export function oeffneFenster(c: Career, rng: Rng, fenster: 'sommer' | 'winter')
 export function schliesseFenster(c: Career, rng: Rng): Career {
   let next = c
   if (c.fenster === 'sommer') {
-    const brauchtVertrag = c.vertrag === null || (c.vertrag.rolle === 'Jugend' && c.saison.jugend && alter(c.spieler.geburtsdatum, c.uhr.saison + 1) >= 18)
     const beliebig = c.angebote.filter((a) => a.art === 'vereinslos' || a.art === 'profivertrag' || a.art === 'transfer')
-    if (brauchtVertrag) {
+    if (brauchtVertrag(c)) {
       const bestes = [...beliebig].sort((a, b) => b.gehalt * (b.rolle === 'Stammspieler' ? 1.3 : 1) - a.gehalt * (a.rolle === 'Stammspieler' ? 1.3 : 1))[0]
       const a = bestes ?? notAngebot(c, rng, c.vertrag ? 'profivertrag' : 'vereinslos')
       next = fuehreWechselAus(c, rng, a)

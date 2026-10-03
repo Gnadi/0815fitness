@@ -37,8 +37,10 @@ export function schlagzeile(h: HeadlineInput, rng: Rng): string {
     pool = ['Doppelpack! {name} lässt {gegner} verzweifeln', '{name} trifft doppelt: „Heute lief einfach alles“']
   } else if (h.spielerTore === 1 && sieg) {
     pool = ['{name} schießt sein Team zum Sieg gegen {gegner}', 'Matchwinner {name}: Treffer sichert den Dreier']
-  } else if (h.spielerTore === 1) {
+  } else if (h.spielerTore === 1 && niederlage) {
     pool = ['{name} trifft, doch es reicht nicht: Bittere Pille gegen {gegner}']
+  } else if (h.spielerTore === 1) {
+    pool = ['{name} trifft, am Ende steht ein Remis gegen {gegner}', 'Ein Punkt gegen {gegner}: {name} sorgt für den Treffer']
   } else if (h.vorlagen > 0 && sieg) {
     pool = ['Vorlagengeber {name}: Mit Übersicht zum Sieg über {gegner}']
   } else if (h.note !== null && h.note >= 8) {
@@ -50,7 +52,9 @@ export function schlagzeile(h: HeadlineInput, rng: Rng): string {
   } else if (sieg) {
     pool = ['Arbeitssieg gegen {gegner}: {name} mit solider Leistung', 'Dreier eingefahren: {name} tut seinen Teil']
   } else {
-    pool = ['Remis gegen {gegner}: Keiner will den Fehler gemacht haben', 'Unentschieden: {name} und {gegner} trennen sich torlos in der Debatte']
+    pool = h.tore === 0
+      ? ['Torlos gegen {gegner}: Kein Sieger, kein Tor, viel Diskussion', 'Null zu null gegen {gegner}: {name} und Co. bleiben ohne Treffer']
+      : ['Remis gegen {gegner}: Keiner will den Fehler gemacht haben', 'Unentschieden gegen {gegner} ({score}): Beide Seiten schimpfen auf den Schiri']
   }
-  return f(rng.pick(pool).replace('{note}', h.note?.toFixed(1) ?? ''))
+  return f(rng.pick(pool).replace('{note}', h.note?.toFixed(1) ?? '').replace('{score}', `${h.tore}:${h.gegentore}`))
 }

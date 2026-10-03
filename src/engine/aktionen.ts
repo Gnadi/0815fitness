@@ -2,7 +2,7 @@ import { EREIGNIS_BY_ID } from '../data/events'
 import { SCENE_BY_ID } from '../data/scenes'
 import { optionVerfuegbar, waehleEreignisOption } from './ereignisse'
 import { auszahlen, einzahlen, vcEinsteigen, vcVerkaufen } from './finanzen'
-import { leiheAnfragen, lehneAb, nimmAn, verhandleAngebot, wechselwunschUmschalten } from './transfers'
+import { brauchtVertrag, leiheAnfragen, lehneAb, nimmAn, verhandleAngebot, wechselwunschUmschalten } from './transfers'
 import { naechsteSaison } from './season'
 import { startWeek, waehle, weiter, weiterImSpiel, ereignisWeiter, withRng, beendeKarriere } from './week'
 import type { Anlage, Career, TrainingFocus } from './types'
@@ -74,7 +74,7 @@ export function simuliereWochen(c: Career, n: number): SimErgebnis {
   while (wochen < n && guard++ < 2000) {
     if (c.phase === 'planung') {
       if (c.fenster && c.fenster !== fensterBeiStart && c.angebote.length > 0) { grund = 'Transferangebote'; break }
-      if (c.fenster === 'sommer' && c.fenster !== fensterBeiStart && (c.vertrag === null || c.saison.jugend)) { grund = 'Vertrag nötig'; break }
+      if (c.fenster === 'sommer' && c.fenster !== fensterBeiStart && brauchtVertrag(c)) { grund = 'Vertrag nötig'; break }
       const fokus: TrainingFocus = c.spieler.traits.fitness < 50 && !c.verletzung ? 'regeneration' : c.training
       const hadVerletzung = c.verletzung !== null
       c = startWeek(c, fokus)

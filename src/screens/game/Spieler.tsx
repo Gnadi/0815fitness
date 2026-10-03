@@ -8,6 +8,7 @@ import { Meter } from './Header'
 const TRAIT_LABEL: [keyof Traits, string][] = [
   ['ruf', 'Ruf'], ['fanbeliebtheit', 'Fans'], ['trainerBeziehung', 'Trainer'], ['kabine', 'Kabine'],
   ['disziplin', 'Disziplin'], ['professionalitaet', 'Professionalität'], ['ehrgeiz', 'Ehrgeiz'], ['privatglueck', 'Privatglück'],
+  ['gesundheit', 'Gesundheit'],
 ]
 
 const POS: Record<string, string> = {

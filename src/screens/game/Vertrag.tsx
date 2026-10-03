@@ -1,8 +1,17 @@
-import { VEREINE } from '../../data/clubs'
+import { LIGEN, VEREINE } from '../../data/clubs'
+import { countryById } from '../../data/countries'
 import type { Angebot, Career } from '../../engine/types'
 import { useCareer } from '../../store/careerStore'
 import { fmtGeld, saisonLabel } from '../../ui/format'
 import { marktwert } from '../../engine/wirtschaft'
+import { ligaVonVerein } from '../../engine/welt'
+
+/** „🇩🇪 Bundesliga (1. Liga)“ für einen Verein. */
+function ligaText(c: Career, vereinId: string): string {
+  const v = VEREINE[vereinId]
+  const liga = LIGEN[ligaVonVerein(c.welt, vereinId) ?? v.ligaStart]
+  return `${countryById(v.land)?.flagge ?? ''} ${liga.name} (${liga.ebene}. Liga)`
+}
 
 const ART: Record<Angebot['art'], string> = {
   transfer: 'Transferangebot',
@@ -23,6 +32,7 @@ function AngebotKarte({ a, c }: { a: Angebot; c: Career }) {
     <section className="card offer">
       <p className="muted small">{ART[a.art]}</p>
       <h3>{v.name}</h3>
+      <p className="liga">{ligaText(c, a.vereinId)}</p>
       <p className="muted">Stärke {staerke} · {a.art === 'leihe' ? 'bis Saisonende' : `${a.jahre} Jahre`}</p>
       <div className="grid2">
         <div><span className="muted">Gehalt</span><strong>{fmtGeld(a.gehalt)} / Jahr</strong></div>
@@ -56,6 +66,7 @@ export function VertragTab({ c }: { c: Career }) {
         {v && verein ? (
           <div className="grid2">
             <div><span className="muted">Verein</span><strong>{verein.name}</strong></div>
+            <div><span className="muted">Liga</span><strong>{ligaText(c, verein.id)}</strong></div>
             <div><span className="muted">Gehalt</span><strong>{fmtGeld(v.gehalt)} / Jahr</strong></div>
             <div><span className="muted">Läuft bis</span><strong>Ende {saisonLabel(v.endeSaison)}</strong></div>
             <div><span className="muted">Rolle</span><strong>{v.rolle}</strong></div>

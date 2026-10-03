@@ -4,6 +4,7 @@ import { FOCUS_LIST } from '../../engine/training'
 import type { Career, TrainingFocus } from '../../engine/types'
 import { useCareer } from '../../store/careerStore'
 import { Status } from './Header'
+import { TabellenKarte } from './Tabelle'
 
 /** Beschreibt, was in der aktuellen Woche ansteht. */
 export function vorschau(c: Career): string {
@@ -89,6 +90,8 @@ export function Woche({ c, zuVertrag }: { c: Career; zuVertrag: () => void }) {
           <span>Schlüsselszenen bei Simulation automatisch (sichere Option)</span>
         </label>
       </section>
+
+      <TabellenKarte c={c} kompakt />
 
       <section className="card">
         <h2>Bilanz {c.saisonStats.verein}</h2>

@@ -137,3 +137,5 @@ legend { color: var(--muted); font-size: 0.9rem; padding: 0 0 6px; }
 .achievement { margin: 8px 0 0; padding: 8px 10px; border-radius: 8px; background: rgba(255, 213, 79, 0.12); color: #ffe38a; font-size: 0.9rem; }
 .erfolge li { display: flex; flex-direction: column; gap: 1px; }
 .erfolge li.locked { opacity: 0.5; }
+
+.tabelle tr.luecke td { text-align: center; color: var(--muted); padding: 0 4px; line-height: 1; }

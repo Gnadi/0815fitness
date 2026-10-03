@@ -8,6 +8,7 @@ import { wochenEinkommen } from '../../engine/wirtschaft'
 import { fmtEuro } from '../../ui/format'
 import { Status } from './Header'
 import { TabellenKarte } from './Tabelle'
+import { WerteKarte } from './Werte'
 
 /** Beschreibt, was in der aktuellen Woche ansteht. */
 export function vorschau(c: Career): string {
@@ -102,6 +103,8 @@ export function Woche({ c, zuVertrag }: { c: Career; zuVertrag: () => void }) {
       </section>
 
       <TabellenKarte c={c} kompakt />
+
+      <WerteKarte c={c} />
 
       <section className="card">
         <h2>Bilanz {c.saisonStats.verein}</h2>

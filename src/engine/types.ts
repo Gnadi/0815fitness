@@ -287,6 +287,17 @@ export interface Laufbahn {
   skandale: number
 }
 
+export type Anlage = 'tagesgeld' | 'etf' | 'krypto'
+
+export interface Posten {
+  /** Aktueller Wert in Euro. */
+  wert: number
+  /** Netto eingezahlter Betrag (für die Gewinnanzeige). */
+  eingezahlt: number
+}
+
+export type Depot = Record<Anlage, Posten>
+
 export interface Einstellungen {
   /** Schlüsselszenen automatisch (sichere Option) entscheiden. */
   autoSzenen: boolean
@@ -303,6 +314,8 @@ export interface Career {
   /** Absoluter Wochenzähler seit Karrierestart. */
   wochenGesamt: number
   spieler: Player
+  /** Geldanlagen; fehlt in älteren Spielständen (dann leer). */
+  depot?: Depot
   vereinId: string // '' = vereinslos
   vertrag: Vertrag | null
   leihe: Leihe | null

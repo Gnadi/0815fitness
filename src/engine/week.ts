@@ -8,6 +8,7 @@ import { beendeSaison } from './season'
 import { oeffneFenster, schliesseFenster } from './transfers'
 import { FOCUS, trainingDeltas } from './training'
 import { paarungFuerWoche, verbucheErgebnis } from './wettbewerbe'
+import { marktWoche, sparplan } from './finanzen'
 import { wochenEinkommen } from './wirtschaft'
 import { simuliereSpieltag } from './welt'
 import { pruefeErfolge } from './erfolge'
@@ -140,7 +141,7 @@ export function startWeek(c: Career, focus: TrainingFocus): Career {
       hinweise,
       einkommen,
     }
-    const c2: Career = {
+    let c2: Career = {
       ...c,
       training: focus,
       saison,
@@ -149,6 +150,7 @@ export function startWeek(c: Career, focus: TrainingFocus): Career {
       sperre,
       bericht,
     }
+    c2 = marktWoche(sparplan(c2, einkommen), rng)
 
     if (!paarung) return beendeWoche(c2, rng, null, 'nicht-eingesetzt', verletzt)
     const m = neuesSpiel(c2, rng, einsatz === 'startelf' ? 'startelf' : 'einwechslung', paarung)
@@ -185,6 +187,7 @@ function beendeWoche(c: Career, rng: Rng, m: MatchState | null, einsatz: Einsatz
   let saison = c.saison
   let spielpraxis = c.spielpraxis
   let laufbahn = c.laufbahn
+  let geldPlus = 0
   let ergebnis: WeekReport['ergebnis']
   let kopf: string | undefined
 
@@ -259,7 +262,14 @@ function beendeWoche(c: Career, rng: Rng, m: MatchState | null, einsatz: Einsatz
   if (!verletzung && !reha && ((m?.verletzt ?? false) || rng.chance(verletzungsChance(c, gespielt)))) {
     verletzung = wuerfleVerletzung(rng)
     hinweise.push(`Verletzung: ${verletzung.name}, ${verletzung.wochen} Woche${verletzung.wochen === 1 ? '' : 'n'} Pause.`)
-    if (verletzung.wochen >= 20) traits = applyTraits(traits, { moral: -10, selbstvertrauen: -10 })
+    if (verletzung.wochen >= 20) {
+      traits = applyTraits(traits, { moral: -10, selbstvertrauen: -10 })
+      if (c.flags.versicherung === true) {
+        const summe = Math.max(20_000, Math.round(((c.vertrag?.gehalt ?? 0) * 0.5) / 1000) * 1000)
+        geldPlus += summe
+        hinweise.push(`Die Sportinvaliditätsversicherung zahlt ${new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(summe)} aus.`)
+      }
+    }
   }
 
   const log = [...c.log]
@@ -274,7 +284,7 @@ function beendeWoche(c: Career, rng: Rng, m: MatchState | null, einsatz: Einsatz
   let out: Career = {
     ...c,
     flags,
-    spieler: { ...c.spieler, traits },
+    spieler: { ...c.spieler, traits, geld: c.spieler.geld + geldPlus },
     form,
     spielpraxis,
     saison,

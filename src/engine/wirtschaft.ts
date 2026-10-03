@@ -51,7 +51,8 @@ export function wochenEinkommen(c: Career): number {
   if (c.saison.jugend) return Math.round((c.vertrag.gehalt * 0.9) / 52)
   const lebensstil = Number(c.flags.lebensstil ?? 0)
   const sponsor = c.flags.sponsor === true ? c.spieler.traits.ruf * 1_500 + c.spieler.traits.fanbeliebtheit * 500 : 0
-  return Math.round((c.vertrag.gehalt * 0.6 + sponsor - 9_000 - lebensstil) / 52)
+  const miete = Number(c.flags.mieteinnahmen ?? 0)
+  return Math.round((c.vertrag.gehalt * 0.6 + sponsor + miete - 9_000 - lebensstil) / 52)
 }
 
 export const spielerOverall = (c: Career): number => overall(c.spieler)

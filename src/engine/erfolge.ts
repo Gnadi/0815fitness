@@ -1,4 +1,5 @@
 import { LAENDER, VEREINE } from '../data/clubs'
+import { depotGesamt } from './finanzen'
 import { alter, overall } from './rating'
 import { gesamtStats } from './statistik'
 import { marktwert } from './wirtschaft'
@@ -52,6 +53,9 @@ export const ERFOLGE: ErfolgDef[] = [
   { id: 'wert-50', name: 'Marktwert-Rakete', text: 'Marktwert über 50 Millionen Euro.', check: (c) => c.laufbahn.hoechsterMarktwert >= 50_000_000 },
   { id: 'overall-80', name: 'Weltklasse', text: 'Gesamtstärke 80 erreicht.', check: (c) => overall(c.spieler) >= 80 },
   { id: 'overall-90', name: 'Jahrhunderttalent', text: 'Gesamtstärke 90 erreicht.', check: (c) => overall(c.spieler) >= 90 },
+  { id: 'kleinanleger', name: 'Kleinanleger', text: 'Ein Depot mit mindestens 10.000 Euro Wert.', check: (c) => depotGesamt(c) >= 10_000 },
+  { id: 'vermoegensaufbau', name: 'Vermögensaufbau', text: 'Ein Depot mit mindestens 1 Million Euro Wert.', check: (c) => depotGesamt(c) >= 1_000_000 },
+  { id: 'vermieter', name: 'Vermieter', text: 'Mieteinnahmen aus einer Immobilie.', check: (c) => Number(c.flags.mieteinnahmen ?? 0) > 0 },
   { id: 'sponsor', name: 'Werbegesicht', text: 'Einen Sponsorenvertrag unterschrieben.', check: (c) => c.flags.sponsor === true },
   { id: 'doku', name: 'Streaming-Star', text: 'Eine Doku über dich gedreht.', check: (c) => flag(c, 'doku') },
   { id: 'haus', name: 'Eigenheim', text: 'Ein Haus gekauft.', check: (c) => flag(c, 'haus') },

@@ -3,6 +3,7 @@ import { legende } from '../../engine/legende'
 import { alleStats, gesamtStats } from '../../engine/statistik'
 import type { Career } from '../../engine/types'
 import { fmtGeld, saisonLabel } from '../../ui/format'
+import { ThemeAuswahl } from '../../ui/ThemeAuswahl'
 
 export function KarriereTab({ c }: { c: Career }) {
   const g = gesamtStats(c)
@@ -78,6 +79,8 @@ export function KarriereTab({ c }: { c: Career }) {
           })}
         </ul>
       </section>
+
+      <ThemeAuswahl />
     </>
   )
 }

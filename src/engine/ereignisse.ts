@@ -6,7 +6,7 @@ import { applyTraits } from './match'
 import { clamp } from './rating'
 import { SKILL_KEYS } from './rating'
 import type { Rng } from './rng'
-import { ANLAGE_INFO, ANLAGEN, auszahlen, depotVon, einzahlen, skaliere } from './finanzen'
+import { ANLAGE_INFO, ANLAGEN, auszahlen, depotVon, einzahlen, neuerDeal, skaliere, vcAktiv, vcAufstocken, vcEinsteigen } from './finanzen'
 import { erzeugeAngebote, vereinsAngebot } from './wirtschaft'
 import { fuehreWechselAus, neueMitarbeiter } from './transfers'
 import type { AktionName } from '../data/events/types'
@@ -155,6 +155,24 @@ export function wendeEffekteAn(c: Career, effekte: readonly Effekt[], rng: Rng):
           summe += b
         }
         if (summe > 0) wirkung.push(`${euro(summe)} aufs Konto ausgezahlt`)
+        break
+      }
+      case 'vcEinstieg': {
+        const betrag = Math.floor(Math.max(0, next.spieler.geld) * e.anteil)
+        if (betrag > 0) {
+          const deal = neuerDeal(rng, e.gut)
+          next = vcEinsteigen(next, deal, betrag)
+          wirkung.push(`${euro(betrag)} in ${deal.name} investiert`)
+        }
+        break
+      }
+      case 'vcAufstocken': {
+        const ziel = [...vcAktiv(next)].sort((a, b) => b.wert - a.wert)[0]
+        const betrag = Math.floor(Math.max(0, next.spieler.geld) * e.anteil)
+        if (ziel && betrag > 0) {
+          next = vcAufstocken(next, ziel.id, betrag)
+          wirkung.push(`${euro(betrag)} in ${ziel.name} nachgelegt`)
+        }
         break
       }
       case 'flag':

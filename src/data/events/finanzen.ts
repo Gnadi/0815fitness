@@ -1,4 +1,4 @@
-import { ABHEBEN, DEPOT, FLAG, FOLGE, G, INVEST, NEWS, T, ZAEHLE, alterVon, anlageWert, anteil, depotWert, flag, gehalt, profi, zahl } from './helpers'
+import { ABHEBEN, DEPOT, FLAG, FOLGE, G, INVEST, NEWS, T, VC_AUFSTOCKEN, VC_EINSTIEG, ZAEHLE, alterVon, anlageWert, anteil, depotWert, flag, gehalt, profi, vcAktivAnzahl, zahl } from './helpers'
 import type { EreignisDef } from './types'
 
 const hatGeld = (c: { spieler: { geld: number } }): boolean => c.spieler.geld >= 2_000
@@ -80,6 +80,33 @@ export const FINANZEN: EreignisDef[] = [
     optionen: [
       { label: 'Einen größeren Betrag investieren', hinweis: 'sehr riskant', kosten: anteil(0.04, 3000), wurf: { basis: 0.22 }, erfolg: { text: 'Das Start-up wird tatsächlich aufgekauft. Dein Einsatz vervielfacht sich, {freund} lädt dich zum Essen ein.', effekte: [G(anteil(0.4, 15_000)), T({ ruf: 1, privatglueck: 3, selbstvertrauen: 3 }), NEWS('Start-up-Coup: {name} verdient prächtig')] }, misserfolg: { text: 'Das Start-up geht nach acht Monaten pleite. Die App wurde nie fertig.', effekte: [T({ moral: -2, privatglueck: -1 })] } },
       { label: 'Nur gut zureden, kein Geld', erfolg: { text: 'Du wünschst ihm Glück und bleibst bei Fußball. Er versteht es.', effekte: [T({ professionalitaet: 1 })] } },
+    ],
+  },
+  {
+    id: 'f-vc-pitch', kategorie: 'Finanzen', gewicht: 1.5, abstand: 250, bedingung: (c) => profi(c) && c.spieler.geld > 10_000 && c.spieler.traits.ruf > 15,
+    titel: 'Business Angel gesucht', text: 'Eine Gründerin stellt dir ihr junges Unternehmen vor: Zehn Folien, drei Mitarbeiter, ein Pitch mit Leidenschaft. „Mit dir als Investor öffnen sich Türen. Und wenn es klappt, wird es groß.“ {berater} flüstert: „Neun von zehn Start-ups gehen kaputt.“',
+    optionen: [
+      { label: 'Kleines Ticket (5 % des Kontos)', hinweis: 'riskant', erfolg: { text: 'Du steigst als Business Angel ein. Die Gründerin schickt dir ab jetzt Newsletter voller Zuversicht.', effekte: [VC_EINSTIEG(0.05), T({ professionalitaet: 1, ruf: 0.5 })] } },
+      { label: 'Großes Ticket (15 % des Kontos)', hinweis: 'sehr riskant', erfolg: { text: 'Du gehst richtig rein. Entweder Einhorn oder Totalverlust.', effekte: [VC_EINSTIEG(0.15), T({ ehrgeiz: 1, selbstvertrauen: 1 })] } },
+      { label: 'Erst eine Prüfung beauftragen (kleine Gebühr)', kosten: anteil(0.005, 300), hinweis: 'kostet Geld', erfolg: { text: 'Ein Gutachter nimmt Zahlen und Team unter die Lupe. Du steigst nur ein, weil die Zahlen überzeugen.', effekte: [VC_EINSTIEG(0.08, true), T({ professionalitaet: 2 })] } },
+      { label: 'Ablehnen', erfolg: { text: 'Du bleibst bei Fußball. Die Gründerin lächelt tapfer und sucht den Nächsten.', effekte: [] } },
+    ],
+  },
+  {
+    id: 'f-vc-fonds', kategorie: 'Finanzen', gewicht: 1, abstand: 400, bedingung: (c) => profi(c) && c.spieler.geld > 50_000,
+    titel: 'Der Venture-Fonds', text: 'Ein Fondsmanager lädt dich zum Essen ein: „Nicht alles auf ein Pferd setzen. Unser Fonds streut dein Geld auf mehrere junge Unternehmen.“ Die Mindestanlage ist hoch, die Hoffnung auch.',
+    optionen: [
+      { label: 'Breit streuen: vier Start-ups mit gut 20 % des Kontos', hinweis: 'riskant', erfolg: { text: 'Dein Geld verteilt sich auf vier Beteiligungen. Wahrscheinlich gehen zwei baden, vielleicht trägt eine das Ganze.', effekte: [VC_EINSTIEG(0.06), VC_EINSTIEG(0.065), VC_EINSTIEG(0.07), VC_EINSTIEG(0.075), T({ professionalitaet: 2 })] } },
+      { label: 'Ein einzelnes Start-up (10 %)', hinweis: 'sehr riskant', erfolg: { text: 'Du suchst dir das Start-up mit dem besten Gefühl aus.', effekte: [VC_EINSTIEG(0.1)] } },
+      { label: 'Nein, zu risikoreich', erfolg: { text: 'Du bleibst bei ETF und Tagesgeld. Langweilig, aber stabil.', effekte: [T({ professionalitaet: 1 })] } },
+    ],
+  },
+  {
+    id: 'f-vc-nachschuss', kategorie: 'Finanzen', gewicht: 1.5, abstand: 200, bedingung: (c) => vcAktivAnzahl(c) > 0 && c.spieler.geld > 5_000,
+    titel: 'Dein Start-up braucht frisches Geld', text: 'Die Gründerin ruft an, mit gedämpfter Stimme: „Die nächste Finanzierungsrunde zieht sich. Wir könnten Geld von den Bestandsinvestoren gut gebrauchen.“ {berater} schüttelt den Kopf: „Schlechtem Geld wirft man kein gutes hinterher.“',
+    optionen: [
+      { label: 'Nachlegen (10 % des Kontos)', hinweis: 'riskant', wurf: { basis: 0.5 }, erfolg: { text: 'Mit deiner Hilfe schafft das Team die nächste Runde. Dein Anteil ist mehr wert als je zuvor.', effekte: [VC_AUFSTOCKEN(0.1), T({ selbstvertrauen: 2 })] }, misserfolg: { text: 'Das Geld ist schnell verbrannt, und die nächste Runde platzt. Du hast mehr Einsatz im Risiko.', effekte: [VC_AUFSTOCKEN(0.1), T({ moral: -2 })] } },
+      { label: 'Nein, ich bleibe bei meinem Einsatz', erfolg: { text: 'Du sagst höflich ab. Die Gründerin versteht es, wirkt aber enttäuscht.', effekte: [T({ professionalitaet: 1 })] } },
     ],
   },
   {

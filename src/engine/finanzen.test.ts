@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createCareer } from './newCareer'
 import { Aktionen } from './aktionen'
-import { ANLAGEN, auszahlen, depotGesamt, depotVon, einzahlen, marktWoche, skaliere, sparplan, vermoegen } from './finanzen'
+import { ANLAGEN, auszahlen, beteiligungenVon, dealsAktualisieren, depotGesamt, depotVon, einzahlen, marktWoche, neuerDeal, skaliere, sparplan, vcAktiv, vcAufstocken, vcBuchwert, vcEinsteigen, vcVerkaufen, vcWoche, vermoegen } from './finanzen'
 import { wendeEffekteAn } from './ereignisse'
 import { createRng } from './rng'
 import { spieleSaisons } from './sim'
@@ -86,5 +86,70 @@ describe('Finanzen', () => {
     c = { ...c, flags: { ...c.flags, sparplan: true } }
     c = spieleSaisons(c, 5)
     expect(depotVon(c).etf.wert).toBeGreaterThan(0)
+  })
+})
+
+describe('Venture Capital', () => {
+  it('Einstieg bindet Geld, Zweitmarkt zahlt 60 %, Aufstocken erhöht den Einsatz', () => {
+    const rng = createRng(2)
+    let c = mitGeld(20_000)
+    c = vcEinsteigen(c, neuerDeal(rng), 5_000)
+    expect(c.spieler.geld).toBe(15_000)
+    expect(vcAktiv(c)).toHaveLength(1)
+    expect(vermoegen(c)).toBe(20_000)
+    const id = vcAktiv(c)[0].id
+    c = vcAufstocken(c, id, 1_000)
+    expect(vcAktiv(c)[0].eingezahlt).toBe(6_000)
+    c = vcVerkaufen(c, id)
+    expect(c.spieler.geld).toBe(14_000 + 3_600)
+    expect(vcAktiv(c)).toHaveLength(0)
+    expect(beteiligungenVon(c)[0].status).toBe('verkauft')
+    expect(vcEinsteigen(mitGeld(0), neuerDeal(rng), 1_000).beteiligungen).toBeUndefined()
+  })
+
+  it('Ergebnisse sind realistisch: etwa die Hälfte scheitert, der Schnitt liegt über dem Einsatz', () => {
+    const rng = createRng(11)
+    let pleite = 0
+    let wert = 0
+    const n = 300
+    for (let i = 0; i < n; i++) {
+      let c = mitGeld(10_000)
+      c = vcEinsteigen(c, neuerDeal(rng), 10_000)
+      for (let w = 0; w < 6 * 52; w++) {
+        c = { ...c, wochenGesamt: c.wochenGesamt + 1 }
+        c = vcWoche(c, rng).c
+      }
+      const b = beteiligungenVon(c)[0]
+      if (b.status === 'pleite') pleite++
+      wert += b.status === 'exit' ? b.wert : vcBuchwert(c)
+      if (b.status === 'exit') expect(c.spieler.geld).toBe(b.wert)
+    }
+    expect(pleite / n).toBeGreaterThan(0.3)
+    expect(pleite / n).toBeLessThan(0.65)
+    expect(wert / (n * 10_000)).toBeGreaterThan(1.2)
+    expect(wert / (n * 10_000)).toBeLessThan(3.5)
+  })
+
+  it('Deals gibt es erst ab 5.000 € und werden alle 13 Wochen erneuert', () => {
+    const rng = createRng(4)
+    expect(dealsAktualisieren(mitGeld(1_000), rng).deals).toBeUndefined()
+    const c = dealsAktualisieren(mitGeld(9_000), rng)
+    expect(c.deals).toHaveLength(3)
+    expect(dealsAktualisieren({ ...c, wochenGesamt: 14 }, rng).deals).toBe(c.deals)
+    expect(dealsAktualisieren({ ...c, wochenGesamt: 26 }, rng).deals).not.toBe(c.deals)
+  })
+
+  it('Ereignis-Effekte und Aktionen legen Beteiligungen an', () => {
+    const rng = createRng(1)
+    let c = mitGeld(10_000)
+    c = wendeEffekteAn(c, [{ t: 'vcEinstieg', anteil: 0.5 }], rng).c
+    expect(vcAktiv(c)[0].eingezahlt).toBe(5_000)
+    c = wendeEffekteAn(c, [{ t: 'vcAufstocken', anteil: 0.5 }], rng).c
+    expect(vcAktiv(c)[0].eingezahlt).toBe(7_500)
+    const mitDeals = Aktionen.einzahlen(dealsAktualisieren(mitGeld(10_000), rng), 'etf', 0)
+    const deal = mitDeals.deals![0]
+    const eingestiegen = Aktionen.vcEinsteigen(mitDeals, deal.id, 0.1)
+    expect(vcAktiv(eingestiegen)[0].name).toBe(deal.name)
+    expect(eingestiegen.deals).toHaveLength(2)
   })
 })

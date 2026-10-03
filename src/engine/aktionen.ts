@@ -1,7 +1,7 @@
 import { EREIGNIS_BY_ID } from '../data/events'
 import { SCENE_BY_ID } from '../data/scenes'
 import { optionVerfuegbar, waehleEreignisOption } from './ereignisse'
-import { auszahlen, einzahlen } from './finanzen'
+import { auszahlen, einzahlen, vcEinsteigen, vcVerkaufen } from './finanzen'
 import { leiheAnfragen, lehneAb, nimmAn, verhandleAngebot, wechselwunschUmschalten } from './transfers'
 import { naechsteSaison } from './season'
 import { startWeek, waehle, weiter, weiterImSpiel, ereignisWeiter, withRng, beendeKarriere } from './week'
@@ -32,6 +32,11 @@ export const Aktionen = {
   wechselwunsch: (c: Career) => wechselwunschUmschalten(c),
   einzahlen: (c: Career, anlage: Anlage, anteil: number) => einzahlen(c, anlage, c.spieler.geld * anteil),
   auszahlen: (c: Career, anlage: Anlage, anteil: number) => auszahlen(c, anlage, (c.depot?.[anlage].wert ?? 0) * anteil),
+  vcEinsteigen: (c: Career, dealId: string, anteil: number): Career => {
+    const d = c.deals?.find((x) => x.id === dealId)
+    return d ? vcEinsteigen(c, d, c.spieler.geld * anteil) : c
+  },
+  vcVerkaufen: (c: Career, id: string) => vcVerkaufen(c, id),
   sparplan: (c: Career, an: boolean): Career => ({ ...c, flags: { ...c.flags, sparplan: an } }),
   einstellung: (c: Career, autoSzenen: boolean): Career => ({ ...c, einstellungen: { ...c.einstellungen, autoSzenen } }),
 }

@@ -1,5 +1,5 @@
 import { LAENDER, VEREINE } from '../data/clubs'
-import { depotGesamt } from './finanzen'
+import { beteiligungenVon, depotGesamt } from './finanzen'
 import { alter, overall } from './rating'
 import { gesamtStats } from './statistik'
 import { marktwert } from './wirtschaft'
@@ -55,6 +55,8 @@ export const ERFOLGE: ErfolgDef[] = [
   { id: 'overall-90', name: 'Jahrhunderttalent', text: 'Gesamtstärke 90 erreicht.', check: (c) => overall(c.spieler) >= 90 },
   { id: 'kleinanleger', name: 'Kleinanleger', text: 'Ein Depot mit mindestens 10.000 Euro Wert.', check: (c) => depotGesamt(c) >= 10_000 },
   { id: 'vermoegensaufbau', name: 'Vermögensaufbau', text: 'Ein Depot mit mindestens 1 Million Euro Wert.', check: (c) => depotGesamt(c) >= 1_000_000 },
+  { id: 'business-angel', name: 'Business Angel', text: 'In ein Start-up investiert.', check: (c) => beteiligungenVon(c).length > 0 },
+  { id: 'einhorn', name: 'Einhorn-Jäger', text: 'Ein Start-up-Investment mindestens verdreifacht.', check: (c) => beteiligungenVon(c).some((b) => b.status === 'exit' && b.wert >= b.eingezahlt * 3) },
   { id: 'vermieter', name: 'Vermieter', text: 'Mieteinnahmen aus einer Immobilie.', check: (c) => Number(c.flags.mieteinnahmen ?? 0) > 0 },
   { id: 'sponsor', name: 'Werbegesicht', text: 'Einen Sponsorenvertrag unterschrieben.', check: (c) => c.flags.sponsor === true },
   { id: 'doku', name: 'Streaming-Star', text: 'Eine Doku über dich gedreht.', check: (c) => flag(c, 'doku') },

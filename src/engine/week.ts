@@ -8,7 +8,7 @@ import { beendeSaison } from './season'
 import { oeffneFenster, schliesseFenster } from './transfers'
 import { FOCUS, trainingDeltas } from './training'
 import { paarungFuerWoche, verbucheErgebnis } from './wettbewerbe'
-import { marktWoche, sparplan } from './finanzen'
+import { dealsAktualisieren, marktWoche, sparplan, vcWoche } from './finanzen'
 import { wochenEinkommen } from './wirtschaft'
 import { simuliereSpieltag } from './welt'
 import { pruefeErfolge } from './erfolge'
@@ -151,6 +151,9 @@ export function startWeek(c: Career, focus: TrainingFocus): Career {
       bericht,
     }
     c2 = marktWoche(sparplan(c2, einkommen), rng)
+    const vc = vcWoche(c2, rng)
+    c2 = dealsAktualisieren(vc.c, rng)
+    hinweise.push(...vc.meldungen)
 
     if (!paarung) return beendeWoche(c2, rng, null, 'nicht-eingesetzt', verletzt)
     const m = neuesSpiel(c2, rng, einsatz === 'startelf' ? 'startelf' : 'einwechslung', paarung)

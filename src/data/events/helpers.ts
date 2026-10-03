@@ -43,6 +43,9 @@ export const VERL = (name: string, wochen: number): Effekt => ({ t: 'verletzung'
 export const SPERRE = (spiele: number): Effekt => ({ t: 'sperre', spiele })
 export const NEWS = (text: Txt): Effekt => ({ t: 'schlagzeile', text })
 export const AKT = (name: AktionName): Effekt => ({ t: 'aktion', name })
+export const VC_EINSTIEG = (anteil: number, gut = false): Effekt => ({ t: 'vcEinstieg', anteil, gut })
+export const VC_AUFSTOCKEN = (anteil: number): Effekt => ({ t: 'vcAufstocken', anteil })
+export const vcAktivAnzahl = (c: Career): number => (c.beteiligungen ?? []).filter((b) => b.status === 'aktiv').length
 export const DEPOT = (anlage: Anlage | 'alle', faktor: number): Effekt => ({ t: 'depot', anlage, faktor })
 export const INVEST = (anlage: Anlage, anteil: number): Effekt => ({ t: 'invest', anlage, anteil })
 export const ABHEBEN = (anlage: Anlage | 'alle', anteil: number): Effekt => ({ t: 'abheben', anlage, anteil })

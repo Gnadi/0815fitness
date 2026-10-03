@@ -11,6 +11,7 @@ export const THEMES: readonly Theme[] = [
   { id: 'orange', name: 'Orange', farbe: '#ff9f43' },
   { id: 'violett', name: 'Violett', farbe: '#b388ff' },
   { id: 'grau', name: 'Grau', farbe: '#e3e6ea' },
+  { id: 'schwarzweiss', name: 'Schwarz-Weiß', farbe: '#ffffff' },
   { id: 'hell', name: 'Hell', farbe: '#1f9d55' },
 ]
 

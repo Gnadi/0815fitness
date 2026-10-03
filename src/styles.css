@@ -139,3 +139,5 @@ legend { color: var(--muted); font-size: 0.9rem; padding: 0 0 6px; }
 .erfolge li.locked { opacity: 0.5; }
 
 .tabelle tr.luecke td { text-align: center; color: var(--muted); padding: 0 4px; line-height: 1; }
+
+.aktionen { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }

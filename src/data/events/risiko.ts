@@ -108,7 +108,7 @@ export const RISIKO: EreignisDef[] = [
   },
   {
     id: 'r-fremdgehen', kategorie: 'Risiko', gewicht: 1, abstand: 400, bedingung: (c) => profi(c) && hatPartner(c) && alterVon(c) >= 20 && trait(c, 'disziplin') < 65,
-    titel: 'Eine verhängnisvolle Nacht', text: 'Nach dem Auswärtsspiel flirtet eine Frau an der Hotelbar mit dir. Ihre Hand ruht auf deinem Arm. {partner} ist zu Hause und schickt dir gerade ein Herz.',
+    titel: 'Eine verhängnisvolle Nacht', text: 'Nach dem Auswärtsspiel flirtet jemand an der Hotelbar mit dir. Eine Hand ruht auf deinem Arm. {partner} ist zu Hause und schickt dir gerade ein Herz.',
     optionen: [
       { label: 'Freundlich verabschieden', erfolg: { text: 'Du gehst auf dein Zimmer und rufst {partner} an. Gute Entscheidung.', effekte: [T({ privatglueck: 3, disziplin: 2 })] } },
       { label: 'Mit aufs Zimmer gehen', hinweis: 'riskant', wurf: { basis: 0.6, traits: ['disziplin'] }, erfolg: { text: 'Es bleibt ein Geheimnis. Mit schlechtem Gewissen.', effekte: [T({ moral: -3, privatglueck: -3, disziplin: -3 })] }, misserfolg: { text: 'Am nächsten Morgen steht es in der Zeitung. {partner} ruft nicht mehr an.', effekte: [AKT('partner-ende'), T({ privatglueck: -15, moral: -8, fanbeliebtheit: -5, ruf: -3 }), AKT('skandal'), NEWS('Fremdgeh-Skandal bei {name}'), FOLGE('r-ex-erpressung', 30, 0.4)] } },
@@ -116,11 +116,11 @@ export const RISIKO: EreignisDef[] = [
   },
   {
     id: 'r-ex-erpressung', kategorie: 'Risiko', gewicht: 0,
-    titel: 'Die Ex packt aus', text: 'Deine Ex-Freundin droht, intime Nachrichten an die Presse zu verkaufen, sollte sie nicht 15.000 Euro bekommen.',
+    titel: 'Die Ex packt aus', text: 'Eine frühere Beziehung droht, intime Nachrichten an die Presse zu verkaufen, sollten nicht 15.000 Euro fließen.',
     optionen: [
       { label: 'Zahlen', kosten: anteil(0.12, 3000), hinweis: 'kostet Geld', erfolg: { text: 'Du zahlst und hoffst, dass es das war. Die Nachrichten werden gelöscht.', effekte: [T({ moral: -3 })] } },
-      { label: 'Anwalt einschalten', kosten: anteil(0.03, 600), wurf: { basis: 0.6 }, erfolg: { text: 'Der Anwalt droht mit einer Anzeige wegen Erpressung, und die Ex lässt es bleiben.', effekte: [T({ professionalitaet: 1 })] }, misserfolg: { text: 'Sie verkauft die Nachrichten trotzdem, die Zeitung druckt sie ab.', effekte: [T({ ruf: -5, fanbeliebtheit: -6, moral: -5 }), NEWS('Skandal-Chats von {name} veröffentlicht')] } },
-      { label: 'Sie ignorieren', wurf: { basis: 0.35 }, erfolg: { text: 'Die Drohung verläuft im Sande. Glück gehabt.', effekte: [] }, misserfolg: { text: 'Die Zeitung druckt alles ab. Ein Skandal, der lange nachhallt.', effekte: [T({ ruf: -8, fanbeliebtheit: -8, moral: -6 }), AKT('skandal'), NEWS('Skandal-Chats von {name} veröffentlicht')] } },
+      { label: 'Anwalt einschalten', kosten: anteil(0.03, 600), wurf: { basis: 0.6 }, erfolg: { text: 'Der Anwalt droht mit einer Anzeige wegen Erpressung, und die Drohung verpufft.', effekte: [T({ professionalitaet: 1 })] }, misserfolg: { text: 'Die Nachrichten werden trotzdem verkauft, die Zeitung druckt sie ab.', effekte: [T({ ruf: -5, fanbeliebtheit: -6, moral: -5 }), NEWS('Skandal-Chats von {name} veröffentlicht')] } },
+      { label: 'Die Drohung ignorieren', wurf: { basis: 0.35 }, erfolg: { text: 'Die Drohung verläuft im Sande. Glück gehabt.', effekte: [] }, misserfolg: { text: 'Die Zeitung druckt alles ab. Ein Skandal, der lange nachhallt.', effekte: [T({ ruf: -8, fanbeliebtheit: -8, moral: -6 }), AKT('skandal'), NEWS('Skandal-Chats von {name} veröffentlicht')] } },
     ],
   },
   {

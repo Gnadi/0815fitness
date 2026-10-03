@@ -1,6 +1,6 @@
 import type { Anlage, Career, Skills, Traits } from '../../engine/types'
 
-/** Text oder Funktion, die den Text aus dem Spielstand berechnet. Platzhalter: {name} {vorname} {verein} {trainer} {kapitaen} {rivale} {freund} {berater} {partner} {reporter}. */
+/** Text oder Funktion, die den Text aus dem Spielstand berechnet. Platzhalter: {name} {vorname} {verein} {trainer} {kapitaen} {rivale} {freund} {berater} {partner} {reporter}; Partner-Pronomen {sie} {Sie} {ihr} {ihre}. */
 export type Txt = string | ((c: Career) => string)
 
 export type AktionName =

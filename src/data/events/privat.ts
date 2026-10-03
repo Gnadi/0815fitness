@@ -4,7 +4,7 @@ import type { EreignisDef } from './types'
 export const PRIVAT: EreignisDef[] = [
   {
     id: 'p-kennenlernen', kategorie: 'Privat', gewicht: 2, abstand: 200, bedingung: (c) => profi(c) && !hatPartner(c) && alterVon(c) >= 18,
-    titel: 'Wer ist die Frau am Rande des Trainings?', text: 'Vor dem Vereinsgelände wartet jeden Tag dieselbe Person mit einem Kaffee und einem Lächeln. Heute spricht sie dich an. {freund} grinst im Hintergrund und gibt dir den Daumen hoch.',
+    titel: 'Wer wartet da am Rande des Trainings?', text: 'Vor dem Vereinsgelände wartet jeden Tag dieselbe Person mit einem Kaffee und einem Lächeln. Heute spricht die Person dich an. {freund} grinst im Hintergrund und gibt dir den Daumen hoch.',
     optionen: [
       { label: 'Auf einen Kaffee gehen', erfolg: { text: 'Aus einem Kaffee wird ein Abendessen, aus einem Abendessen wird mehr. Zum ersten Mal seit Langem denkst du nicht nur an Fußball.', effekte: [AKT('partner-neu'), T({ privatglueck: 10, moral: 4 }), FOLGE('p-beziehung-krise', 45, 0.6)] } },
       { label: 'Höflich ablehnen', erfolg: { text: 'Du konzentrierst dich auf deine Karriere. Die Liebe läuft schon nicht weg.', effekte: [T({ professionalitaet: 2, ehrgeiz: 1 })] } },
@@ -12,7 +12,7 @@ export const PRIVAT: EreignisDef[] = [
   },
   {
     id: 'p-beziehung-krise', kategorie: 'Privat', gewicht: 0, abstand: 80, bedingung: hatPartner,
-    titel: 'Beziehungskrise', text: '{partner} sagt: „Du hast nie Zeit. Immer Training, Spiele, Trainingslager. Wann bin ich dran?“ Du merkst, dass sie recht hat.',
+    titel: 'Beziehungskrise', text: '{partner} sagt: „Du hast nie Zeit. Immer Training, Spiele, Trainingslager. Wann bin ich dran?“ Du merkst, dass {sie} recht hat.',
     optionen: [
       { label: 'Einen freien Tag nehmen und gemeinsam verbringen', erfolg: { text: 'Ihr verbringt einen wunderschönen Tag am See. Ihr seid beide erleichtert.', effekte: [T({ privatglueck: 8, fitness: 2, ehrgeiz: -1 })] } },
       { label: 'Die Karriere verteidigen', hinweis: 'riskant', wurf: { basis: 0.35, traits: ['privatglueck'] }, erfolg: { text: '{partner} versteht dich und tritt einen Schritt zurück. Ihr bleibt zusammen.', effekte: [T({ privatglueck: 2 })] }, misserfolg: { text: '{partner} packt die Koffer. Es war eine schöne Zeit.', effekte: [AKT('partner-ende'), T({ privatglueck: -12, moral: -6 })] } },
@@ -24,13 +24,15 @@ export const PRIVAT: EreignisDef[] = [
     titel: 'Der große Schritt', text: 'Du und {partner} seid seit Jahren zusammen. Die Familie fragt schon, wann es endlich so weit ist. Dein Berater rät: „Mach es wie Ronaldo, groß und teuer.“',
     optionen: [
       { label: 'Antrag mit Riesenspektakel', kosten: anteil(0.08, 3000), hinweis: 'kostet viel Geld', erfolg: { text: 'Auf dem Mittelkreis, nach dem Spiel, vor 30.000 Zuschauern. {partner} sagt Ja. Die Zeitungen drucken das Foto.', effekte: [FLAG('verheiratet'), T({ privatglueck: 15, fanbeliebtheit: 5, moral: 8 }), LEBEN(4000), NEWS('Mittelkreis-Antrag: {name} heiratet')] } },
-      { label: 'Intim und ruhig', erfolg: { text: 'Beim Abendessen, nur zu zweit. Sie sagt Ja. Es ist perfekt.', effekte: [FLAG('verheiratet'), T({ privatglueck: 12, moral: 6 }), LEBEN(2000)] } },
-      { label: 'Noch nicht, die Karriere geht vor', erfolg: { text: '{partner} nickt enttäuscht. Sie wartet, aber wie lange?', effekte: [T({ privatglueck: -6 }), FOLGE('p-beziehung-krise', 25, 0.7)] } },
+      { label: 'Intim und ruhig', erfolg: { text: 'Beim Abendessen, nur zu zweit. {Sie} sagt Ja. Es ist perfekt.', effekte: [FLAG('verheiratet'), T({ privatglueck: 12, moral: 6 }), LEBEN(2000)] } },
+      { label: 'Noch nicht, die Karriere geht vor', erfolg: { text: '{partner} nickt enttäuscht. {Sie} wartet, aber wie lange?', effekte: [T({ privatglueck: -6 }), FOLGE('p-beziehung-krise', 25, 0.7)] } },
     ],
   },
   {
     id: 'p-baby', kategorie: 'Familie', gewicht: 1.5, abstand: 300, bedingung: (c) => hatPartner(c) && alterVon(c) >= 21 && trait(c, 'privatglueck') > 55 && zahl(c, 'kinder') < 3,
-    titel: 'Wir werden Eltern!', text: '{partner} hält dir einen Schwangerschaftstest unter die Nase. Dein Herz setzt aus, dann lachst du laut. Ein Baby!',
+    titel: 'Wir werden Eltern!', text: (c) => c.personen.partnerGeschlecht === 'm'
+      ? '{partner} zeigt dir einen Brief vom Jugendamt: Die Adoption wurde bewilligt. Dein Herz setzt aus, dann lachst du laut. Ein Kind!'
+      : '{partner} hält dir einen Schwangerschaftstest unter die Nase. Dein Herz setzt aus, dann lachst du laut. Ein Baby!',
     optionen: [
       { label: 'Riesig freuen und Elternzeit nehmen', erfolg: { text: 'Du verbringst Wochen zwischen Windeln und Schlafmangel, aber du strahlst.', effekte: [T({ privatglueck: 14, moral: 6, fitness: -3, professionalitaet: 1 }), LEBEN(2500), ZAEHLE('kinder', 1)] } },
       { label: 'Freude zeigen, aber Training nicht schleifen lassen', erfolg: { text: 'Du organisierst alles clever. Das Training leidet kaum, das Familienglück schon ein wenig.', effekte: [T({ privatglueck: 10, ehrgeiz: 2 }), LEBEN(2500), ZAEHLE('kinder', 1)] } },

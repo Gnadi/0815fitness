@@ -266,6 +266,8 @@ export interface Personen {
   berater: string
   /** Partnerin/Partner, falls vorhanden. */
   partner: string | null
+  /** Geschlecht der Partnerperson (fehlt = weiblich, für alte Spielstände). */
+  partnerGeschlecht?: 'w' | 'm'
   /** Lieblings-Journalist(in) bzw. Boulevard-Reporter. */
   reporter: string
 }

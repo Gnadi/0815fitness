@@ -112,7 +112,7 @@ export const MEDIEN: EreignisDef[] = [
   },
   {
     id: 'm-boulevard', kategorie: 'Medien', gewicht: 1.5, abstand: 200, bedingung: (c) => profi(c) && trait(c, 'ruf') > 30 && c.personen.partner !== null,
-    titel: 'Der Boulevard schnüffelt', text: '{reporter} schreibt: „Neues Liebesglück bei {name}? Die Frau an seiner Seite.“ Fotos vom Einkaufen, Kaffee und einem Kuss.',
+    titel: 'Der Boulevard schnüffelt', text: '{reporter} schreibt: „Neues Liebesglück bei {name}? Wer ist die Person an seiner Seite?“ Fotos vom Einkaufen, Kaffee und einem Kuss.',
     optionen: [
       { label: 'Offen dazu stehen', erfolg: { text: 'Du postest ein Foto und schreibst: „Ja, wir sind glücklich.“ Die Fans freuen sich.', effekte: [T({ fanbeliebtheit: 3, privatglueck: 3 })] } },
       { label: 'Kein Kommentar', erfolg: { text: 'Du schweigst. Die Gerüchte blühen, doch du bleibst entspannt.', effekte: [T({ professionalitaet: 1 })] } },

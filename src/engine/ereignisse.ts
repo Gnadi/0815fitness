@@ -29,6 +29,7 @@ const vz = (n: number) => `${n >= 0 ? '+' : '−'}${Math.abs(Math.round(n))}`
 export function fuelleText(c: Career, t: Txt): string {
   const s = typeof t === 'function' ? t(c) : t
   const p = c.personen
+  const m = p.partnerGeschlecht === 'm'
   return s
     .replaceAll('{name}', c.spieler.nachname)
     .replaceAll('{vorname}', c.spieler.vorname)
@@ -38,7 +39,11 @@ export function fuelleText(c: Career, t: Txt): string {
     .replaceAll('{rivale}', p.rivale)
     .replaceAll('{freund}', p.freund)
     .replaceAll('{berater}', p.berater)
-    .replaceAll('{partner}', p.partner ?? 'deine Freundin')
+    .replaceAll('{partner}', p.partner ?? 'dein Schatz')
+    .replaceAll('{sie}', m ? 'er' : 'sie')
+    .replaceAll('{Sie}', m ? 'Er' : 'Sie')
+    .replaceAll('{ihr}', m ? 'ihm' : 'ihr')
+    .replaceAll('{ihre}', m ? 'seine' : 'ihre')
     .replaceAll('{reporter}', p.reporter)
 }
 
@@ -249,9 +254,12 @@ function fuehreAktionAus(c: Career, name: AktionName, rng: Rng): { c: Career; wi
         wirkung: ['Neuer Trainer'],
       }
     case 'partner-neu':
-      return { c: { ...c, personen: { ...c.personen, partner: zufallsName(c.spieler.nationalitaet, rng) } }, wirkung: [] }
+    {
+      const geschlecht = rng.chance(0.5) ? 'm' : 'w'
+      return { c: { ...c, personen: { ...c.personen, partner: zufallsName(c.spieler.nationalitaet, rng, geschlecht), partnerGeschlecht: geschlecht } }, wirkung: [] }
+    }
     case 'partner-ende':
-      return { c: { ...c, personen: { ...c.personen, partner: null } }, wirkung: ['Beziehung vorbei'] }
+      return { c: { ...c, personen: { ...c.personen, partner: null, partnerGeschlecht: undefined } }, wirkung: ['Beziehung vorbei'] }
     case 'wechselwunsch':
       return { c: { ...c, wechselwunsch: true }, wirkung: ['Wechselwunsch hinterlegt'] }
     case 'verein-wechseln-erzwingen': {

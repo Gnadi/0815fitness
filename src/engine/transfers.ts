@@ -18,6 +18,7 @@ export function neueMitarbeiter(land: string, rng: Rng, alt?: Personen): Persone
     freund: alt?.freund ?? zufallsName(land, rng),
     berater: alt?.berater ?? zufallsName(land, rng),
     partner: alt?.partner ?? null,
+    partnerGeschlecht: alt?.partnerGeschlecht,
     reporter: alt?.reporter ?? zufallsName(land, rng),
   }
 }

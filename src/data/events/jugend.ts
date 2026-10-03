@@ -36,7 +36,7 @@ export const JUGEND: EreignisDef[] = [
   },
   {
     id: 'j-freundin', kategorie: 'Jugend', gewicht: 2, bedingung: (c) => jugend(c) && c.personen.partner === null && alterVon(c) >= 16, abstand: 150,
-    titel: 'Wer ist das Mädchen am Zaun?', text: 'Seit Wochen steht dieselbe Person nach dem Training am Zaun. Heute spricht sie dich an: „Du bist doch der Neue? Ich bin Klassenkameradin von {freund}. Ich fand dich im letzten Spiel gut.“',
+    titel: 'Wer steht da am Zaun?', text: 'Seit Wochen steht dieselbe Person nach dem Training am Zaun. Heute spricht sie dich an: „Du bist doch der Neue? Ich bin in der Klasse von {freund}. Ich fand dich im letzten Spiel gut.“',
     optionen: [
       { label: 'Nach dem Training einen Kaffee trinken', erfolg: { text: 'Ihr redet stundenlang. Zum ersten Mal seit Wochen denkst du nicht an Fußball.', effekte: [AKT('partner-neu'), T({ privatglueck: 8, moral: 4 }), FOLGE('p-beziehung-krise', 40, 0.6)] } },
       { label: 'Freundlich bleiben, aber Distanz halten', erfolg: { text: 'Du konzentrierst dich lieber aufs Training. Manche Dinge können warten.', effekte: [T({ disziplin: 2, professionalitaet: 2 })] } },

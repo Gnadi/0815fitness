@@ -6,7 +6,7 @@ import App from './App'
 import './styles.css'
 import { gespeichertesTheme, wendeThemeAn } from './ui/theme'
 
-wendeThemeAn(gespeichertesTheme(), false)
+wendeThemeAn(gespeichertesTheme(), { speichern: false })
 registerSW({ immediate: true })
 
 createRoot(document.getElementById('root')!).render(

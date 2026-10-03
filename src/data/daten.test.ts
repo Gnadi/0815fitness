@@ -4,6 +4,8 @@ import { COUNTRIES } from './countries'
 import { SCENES } from './scenes'
 import { ALLE_EREIGNISSE, EREIGNIS_BY_ID } from './events'
 import type { Effekt } from './events/types'
+import { FARB_NAMEN, vereinsfarben } from './vereinsfarben'
+import { leuchtdichte, vereinsPalette } from '../ui/farben'
 
 describe('Vereinsdaten', () => {
   it('deckt alle 55 UEFA-Länder ab', () => {
@@ -45,5 +47,24 @@ describe('Szenen und Ereignisse', () => {
   })
   it('bietet genug Inhalt', () => {
     expect(ALLE_EREIGNISSE.length).toBeGreaterThanOrEqual(100)
+  })
+})
+
+describe('Vereinsfarben', () => {
+  it('alle hinterlegten Vereinsnamen existieren', () => {
+    const namen = new Set(Object.values(VEREINE).map((v) => v.name))
+    for (const n of FARB_NAMEN) expect(namen.has(n), n).toBe(true)
+  })
+  it('jeder Verein bekommt eine lesbare Palette (dunkler Hintergrund, heller Akzent)', () => {
+    for (const id of Object.keys(VEREINE)) {
+      const [a, b] = vereinsfarben(id)
+      const p = vereinsPalette(a, b)
+      expect(p['--accent'], id).toBeTruthy()
+      expect(p['--bg']).toMatch(/^hsl\(/)
+    }
+    // Sehr dunkle Hauptfarbe: die Zweitfarbe bzw. eine aufgehellte Variante wird Akzent
+    expect(vereinsPalette('#000000', '#ffffff')['--accent']).toBe('#ffffff')
+    expect(vereinsPalette('#0a0a30', '#111111')['--accent']).toMatch(/^hsl\(/)
+    expect(leuchtdichte('#ffffff')).toBeGreaterThan(0.95)
   })
 })

@@ -79,6 +79,7 @@ Spitzenstärke, Erfolgen, abzüglich Skandalen.
   `src/store` (Zustand), `src/screens` (UI).
 - **Zufall:** Seed-basiert, Zustand liegt im Spielstand. Alle Spieleraktionen sind reine Funktionen (`src/engine/aktionen.ts`).
 - **Speichern:** localStorage hinter einem Interface, versioniertes Format (ältere Stände werden abgelehnt), Export/Import.
+- **Design:** Acht Themes über CSS-Variablen (Grün, Blau, Orange, Violett, Grau, Schwarz-Weiß, Hell) plus „Vereinsfarben“: Die Farben des aktuellen Vereins (`src/data/vereinsfarben.ts`, unbekannte Vereine bekommen eine stabile Farbe aus dem Namen) bilden Akzent und getönte Hintergründe und wechseln bei Transfers mit.
 - **Tests:** Daten-Integrität, Spielplan-/Welt-Invarianten, Karriere-Läufe für alle 55 Länder, Fuzzing mit zufälligen Entscheidungen.
 - **Bot/Simulation:** `src/engine/sim.ts` spielt Karrieren automatisch (Tests, Balancing).
 

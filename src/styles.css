@@ -1,4 +1,4 @@
-:root, :root[data-theme='gruen'] {
+:root, :root[data-theme='gruen'], :root[data-theme='verein'] {
   --bg: #0b1d12;
   --card: #14301f;
   --line: #24472f;
@@ -30,6 +30,12 @@
 :root[data-theme='grau'] {
   --bg: #111214; --card: #1c1e22; --line: #2f3238; --text: #eceef1; --muted: #9a9fa8;
   --accent: #e3e6ea; --on-accent: #111214; --nav: #17181b; --toast: #26292e;
+}
+:root[data-theme='schwarzweiss'] {
+  --bg: #000000; --card: #0e0e0e; --line: #3a3a3a; --text: #ffffff; --muted: #a3a3a3;
+  --accent: #ffffff; --on-accent: #000000; --danger: #d4d4d4; --bad-text: #d4d4d4; --ok-text: #ffffff;
+  --warn-text: #d4d4d4; --gold-text: #ffffff; --nav: #000000; --toast: #1a1a1a;
+  filter: grayscale(1);
 }
 :root[data-theme='hell'] {
   --bg: #f1f4f0; --card: #ffffff; --line: #d3dbd1; --text: #14201a; --muted: #5a6b60;

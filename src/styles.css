@@ -1,4 +1,4 @@
-:root, :root[data-theme='gruen'] {
+:root, :root[data-theme='gruen'], :root[data-theme='verein'] {
   --bg: #0b1d12;
   --card: #14301f;
   --line: #24472f;

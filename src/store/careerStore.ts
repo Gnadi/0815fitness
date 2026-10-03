@@ -31,6 +31,7 @@ interface CareerState {
   einzahlen(anlage: Anlage, anteil: number): void
   auszahlen(anlage: Anlage, anteil: number): void
   sparplan(an: boolean): void
+  sparplanProzent(prozent: number): void
   vcEinsteigen(dealId: string, anteil: number): void
   vcAufstocken(id: string, anteil: number): void
   vcVerkaufen(id: string): void
@@ -98,6 +99,7 @@ export const useCareer = create<CareerState>((set, get) => {
     einzahlen: (a, p) => apply((c) => Aktionen.einzahlen(c, a, p)),
     auszahlen: (a, p) => apply((c) => Aktionen.auszahlen(c, a, p)),
     sparplan: (an) => apply((c) => Aktionen.sparplan(c, an)),
+    sparplanProzent: (p) => apply((c) => Aktionen.sparplanProzent(c, p)),
     vcEinsteigen: (id, p) => apply((c) => Aktionen.vcEinsteigen(c, id, p)),
     vcAufstocken: (id, p) => apply((c) => Aktionen.vcAufstocken(c, id, p)),
     vcVerkaufen: (id) => apply((c) => Aktionen.vcVerkaufen(c, id)),

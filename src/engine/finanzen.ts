@@ -78,10 +78,16 @@ export function marktWoche(c: Career, rng: Rng): Career {
   return { ...c, depot: neu }
 }
 
+/** Anteil des Wochenverdiensts im Sparplan in Prozent (Standard 30, einstellbar 5–100). */
+export function sparplanProzent(c: Pick<Career, 'flags'>): number {
+  const p = Number(c.flags.sparplanProzent ?? 30)
+  return Number.isFinite(p) ? Math.max(5, Math.min(100, Math.round(p))) : 30
+}
+
 /** Sparplan: ein Teil des Wochenverdiensts fließt automatisch in den ETF. */
 export function sparplan(c: Career, einkommen: number): Career {
   if (c.flags.sparplan !== true || einkommen <= 0) return c
-  return einzahlen(c, 'etf', einkommen * 0.3)
+  return einzahlen(c, 'etf', (einkommen * sparplanProzent(c)) / 100)
 }
 
 // ---------------------------------------------------------------- Venture Capital

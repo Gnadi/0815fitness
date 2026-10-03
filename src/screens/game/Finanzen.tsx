@@ -1,4 +1,4 @@
-import { ANLAGEN, ANLAGE_INFO, PHASEN, beteiligungenVon, dealSterne, depotGesamt, depotVon, vcAktiv, vermoegen } from '../../engine/finanzen'
+import { ANLAGEN, ANLAGE_INFO, PHASEN, sparplanProzent, beteiligungenVon, dealSterne, depotGesamt, depotVon, vcAktiv, vermoegen } from '../../engine/finanzen'
 import type { Anlage, Career } from '../../engine/types'
 import { wochenEinkommen } from '../../engine/wirtschaft'
 import { useCareer } from '../../store/careerStore'
@@ -122,6 +122,8 @@ function VcBereich({ c }: { c: Career }) {
 
 export function FinanzenTab({ c }: { c: Career }) {
   const sparplan = useCareer((s) => s.sparplan)
+  const setProzent = useCareer((s) => s.sparplanProzent)
+  const prozent = sparplanProzent(c)
   const miete = Number(c.flags.mieteinnahmen ?? 0)
   return (
     <>
@@ -142,8 +144,19 @@ export function FinanzenTab({ c }: { c: Career }) {
         <h2>Sparplan</h2>
         <label className="check">
           <input type="checkbox" checked={c.flags.sparplan === true} onChange={(e) => sparplan(e.target.checked)} />
-          <span>30 % deines Wochenverdiensts automatisch in den Aktien-ETF investieren</span>
+          <span>{prozent} % deines Wochenverdiensts automatisch in den Aktien-ETF investieren</span>
         </label>
+        {c.flags.sparplan === true && (
+          <>
+            <input type="range" min={5} max={100} step={5} value={prozent} onChange={(e) => setProzent(Number(e.target.value))} aria-label="Sparrate in Prozent des Wochenverdiensts" />
+            <div className="row split three">
+              {[30, 50, 75, 100].map((p) => (
+                <button key={p} className="btn small-text" disabled={p === prozent} onClick={() => setProzent(p)}>{p} %</button>
+              ))}
+            </div>
+            {c.vertrag && <p className="muted small">Das sind aktuell ca. {fmtEuro((wochenEinkommen(c) * prozent) / 100)} pro Woche.</p>}
+          </>
+        )}
       </section>
 
       {ANLAGEN.map((k) => <Posten key={k} c={c} k={k} />)}

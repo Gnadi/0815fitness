@@ -44,6 +44,7 @@ export const Aktionen = {
   },
   vcVerkaufen: (c: Career, id: string) => vcVerkaufen(c, id),
   sparplan: (c: Career, an: boolean): Career => ({ ...c, flags: { ...c.flags, sparplan: an } }),
+  sparplanProzent: (c: Career, prozent: number): Career => ({ ...c, flags: { ...c.flags, sparplanProzent: Math.max(5, Math.min(100, Math.round(prozent))) } }),
   einstellung: (c: Career, autoSzenen: boolean): Career => ({ ...c, einstellungen: { ...c.einstellungen, autoSzenen } }),
 }
 

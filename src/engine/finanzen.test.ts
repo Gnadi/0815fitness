@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createCareer } from './newCareer'
 import { Aktionen } from './aktionen'
-import { ANLAGEN, PHASEN, VC_PHASEN, vcZiel, auszahlen, beteiligungenVon, dealsAktualisieren, depotGesamt, depotVon, einzahlen, marktWoche, neuerDeal, skaliere, sparplan, vcAktiv, vcAufstocken, vcBuchwert, vcEinsteigen, vcVerkaufen, vcWoche, vermoegen } from './finanzen'
+import { ANLAGEN, PHASEN, VC_PHASEN, vcZiel, auszahlen, beteiligungenVon, dealsAktualisieren, depotGesamt, depotVon, einzahlen, marktWoche, neuerDeal, skaliere, sparplan, sparplanProzent, vcAktiv, vcAufstocken, vcBuchwert, vcEinsteigen, vcVerkaufen, vcWoche, vermoegen } from './finanzen'
 import { fuelleText, wendeEffekteAn } from './ereignisse'
 import { createRng } from './rng'
 import { spieleSaisons } from './sim'
@@ -53,6 +53,12 @@ describe('Finanzen', () => {
     const an = { ...c, flags: { ...c.flags, sparplan: true } }
     expect(depotVon(sparplan(an, 500)).etf.wert).toBeCloseTo(150, 0)
     expect(sparplan(an, -50)).toBe(an)
+    // Sparrate einstellbar (5–100 %)
+    const hoch = Aktionen.sparplanProzent(an, 100)
+    expect(depotVon(sparplan(hoch, 500)).etf.wert).toBeCloseTo(500, 0)
+    expect(sparplanProzent(Aktionen.sparplanProzent(an, 250))).toBe(100)
+    expect(sparplanProzent(Aktionen.sparplanProzent(an, 0))).toBe(5)
+    expect(sparplanProzent(an)).toBe(30)
   })
 
   it('Ereignis-Effekte verändern das Depot', () => {

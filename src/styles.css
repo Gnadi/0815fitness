@@ -79,7 +79,7 @@ h2 { margin: 12px 0 4px; font-size: 1.1rem; }
 .link { background: none; border: 0; color: inherit; font: inherit; padding: 8px 0; cursor: pointer; }
 .form { display: flex; flex-direction: column; gap: 12px; }
 .form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; color: var(--muted); }
-input:not([type='radio']), select {
+input:not([type='radio']):not([type='range']), select {
   min-height: 48px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line);
   background: var(--card); color: var(--text); font: inherit;
 }
@@ -212,3 +212,4 @@ legend { color: var(--muted); font-size: 0.9rem; padding: 0 0 6px; }
 .meter.kompakt > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .offer .liga { margin: 0 0 2px; font-weight: 600; }
+input[type='range'] { width: 100%; margin: 12px 0 8px; accent-color: var(--accent); }

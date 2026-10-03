@@ -287,6 +287,43 @@ export interface Laufbahn {
   skandale: number
 }
 
+export type Anlage = 'tagesgeld' | 'etf' | 'krypto'
+
+export interface Posten {
+  /** Aktueller Wert in Euro. */
+  wert: number
+  /** Netto eingezahlter Betrag (für die Gewinnanzeige). */
+  eingezahlt: number
+}
+
+export type Depot = Record<Anlage, Posten>
+
+export type VcPhase = 'Seed' | 'Serie A' | 'Serie B' | 'Serie C'
+
+/** Start-up-Beteiligung (Venture Capital): Geld ist bis zum Exit gebunden. */
+export interface Beteiligung {
+  id: string
+  name: string
+  branche: string
+  eingezahlt: number
+  /** Aktueller Buchwert; bei Exit der Auszahlungsbetrag, bei Pleite 0. */
+  wert: number
+  phase: VcPhase
+  /** Absolute Woche des Einstiegs. */
+  seit: number
+  /** Verdeckte Qualität des Teams (0.5 schwach bis 1.5 stark). */
+  qualitaet: number
+  status: 'aktiv' | 'exit' | 'pleite' | 'verkauft'
+}
+
+export interface Deal {
+  id: string
+  name: string
+  branche: string
+  text: string
+  qualitaet: number
+}
+
 export interface Einstellungen {
   /** Schlüsselszenen automatisch (sichere Option) entscheiden. */
   autoSzenen: boolean
@@ -303,6 +340,11 @@ export interface Career {
   /** Absoluter Wochenzähler seit Karrierestart. */
   wochenGesamt: number
   spieler: Player
+  /** Geldanlagen; fehlt in älteren Spielständen (dann leer). */
+  depot?: Depot
+  /** Start-up-Beteiligungen und aktuell angebotene Deals; fehlen in älteren Spielständen. */
+  beteiligungen?: Beteiligung[]
+  deals?: Deal[]
   vereinId: string // '' = vereinslos
   vertrag: Vertrag | null
   leihe: Leihe | null

@@ -6,6 +6,7 @@ import { applyTraits } from './match'
 import { clamp } from './rating'
 import { SKILL_KEYS } from './rating'
 import type { Rng } from './rng'
+import { ANLAGE_INFO, ANLAGEN, auszahlen, depotVon, einzahlen, neuerDeal, skaliere, vcAktiv, vcAufstocken, vcEinsteigen } from './finanzen'
 import { erzeugeAngebote, vereinsAngebot } from './wirtschaft'
 import { fuehreWechselAus, neueMitarbeiter } from './transfers'
 import type { AktionName } from '../data/events/types'
@@ -130,6 +131,50 @@ export function wendeEffekteAn(c: Career, effekte: readonly Effekt[], rng: Rng):
       case 'lebensstil':
         next = { ...next, flags: { ...next.flags, lebensstil: Number(next.flags.lebensstil ?? 0) + e.d } }
         break
+      case 'depot': {
+        const vorher = ANLAGEN.reduce((a, k) => a + depotVon(next)[k].wert, 0)
+        next = skaliere(next, e.anlage, e.faktor)
+        const nachher = ANLAGEN.reduce((a, k) => a + depotVon(next)[k].wert, 0)
+        if (Math.abs(nachher - vorher) >= 1) wirkung.push(`Depot ${nachher >= vorher ? '+' : '−'}${euro(Math.abs(nachher - vorher))}`)
+        break
+      }
+      case 'invest': {
+        const betrag = Math.floor(Math.max(0, next.spieler.geld) * e.anteil)
+        if (betrag > 0) {
+          next = einzahlen(next, e.anlage, betrag)
+          wirkung.push(`${euro(betrag)} in ${ANLAGE_INFO[e.anlage].name} angelegt`)
+        }
+        break
+      }
+      case 'abheben': {
+        let summe = 0
+        for (const k of ANLAGEN) {
+          if (e.anlage !== 'alle' && e.anlage !== k) continue
+          const b = Math.floor(depotVon(next)[k].wert * e.anteil)
+          next = auszahlen(next, k, b)
+          summe += b
+        }
+        if (summe > 0) wirkung.push(`${euro(summe)} aufs Konto ausgezahlt`)
+        break
+      }
+      case 'vcEinstieg': {
+        const betrag = Math.floor(Math.max(0, next.spieler.geld) * e.anteil)
+        if (betrag > 0) {
+          const deal = neuerDeal(rng, e.gut)
+          next = vcEinsteigen(next, deal, betrag)
+          wirkung.push(`${euro(betrag)} in ${deal.name} investiert`)
+        }
+        break
+      }
+      case 'vcAufstocken': {
+        const ziel = [...vcAktiv(next)].sort((a, b) => b.wert - a.wert)[0]
+        const betrag = Math.floor(Math.max(0, next.spieler.geld) * e.anteil)
+        if (ziel && betrag > 0) {
+          next = vcAufstocken(next, ziel.id, betrag)
+          wirkung.push(`${euro(betrag)} in ${ziel.name} nachgelegt`)
+        }
+        break
+      }
       case 'flag':
         next = { ...next, flags: { ...next.flags, [e.k]: e.v ?? true } }
         break

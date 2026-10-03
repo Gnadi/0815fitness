@@ -60,8 +60,17 @@ und **Spielertyp** (Straßenfußballer / Akademie-Talent / Spätzünder). Das Po
 - Vertragsende → vereinslos; zum Fensterende wird automatisch das beste Angebot gewählt.
 - Winterwechsel in andere Ligen: die neue Liga wird bis zum aktuellen Spieltag nachsimuliert.
 
+## Finanzen
+Kleines, einfaches Finanzsystem (Tab „Finanzen“): Kontostand, Wochenverdienst und ein Depot mit drei Anlagen
+(Tagesgeld ca. 2,5 % p. a., Aktien-ETF Ø 7 % mit spürbarer Schwankung, Krypto hochriskant). Ein- und Auszahlen geht in Prozentschritten,
+die Kurse bewegen sich jede Woche. Optional: ETF-Sparplan (30 % des Wochenverdiensts). Dazu Immobilien (Mieteinnahmen) und
+eine Sportinvaliditätsversicherung. **Venture Capital:** Alle 13 Wochen gibt es Start-up-Deals (ab 5.000 € auf dem Konto). Der Einsatz ist bis zum Exit gebunden;
+wöchentlich gibt es Finanzierungsrunden, Down-Rounds, Pleiten (etwa jedes zweite Start-up) oder Exits/Börsengänge (Ø ca. 2× Einsatz bei hoher Streuung).
+Vorzeitiger Verkauf am Zweitmarkt mit 40 % Abschlag. 17 Finanz-Ereignisse (Börsencrash/-boom, Krypto-Hype und -Absturz, Start-up, Anlagebetrug, Casino, Spenden …)
+greifen ins Depot ein. Ältere Spielstände ohne Depot funktionieren weiter.
+
 ## Ereignissystem
-Ereignisse sind datengetriebene Karten (`src/data/events/*`, 116 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
+Ereignisse sind datengetriebene Karten (`src/data/events/*`, 133 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
 Würfen (Skills/Traits/feste Chance), Effekten und **Folgeereignissen** (verzögerte Ketten):
 
 - **Jugend, Kabine, Trainer, Privat, Familie, Medien, Karriere, Verein, Gesundheit**

@@ -13,3 +13,6 @@ export function fmtGeld(n: number): string {
 export const fmtNote = (n: number) => n.toFixed(1).replace('.', ',')
 
 export const fmtDelta = (n: number) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(1).replace('.', ',')}`
+
+/** Kontostand: bis 1 Mio. € auf den Euro genau, darüber kompakt. */
+export const fmtKonto = (n: number): string => (Math.abs(n) < 1_000_000 ? fmtEuro(n) : fmtGeld(n))

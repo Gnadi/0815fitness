@@ -1,7 +1,9 @@
 import { VEREINE } from '../clubs'
+import { depotGesamt, depotVon } from '../../engine/finanzen'
 import { alter, overall } from '../../engine/rating'
 import { rangliste } from '../../engine/welt'
 import type { Career, Skills, Traits } from '../../engine/types'
+import type { Anlage } from '../../engine/types'
 import type { AktionName, Effekt, Txt } from './types'
 
 export const alterVon = (c: Career): number => alter(c.spieler.geburtsdatum, c.uhr.saison)
@@ -12,6 +14,9 @@ export const zahl = (c: Career, k: string): number => Number(c.flags[k] ?? 0)
 export const jugend = (c: Career): boolean => c.saison.jugend
 export const profi = (c: Career): boolean => !c.saison.jugend && c.vereinId !== ''
 export const gehalt = (c: Career): number => c.vertrag?.gehalt ?? 0
+export const geldAb = (n: number) => (c: Career): boolean => c.spieler.geld >= n
+export const depotWert = (c: Career): number => depotGesamt(c)
+export const anlageWert = (c: Career, k: 'tagesgeld' | 'etf' | 'krypto'): number => depotVon(c)[k].wert
 export const hatPartner = (c: Career): boolean => c.personen.partner !== null
 export const verletzt = (c: Career): boolean => c.verletzung !== null
 export const staerkeVerein = (c: Career): number => c.welt.staerke[c.vereinId] ?? 0
@@ -38,3 +43,9 @@ export const VERL = (name: string, wochen: number): Effekt => ({ t: 'verletzung'
 export const SPERRE = (spiele: number): Effekt => ({ t: 'sperre', spiele })
 export const NEWS = (text: Txt): Effekt => ({ t: 'schlagzeile', text })
 export const AKT = (name: AktionName): Effekt => ({ t: 'aktion', name })
+export const VC_EINSTIEG = (anteil: number, gut = false): Effekt => ({ t: 'vcEinstieg', anteil, gut })
+export const VC_AUFSTOCKEN = (anteil: number): Effekt => ({ t: 'vcAufstocken', anteil })
+export const vcAktivAnzahl = (c: Career): number => (c.beteiligungen ?? []).filter((b) => b.status === 'aktiv').length
+export const DEPOT = (anlage: Anlage | 'alle', faktor: number): Effekt => ({ t: 'depot', anlage, faktor })
+export const INVEST = (anlage: Anlage, anteil: number): Effekt => ({ t: 'invest', anlage, anteil })
+export const ABHEBEN = (anlage: Anlage | 'alle', anteil: number): Effekt => ({ t: 'abheben', anlage, anteil })

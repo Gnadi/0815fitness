@@ -1,4 +1,4 @@
-import type { Career, Skills, Traits } from '../../engine/types'
+import type { Anlage, Career, Skills, Traits } from '../../engine/types'
 
 /** Text oder Funktion, die den Text aus dem Spielstand berechnet. Platzhalter: {name} {vorname} {verein} {trainer} {kapitaen} {rivale} {freund} {berater} {partner} {reporter}. */
 export type Txt = string | ((c: Career) => string)
@@ -26,6 +26,16 @@ export type Effekt =
   | { t: 'skills'; d: Partial<Skills> }
   | { t: 'geld'; d: number | ((c: Career) => number) }
   | { t: 'lebensstil'; d: number }
+  /** Steigt mit einem Anteil des Kontos bei einem neuen Start-up ein (`gut` = bessere Qualität). */
+  | { t: 'vcEinstieg'; anteil: number; gut?: boolean }
+  /** Legt einen Anteil des Kontos in der aktiven Beteiligung mit dem höchsten Wert nach. */
+  | { t: 'vcAufstocken'; anteil: number }
+  /** Multipliziert den Wert einer Anlage (z. B. 0.75 = −25 %). */
+  | { t: 'depot'; anlage: Anlage | 'alle'; faktor: number }
+  /** Legt einen Anteil des Kontostands in einer Anlage an. */
+  | { t: 'invest'; anlage: Anlage; anteil: number }
+  /** Löst einen Anteil einer Anlage auf (`alle` = alle Anlagen). */
+  | { t: 'abheben'; anlage: Anlage | 'alle'; anteil: number }
   | { t: 'flag'; k: string; v?: boolean | number | string }
   | { t: 'zaehle'; k: string; d: number }
   | { t: 'folge'; id: string; wochen: number; p?: number }
@@ -60,7 +70,7 @@ export interface EreignisOption {
   misserfolg?: Ausgang
 }
 
-export type Kategorie = 'Kabine' | 'Trainer' | 'Privat' | 'Medien' | 'Karriere' | 'Risiko' | 'Verein' | 'Familie' | 'Jugend' | 'Gesundheit'
+export type Kategorie = 'Finanzen' | 'Kabine' | 'Trainer' | 'Privat' | 'Medien' | 'Karriere' | 'Risiko' | 'Verein' | 'Familie' | 'Jugend' | 'Gesundheit'
 
 export interface EreignisDef {
   id: string

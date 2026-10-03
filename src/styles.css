@@ -184,3 +184,11 @@ legend { color: var(--muted); font-size: 0.9rem; padding: 0 0 6px; }
 }
 .theme.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .theme .punkt { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--line); }
+
+.head .konto { margin: 4px 0 0; font-size: 0.9rem; color: var(--muted); }
+.head .konto strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.head .konto.minus strong { color: var(--bad-text); }
+
+.pos { color: var(--ok-text); }
+.neg { color: var(--bad-text); }
+.tabbar button { padding: 0 2px; }

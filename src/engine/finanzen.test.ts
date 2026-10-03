@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { createCareer } from './newCareer'
 import { Aktionen } from './aktionen'
-import { ANLAGEN, auszahlen, beteiligungenVon, dealsAktualisieren, depotGesamt, depotVon, einzahlen, marktWoche, neuerDeal, skaliere, sparplan, vcAktiv, vcAufstocken, vcBuchwert, vcEinsteigen, vcVerkaufen, vcWoche, vermoegen } from './finanzen'
-import { wendeEffekteAn } from './ereignisse'
+import { ANLAGEN, PHASEN, VC_PHASEN, vcZiel, auszahlen, beteiligungenVon, dealsAktualisieren, depotGesamt, depotVon, einzahlen, marktWoche, neuerDeal, skaliere, sparplan, vcAktiv, vcAufstocken, vcBuchwert, vcEinsteigen, vcVerkaufen, vcWoche, vermoegen } from './finanzen'
+import { fuelleText, wendeEffekteAn } from './ereignisse'
 import { createRng } from './rng'
 import { spieleSaisons } from './sim'
 import type { Career } from './types'
@@ -151,5 +151,67 @@ describe('Venture Capital', () => {
     const eingestiegen = Aktionen.vcEinsteigen(mitDeals, deal.id, 0.1)
     expect(vcAktiv(eingestiegen)[0].name).toBe(deal.name)
     expect(eingestiegen.deals).toHaveLength(2)
+  })
+  describe('Series und Investoren-Entscheidungen', () => {
+    it('Höhere Runden sind sicherer und haben weniger Hebel', () => {
+      const rng = createRng(21)
+      const stat = (phase: (typeof VC_PHASEN)[number]) => {
+        let pleite = 0
+        let wert = 0
+        const n = 250
+        for (let i = 0; i < n; i++) {
+          let c = mitGeld(1_000_000)
+          c = vcEinsteigen(c, neuerDeal(rng, false, phase), 1_000_000)
+          for (let w = 0; w < 6 * 52; w++) {
+            c = { ...c, wochenGesamt: c.wochenGesamt + 1 }
+            c = vcWoche(c, rng).c
+          }
+          const b = beteiligungenVon(c)[0]
+          if (b.status === 'pleite') pleite++
+          wert += b.status === 'exit' ? b.wert : vcBuchwert(c)
+        }
+        return { pleite: pleite / n, ev: wert / (n * 1_000_000) }
+      }
+      const s = VC_PHASEN.map(stat)
+      for (let i = 1; i < s.length; i++) {
+        expect(s[i].pleite).toBeLessThan(s[i - 1].pleite)
+        expect(s[i].ev).toBeLessThan(s[i - 1].ev)
+      }
+      expect(s[3].ev).toBeGreaterThan(0.95)
+    })
+
+    it('Deals höherer Runden gibt es nur mit genug Geld, Mindestticket wird erzwungen', () => {
+      const rng = createRng(5)
+      expect(dealsAktualisieren(mitGeld(30_000), rng).deals!.map((d) => d.phase ?? 'Seed')).toEqual(['Seed', 'Seed', 'Seed', 'Serie A'])
+      const reich = dealsAktualisieren(mitGeld(2_000_000), rng)
+      expect(reich.deals!.map((d) => d.phase)).toEqual(['Seed', 'Seed', 'Seed', 'Serie A', 'Serie B', 'Serie C'])
+      const serieC = reich.deals!.find((d) => d.phase === 'Serie C')!
+      expect(Aktionen.vcEinsteigen(mitGeld(150_000), serieC.id, 0.5).beteiligungen).toBeUndefined()
+      const ok = Aktionen.vcEinsteigen({ ...reich, spieler: { ...reich.spieler, geld: 400_000 } }, serieC.id, 0.5)
+      expect(vcAktiv(ok)[0]).toMatchObject({ phase: 'Serie C', eingezahlt: 200_000 })
+      expect(PHASEN['Serie C'].minTicket).toBe(100_000)
+    })
+
+    it('Investoren-Effekte wirken auf das Start-up, auch Aufstocken per Aktion', () => {
+      const rng = createRng(2)
+      let c = vcEinsteigen(mitGeld(20_000), neuerDeal(rng), 10_000)
+      const ziel = vcZiel(c)!
+      c = wendeEffekteAn(c, [{ t: 'vcWert', faktor: 1.5 }], rng).c
+      expect(vcAktiv(c)[0].wert).toBe(15_000)
+      c = wendeEffekteAn(c, [{ t: 'vcRunde', faktor: 2 }], rng).c
+      expect(vcAktiv(c)[0]).toMatchObject({ wert: 30_000, phase: 'Serie A' })
+      expect(fuelleText(c, '{startup} {runde}')).toBe(`${ziel.name} Serie A`)
+      c = Aktionen.vcAufstocken(c, ziel.id, 0.5)
+      expect(vcAktiv(c)[0].eingezahlt).toBe(15_000)
+      const geldVorher = c.spieler.geld
+      c = wendeEffekteAn(c, [{ t: 'vcExit', faktor: 1.4 }], rng).c
+      expect(vcAktiv(c)).toHaveLength(0)
+      expect(c.spieler.geld).toBe(geldVorher + Math.round(35_000 * 1.4))
+      expect(beteiligungenVon(c)[0].status).toBe('exit')
+      const pleite = wendeEffekteAn(vcEinsteigen(mitGeld(5_000), neuerDeal(rng), 5_000), [{ t: 'vcPleite' }], rng).c
+      expect(beteiligungenVon(pleite)[0]).toMatchObject({ status: 'pleite', wert: 0 })
+      // ohne Start-up passiert nichts
+      expect(wendeEffekteAn(mitGeld(5_000), [{ t: 'vcExit', faktor: 2 }], rng).c.spieler.geld).toBe(5_000)
+    })
   })
 })

@@ -6,7 +6,7 @@ import { applyTraits } from './match'
 import { clamp } from './rating'
 import { SKILL_KEYS } from './rating'
 import type { Rng } from './rng'
-import { ANLAGE_INFO, ANLAGEN, auszahlen, depotVon, einzahlen, neuerDeal, skaliere, vcAktiv, vcAufstocken, vcEinsteigen } from './finanzen'
+import { ANLAGE_INFO, ANLAGEN, auszahlen, depotVon, einzahlen, neuerDeal, skaliere, vcAufstocken, vcAusstieg, vcEinsteigen, vcPleite, vcRunde, vcWertAendern, vcZiel } from './finanzen'
 import { erzeugeAngebote, vereinsAngebot } from './wirtschaft'
 import { fuehreWechselAus, neueMitarbeiter } from './transfers'
 import type { AktionName } from '../data/events/types'
@@ -39,6 +39,8 @@ export function fuelleText(c: Career, t: Txt): string {
     .replaceAll('{rivale}', p.rivale)
     .replaceAll('{freund}', p.freund)
     .replaceAll('{berater}', p.berater)
+    .replaceAll('{startup}', vcZiel(c)?.name ?? 'dein Start-up')
+    .replaceAll('{runde}', vcZiel(c)?.phase ?? 'Seed')
     .replaceAll('{partner}', p.partner ?? 'dein Schatz')
     .replaceAll('{sie}', m ? 'er' : 'sie')
     .replaceAll('{Sie}', m ? 'Er' : 'Sie')
@@ -172,11 +174,44 @@ export function wendeEffekteAn(c: Career, effekte: readonly Effekt[], rng: Rng):
         break
       }
       case 'vcAufstocken': {
-        const ziel = [...vcAktiv(next)].sort((a, b) => b.wert - a.wert)[0]
+        const ziel = vcZiel(next)
         const betrag = Math.floor(Math.max(0, next.spieler.geld) * e.anteil)
         if (ziel && betrag > 0) {
           next = vcAufstocken(next, ziel.id, betrag)
           wirkung.push(`${euro(betrag)} in ${ziel.name} nachgelegt`)
+        }
+        break
+      }
+      case 'vcWert': {
+        const ziel = vcZiel(next)
+        if (ziel) {
+          next = vcWertAendern(next, ziel.id, e.faktor)
+          wirkung.push(`${ziel.name}: Bewertung ${e.faktor >= 1 ? '+' : '−'}${Math.round(Math.abs(e.faktor - 1) * 100)} %`)
+        }
+        break
+      }
+      case 'vcRunde': {
+        const ziel = vcZiel(next)
+        if (ziel) {
+          next = vcRunde(next, ziel.id, e.faktor)
+          wirkung.push(`${ziel.name}: neue Runde, Bewertung +${Math.round((e.faktor - 1) * 100)} %`)
+        }
+        break
+      }
+      case 'vcExit': {
+        const ziel = vcZiel(next)
+        if (ziel) {
+          const r = vcAusstieg(next, ziel.id, e.faktor)
+          next = r.c
+          wirkung.push(`${ziel.name} verkauft: ${euro(r.erloes)} aufs Konto`)
+        }
+        break
+      }
+      case 'vcPleite': {
+        const ziel = vcZiel(next)
+        if (ziel) {
+          next = vcPleite(next, ziel.id)
+          wirkung.push(`${ziel.name} ist pleite`)
         }
         break
       }

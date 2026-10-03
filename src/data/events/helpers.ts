@@ -1,5 +1,5 @@
 import { VEREINE } from '../clubs'
-import { depotGesamt, depotVon } from '../../engine/finanzen'
+import { depotGesamt, depotVon, vcZiel } from '../../engine/finanzen'
 import { alter, overall } from '../../engine/rating'
 import { rangliste } from '../../engine/welt'
 import type { Career, Skills, Traits } from '../../engine/types'
@@ -45,6 +45,11 @@ export const NEWS = (text: Txt): Effekt => ({ t: 'schlagzeile', text })
 export const AKT = (name: AktionName): Effekt => ({ t: 'aktion', name })
 export const VC_EINSTIEG = (anteil: number, gut = false): Effekt => ({ t: 'vcEinstieg', anteil, gut })
 export const VC_AUFSTOCKEN = (anteil: number): Effekt => ({ t: 'vcAufstocken', anteil })
+export const VC_WERT = (faktor: number): Effekt => ({ t: 'vcWert', faktor })
+export const VC_RUNDE = (faktor: number): Effekt => ({ t: 'vcRunde', faktor })
+export const VC_EXIT = (faktor: number): Effekt => ({ t: 'vcExit', faktor })
+export const VC_PLEITE: Effekt = { t: 'vcPleite' }
+export const hatVcZiel = (c: Career): boolean => vcZiel(c) !== undefined
 export const vcAktivAnzahl = (c: Career): number => (c.beteiligungen ?? []).filter((b) => b.status === 'aktiv').length
 export const DEPOT = (anlage: Anlage | 'alle', faktor: number): Effekt => ({ t: 'depot', anlage, faktor })
 export const INVEST = (anlage: Anlage, anteil: number): Effekt => ({ t: 'invest', anlage, anteil })

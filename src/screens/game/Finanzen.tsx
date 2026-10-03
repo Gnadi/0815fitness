@@ -1,4 +1,4 @@
-import { ANLAGEN, ANLAGE_INFO, beteiligungenVon, dealSterne, depotGesamt, depotVon, vcAktiv, vermoegen } from '../../engine/finanzen'
+import { ANLAGEN, ANLAGE_INFO, PHASEN, beteiligungenVon, dealSterne, depotGesamt, depotVon, vcAktiv, vermoegen } from '../../engine/finanzen'
 import type { Anlage, Career } from '../../engine/types'
 import { wochenEinkommen } from '../../engine/wirtschaft'
 import { useCareer } from '../../store/careerStore'
@@ -49,6 +49,7 @@ function Posten({ c, k }: { c: Career; k: Anlage }) {
 function VcBereich({ c }: { c: Career }) {
   const einsteigen = useCareer((s) => s.vcEinsteigen)
   const verkaufen = useCareer((s) => s.vcVerkaufen)
+  const aufstocken = useCareer((s) => s.vcAufstocken)
   const aktiv = vcAktiv(c)
   const abgeschlossen = beteiligungenVon(c).filter((b) => b.status !== 'aktiv').slice(-5).reverse()
   const geld = Math.floor(c.spieler.geld)
@@ -57,7 +58,7 @@ function VcBereich({ c }: { c: Career }) {
   return (
     <>
       <h2 className="section">Start-ups (Venture Capital)</h2>
-      <p className="muted small">Geld ist bis zum Exit gebunden. Etwa jedes zweite Start-up scheitert, einzelne bringen ein Vielfaches. Verkaufen vorab geht nur mit 40 % Abschlag.</p>
+      <p className="muted small">Geld ist bis zum Exit gebunden. Verkaufen vorab geht nur mit 40 % Abschlag. Je später die Runde (Seed, Serie A, B, C), desto höher das Mindestticket, desto sicherer das Start-up – und desto kleiner der Hebel. Ab und zu musst du als Investor selbst entscheiden.</p>
 
       {aktiv.map((b) => (
         <section key={b.id} className="card">
@@ -70,6 +71,12 @@ function VcBereich({ c }: { c: Career }) {
             <div><span className="muted">Einsatz</span><strong>{fmtKonto(b.eingezahlt)}</strong></div>
             <div><span className="muted">Buchwert</span><strong className={b.wert >= b.eingezahlt ? 'pos' : 'neg'}>{fmtKonto(b.wert)} (×{(b.wert / b.eingezahlt).toFixed(2).replace('.', ',')})</strong></div>
           </div>
+          <p className="muted small">Nachlegen vom Konto:</p>
+          <div className="row split three">
+            {[0.05, 0.1, 0.25].map((a) => (
+              <button key={a} className="btn small-text" disabled={geld * a < 100} onClick={() => aufstocken(b.id, a)}>{a * 100} %</button>
+            ))}
+          </div>
           <button className="btn small-text" onClick={() => confirm(`${b.name} am Zweitmarkt für ${fmtKonto(b.wert * 0.6)} verkaufen?`) && verkaufen(b.id)}>Am Zweitmarkt verkaufen (−40 %)</button>
         </section>
       ))}
@@ -79,14 +86,16 @@ function VcBereich({ c }: { c: Career }) {
         <section key={d.id} className="card">
           <div className="row">
             <h2 className="grow">{d.name}</h2>
+            <span className="risk">{d.phase ?? 'Seed'}</span>
             <span className="muted small" title="Scouting-Einschätzung des Teams">{dealSterne(d)}</span>
           </div>
-          <p className="muted small">{d.branche}</p>
+          <p className="muted small">{d.branche} · Mindestticket {fmtKonto(PHASEN[d.phase ?? 'Seed'].minTicket)}</p>
+          <p className="muted small">{PHASEN[d.phase ?? 'Seed'].info}</p>
           <p>{d.text}</p>
           <p className="muted small">Einsteigen mit … vom Konto</p>
           <div className="row split three">
-            {[0.05, 0.1, 0.25].map((a) => (
-              <button key={a} className="btn small-text" disabled={geld * a < 100} onClick={() => einsteigen(d.id, a)}>{a * 100} %</button>
+            {[0.05, 0.1, 0.25, 0.5].map((a) => (
+              <button key={a} className="btn small-text" disabled={geld * a < PHASEN[d.phase ?? 'Seed'].minTicket} onClick={() => einsteigen(d.id, a)}>{a * 100} %</button>
             ))}
           </div>
         </section>

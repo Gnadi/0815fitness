@@ -1,7 +1,7 @@
 import { EREIGNIS_BY_ID } from '../data/events'
 import { SCENE_BY_ID } from '../data/scenes'
 import { optionVerfuegbar, waehleEreignisOption } from './ereignisse'
-import { auszahlen, einzahlen, vcEinsteigen, vcVerkaufen } from './finanzen'
+import { PHASEN, auszahlen, einzahlen, vcAktiv, vcAufstocken, vcEinsteigen, vcVerkaufen } from './finanzen'
 import { brauchtVertrag, leiheAnfragen, lehneAb, nimmAn, verhandleAngebot, wechselwunschUmschalten } from './transfers'
 import { naechsteSaison } from './season'
 import { startWeek, waehle, weiter, weiterImSpiel, ereignisWeiter, withRng, beendeKarriere } from './week'
@@ -34,7 +34,13 @@ export const Aktionen = {
   auszahlen: (c: Career, anlage: Anlage, anteil: number) => auszahlen(c, anlage, (c.depot?.[anlage].wert ?? 0) * anteil),
   vcEinsteigen: (c: Career, dealId: string, anteil: number): Career => {
     const d = c.deals?.find((x) => x.id === dealId)
-    return d ? vcEinsteigen(c, d, c.spieler.geld * anteil) : c
+    if (!d) return c
+    const betrag = Math.floor(c.spieler.geld * anteil)
+    return betrag >= PHASEN[d.phase ?? 'Seed'].minTicket ? vcEinsteigen(c, d, betrag) : c
+  },
+  vcAufstocken: (c: Career, id: string, anteil: number): Career => {
+    const b = vcAktiv(c).find((x) => x.id === id)
+    return b ? vcAufstocken(c, id, Math.max(0, c.spieler.geld * anteil)) : c
   },
   vcVerkaufen: (c: Career, id: string) => vcVerkaufen(c, id),
   sparplan: (c: Career, an: boolean): Career => ({ ...c, flags: { ...c.flags, sparplan: an } }),

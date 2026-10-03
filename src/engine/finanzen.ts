@@ -1,6 +1,6 @@
 import { gauss } from './welt'
 import type { Rng } from './rng'
-import type { Anlage, Beteiligung, Career, Deal, Depot } from './types'
+import type { Anlage, Beteiligung, Career, Deal, Depot, VcPhase } from './types'
 
 export const ANLAGEN: readonly Anlage[] = ['tagesgeld', 'etf', 'krypto']
 
@@ -107,9 +107,39 @@ function zufallsName(rng: Rng): string {
   return `${rng.pick(VC_VORNAME)}${rng.pick(VC_NACHNAME)}`
 }
 
-export function neuerDeal(rng: Rng, gut = false): Deal {
+export const VC_PHASEN: readonly VcPhase[] = ['Seed', 'Serie A', 'Serie B', 'Serie C']
+
+/** Je später die Runde, desto sicherer, schneller liquide und weniger Hebel. */
+export interface PhasenProfil {
+  /** Wöchentliche Wahrscheinlichkeiten (vor Qualitätsfaktor). */
+  pleite: number
+  exit: number
+  hoch: number
+  runter: number
+  /** Frühestens so viele Wochen nach dem Einstieg ist ein Exit möglich. */
+  minAlter: number
+  /** Exit-Aufschlag auf den Buchwert: 1 + Zufall × exitSpanne. */
+  exitSpanne: number
+  /** Chance auf Börsengang beim Exit und dessen Aufschlag (min + Zufall × spanne). */
+  ipo: number
+  ipoMin: number
+  ipoSpanne: number
+  /** Mindestticket und Kontostand, ab dem Deals dieser Runde angeboten werden. */
+  minTicket: number
+  minGeld: number
+  info: string
+}
+
+export const PHASEN: Record<VcPhase, PhasenProfil> = {
+  Seed: { pleite: 0.003, exit: 0.0045, hoch: 0.01, runter: 0.004, minAlter: 80, exitSpanne: 0.6, ipo: 0.04, ipoMin: 2, ipoSpanne: 2, minTicket: 100, minGeld: 5_000, info: 'Frühphase: höchstes Risiko, höchste Chance.' },
+  'Serie A': { pleite: 0.0017, exit: 0.005, hoch: 0.008, runter: 0.004, minAlter: 60, exitSpanne: 0.5, ipo: 0.05, ipoMin: 1.8, ipoSpanne: 1.4, minTicket: 5_000, minGeld: 25_000, info: 'Das Produkt läuft, Umsätze wachsen. Weniger Pleiten, weniger Hebel.' },
+  'Serie B': { pleite: 0.0009, exit: 0.006, hoch: 0.006, runter: 0.004, minAlter: 40, exitSpanne: 0.4, ipo: 0.07, ipoMin: 1.5, ipoSpanne: 1.0, minTicket: 25_000, minGeld: 100_000, info: 'Skalierung: solide Firma, Pleite eher selten, Exit bald möglich.' },
+  'Serie C': { pleite: 0.0004, exit: 0.008, hoch: 0, runter: 0.002, minAlter: 26, exitSpanne: 0.5, ipo: 0.12, ipoMin: 1.4, ipoSpanne: 1.0, minTicket: 100_000, minGeld: 500_000, info: 'Spätphase vor dem Exit: sicher, aber kaum noch Hebel.' },
+}
+
+export function neuerDeal(rng: Rng, gut = false, phase: VcPhase = 'Seed'): Deal {
   const q = Math.max(0.5, Math.min(1.5, (gut ? 1.15 : 1) + gauss(rng) * 0.25))
-  return { id: neueVcId(rng), name: zufallsName(rng), branche: rng.pick(BRANCHEN), text: rng.pick(VC_TEXTE), qualitaet: q }
+  return { id: neueVcId(rng), name: zufallsName(rng), branche: rng.pick(BRANCHEN), text: rng.pick(VC_TEXTE), qualitaet: q, phase }
 }
 
 /** Das Scouting-Urteil ist bewusst unscharf: Sterne mit Rauschen. */
@@ -127,7 +157,7 @@ export function vcEinsteigen(c: Career, deal: Deal, betrag: number): Career {
   const b = Math.min(Math.floor(betrag), Math.floor(c.spieler.geld))
   if (b < 1) return c
   const neu: Beteiligung = {
-    id: deal.id, name: deal.name, branche: deal.branche, eingezahlt: b, wert: b, phase: 'Seed',
+    id: deal.id, name: deal.name, branche: deal.branche, eingezahlt: b, wert: b, phase: deal.phase ?? 'Seed',
     seit: c.wochenGesamt, qualitaet: deal.qualitaet, status: 'aktiv',
   }
   return {
@@ -181,17 +211,18 @@ export function vcWoche(c: Career, rng: Rng): VcErgebnis {
     const q = b.qualitaet
     const alter = c.wochenGesamt - b.seit
     const r = rng.next()
-    const pleite = 0.003 / q
-    const exit = 0.0045 * q
-    const hoch = 0.01 * q
-    const runter = 0.004 / q
+    const p = PHASEN[b.phase]
+    const pleite = p.pleite / q
+    const exit = p.exit * q
+    const hoch = p.hoch * q
+    const runter = p.runter / q
     if (r < pleite) {
       meldungen.push(`💥 ${b.name} ist pleite. Dein Einsatz von ${euroText(b.eingezahlt)} ist weg.`)
       return { ...b, status: 'pleite' as const, wert: 0 }
     }
-    if (alter > 80 && r >= pleite && r < pleite + exit) {
-      const ipo = rng.chance(0.04)
-      const faktor = ipo ? 2 + rng.next() * 2 : 1 + rng.next() * 0.6
+    if (alter > p.minAlter && r >= pleite && r < pleite + exit) {
+      const ipo = rng.chance(p.ipo)
+      const faktor = ipo ? p.ipoMin + rng.next() * p.ipoSpanne : 1 + rng.next() * p.exitSpanne
       const erloes = Math.round(b.wert * faktor)
       geld += erloes
       meldungen.push(`${ipo ? '🚀 Börsengang' : '🤝 Exit'}: ${b.name} wird ${ipo ? 'an die Börse gebracht' : 'verkauft'}. Du bekommst ${euroText(erloes)} (Einsatz ${euroText(b.eingezahlt)}).`)
@@ -216,5 +247,42 @@ export function vcWoche(c: Career, rng: Rng): VcErgebnis {
 export function dealsAktualisieren(c: Career, rng: Rng): Career {
   if (c.spieler.geld < 5_000) return c
   if (c.deals && c.wochenGesamt % 13 !== 0) return c
-  return { ...c, deals: [neuerDeal(rng), neuerDeal(rng), neuerDeal(rng, rng.chance(0.3))] }
+  const deals = [neuerDeal(rng), neuerDeal(rng), neuerDeal(rng, rng.chance(0.3))]
+  for (const phase of VC_PHASEN.slice(1)) {
+    if (c.spieler.geld >= PHASEN[phase].minGeld) deals.push(neuerDeal(rng, rng.chance(0.3), phase))
+  }
+  return { ...c, deals }
+}
+
+// ---------------------------------------------------------------- Entscheidungen als Investor
+
+/** Das Start-up, um das es in einem Investoren-Ereignis gerade geht (wechselt mit der Woche). */
+export function vcZiel(c: Career): Beteiligung | undefined {
+  const aktiv = [...vcAktiv(c)].sort((a, b) => a.id.localeCompare(b.id))
+  return aktiv.length ? aktiv[c.wochenGesamt % aktiv.length] : undefined
+}
+
+const aendere = (c: Career, id: string, f: (b: Beteiligung) => Beteiligung): Career => ({
+  ...c,
+  beteiligungen: beteiligungenVon(c).map((b) => (b.id === id && b.status === 'aktiv' ? f(b) : b)),
+})
+
+/** Bewertung ändert sich (z. B. durch Strategie-Entscheidung). */
+export const vcWertAendern = (c: Career, id: string, faktor: number): Career => aendere(c, id, (b) => ({ ...b, wert: b.wert * faktor }))
+
+/** Neue Finanzierungsrunde: nächste Phase und Bewertungssprung (in Serie C nur der Sprung). */
+export const vcRunde = (c: Career, id: string, faktor: number): Career =>
+  aendere(c, id, (b) => ({ ...b, wert: b.wert * faktor, phase: NAECHSTE_PHASE[b.phase] }))
+
+export const vcPleite = (c: Career, id: string): Career => aendere(c, id, (b) => ({ ...b, status: 'pleite' as const, wert: 0 }))
+
+/** Verkauf der Anteile zum Buchwert mal `faktor` (z. B. Übernahmeangebot). Gibt den Erlös mit zurück. */
+export function vcAusstieg(c: Career, id: string, faktor: number): { c: Career; erloes: number } {
+  const x = vcAktiv(c).find((b) => b.id === id)
+  if (!x) return { c, erloes: 0 }
+  const erloes = Math.round(x.wert * faktor)
+  return {
+    c: { ...aendere(c, id, (b) => ({ ...b, status: 'exit' as const, wert: erloes })), spieler: { ...c.spieler, geld: c.spieler.geld + erloes } },
+    erloes,
+  }
 }

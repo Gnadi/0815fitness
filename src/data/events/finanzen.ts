@@ -1,4 +1,5 @@
-import { ABHEBEN, DEPOT, FLAG, FOLGE, G, INVEST, NEWS, T, VC_AUFSTOCKEN, VC_EINSTIEG, ZAEHLE, alterVon, anlageWert, anteil, depotWert, flag, gehalt, profi, vcAktivAnzahl, zahl } from './helpers'
+import { ABHEBEN, DEPOT, FLAG, FOLGE, G, INVEST, NEWS, T, VC_AUFSTOCKEN, VC_EINSTIEG, VC_EXIT, VC_PLEITE, VC_RUNDE, VC_WERT, ZAEHLE, alterVon, anlageWert, anteil, depotWert, flag, gehalt, hatVcZiel, profi, vcAktivAnzahl, zahl } from './helpers'
+import { vcZiel } from '../../engine/finanzen'
 import type { EreignisDef } from './types'
 
 const hatGeld = (c: { spieler: { geld: number } }): boolean => c.spieler.geld >= 2_000
@@ -107,6 +108,59 @@ export const FINANZEN: EreignisDef[] = [
     optionen: [
       { label: 'Nachlegen (10 % des Kontos)', hinweis: 'riskant', wurf: { basis: 0.5 }, erfolg: { text: 'Mit deiner Hilfe schafft das Team die nächste Runde. Dein Anteil ist mehr wert als je zuvor.', effekte: [VC_AUFSTOCKEN(0.1), T({ selbstvertrauen: 2 })] }, misserfolg: { text: 'Das Geld ist schnell verbrannt, und die nächste Runde platzt. Du hast mehr Einsatz im Risiko.', effekte: [VC_AUFSTOCKEN(0.1), T({ moral: -2 })] } },
       { label: 'Nein, ich bleibe bei meinem Einsatz', erfolg: { text: 'Du sagst höflich ab. Die Gründerin versteht es, wirkt aber enttäuscht.', effekte: [T({ professionalitaet: 1 })] } },
+    ],
+  },
+  // Entscheidungen als Investor: betreffen jeweils eines deiner Start-ups ({startup}, {runde}).
+  {
+    id: 'f-vc-bridge', kategorie: 'Finanzen', gewicht: 1.2, abstand: 180, bedingung: hatVcZiel,
+    titel: '{startup} geht das Geld aus', text: 'Das Gründerteam von {startup} ({runde}) hat nur noch Geld für zwei Monate. Am Telefon klingt es verzweifelt: „Wir brauchen eine Brücke, sonst ist Schluss.“ Alle Blicke gehen zu dir, dem größten Geldgeber im Raum.',
+    optionen: [
+      { label: 'Überbrückungsdarlehen geben (10 % des Kontos)', hinweis: 'riskant', bedingung: (c) => c.spieler.geld > 2_000, wurf: { basis: 0.6 }, erfolg: { text: 'Mit deinem Geld überlebt {startup} den Winter und gewinnt einen Großkunden. Die Bewertung zieht an.', effekte: [VC_AUFSTOCKEN(0.1), VC_WERT(1.25), T({ selbstvertrauen: 2 })] }, misserfolg: { text: 'Das Geld ist nach drei Monaten verbrannt. {startup} meldet Insolvenz an. Dein Einsatz und die Brücke sind weg.', effekte: [VC_AUFSTOCKEN(0.1), VC_PLEITE, T({ moral: -3 })] } },
+      { label: 'Ablehnen, das Team soll andere Geldgeber finden', hinweis: 'riskant', wurf: { basis: 0.65 }, erfolg: { text: 'Ein anderer Investor springt ein. Deine Anteile werden etwas verwässert, aber {startup} lebt.', effekte: [VC_WERT(0.9)] }, misserfolg: { text: 'Niemand springt ein. {startup} wird abgewickelt, und du schaust zu.', effekte: [VC_PLEITE, T({ moral: -2 })] } },
+      { label: 'Auf einen Notverkauf drängen', erfolg: { text: 'Ein Konkurrent kauft die Reste. Du bekommst die Hälfte des Buchwerts zurück und sparst dir die Nerven.', effekte: [VC_EXIT(0.5), T({ professionalitaet: 1 })] } },
+    ],
+  },
+  {
+    id: 'f-vc-uebernahme', kategorie: 'Finanzen', gewicht: 1.2, abstand: 220, bedingung: hatVcZiel,
+    titel: 'Übernahmeangebot für {startup}', text: 'Ein Branchenriese will {startup} kaufen. Die Gründer zögern und schauen auf dich: „Du hast den größten Anteil. Was sagst du?“ {berater} flüstert: „Ein Spatz in der Hand …“',
+    optionen: [
+      { label: 'Angebot annehmen', erfolg: { text: 'Der Deal geht durch. Du bekommst das 1,4-Fache des Buchwerts und prostest mit den Gründern an.', effekte: [VC_EXIT(1.4), T({ professionalitaet: 1, selbstvertrauen: 1 })] } },
+      { label: 'Ablehnen und auf eine höhere Runde hoffen', hinweis: 'riskant', wurf: { basis: 0.5 }, erfolg: { text: 'Neue Investoren bieten mehr. Die Bewertung von {startup} springt nach oben.', effekte: [VC_RUNDE(1.8), T({ ehrgeiz: 1 })] }, misserfolg: { text: 'Der Riese kauft stattdessen einen Konkurrenten. Die Runde platzt, die Bewertung sinkt.', effekte: [VC_WERT(0.7), T({ moral: -2 })] } },
+      { label: 'Nachverhandeln', hinweis: 'sehr riskant', wurf: { basis: 0.35, traits: ['ruf'] }, erfolg: { text: 'Du pokerst gut: Der Käufer legt noch einmal kräftig drauf. Du verkaufst zum 1,9-Fachen.', effekte: [VC_EXIT(1.9), T({ selbstvertrauen: 2 })] }, misserfolg: { text: 'Der Käufer zieht sich beleidigt zurück. Das Angebot ist weg, und {startup} verliert an Wert.', effekte: [VC_WERT(0.85), T({ selbstvertrauen: -1 })] } },
+    ],
+  },
+  {
+    id: 'f-vc-pivot', kategorie: 'Finanzen', gewicht: 1.2, abstand: 200, bedingung: hatVcZiel,
+    titel: 'Die Gründer wollen den Kurs ändern', text: 'Die Gründer von {startup} haben eine neue Idee: „Wir machen etwas komplett anderes. Das Produkt läuft schleppend, aber wir haben eine Marktlücke gefunden!“ Als Investor hast du ein Wort mitzureden.',
+    optionen: [
+      { label: 'Den Strategiewechsel unterstützen', hinweis: 'riskant', wurf: { basis: 0.5 }, erfolg: { text: 'Der Pivot trifft einen Nerv. {startup} wächst plötzlich dreimal so schnell wie vorher.', effekte: [VC_WERT(1.4), T({ ehrgeiz: 1 })] }, misserfolg: { text: 'Kunden und Mitarbeiter laufen davon. Der Pivot war ein Reinfall.', effekte: [VC_WERT(0.65)] } },
+      { label: 'Beim bisherigen Plan bleiben', erfolg: { text: 'Du bestehst auf Disziplin. {startup} macht langsam, aber stetig weiter.', effekte: [VC_WERT(1.05), T({ professionalitaet: 1 })] } },
+      { label: 'Einen Wechsel an der Spitze fordern', hinweis: 'sehr riskant', wurf: { basis: 0.4 }, erfolg: { text: 'Ein erfahrener Geschäftsführer übernimmt, und das Unternehmen kommt auf Kurs.', effekte: [VC_WERT(1.6), T({ selbstvertrauen: 1 })] }, misserfolg: { text: 'Die Gründer gehen im Streit, und mit ihnen das halbe Team. {startup} taumelt.', effekte: [VC_WERT(0.5), T({ moral: -2 })] } },
+    ],
+  },
+  {
+    id: 'f-vc-runde', kategorie: 'Finanzen', gewicht: 1.2, abstand: 220, bedingung: (c) => (vcZiel(c)?.phase ?? 'Serie C') !== 'Serie C' && c.spieler.geld > 5_000,
+    titel: 'Neue Finanzierungsrunde bei {startup}', text: 'Für {startup} ({runde}) steht die nächste Runde an. Neue Geldgeber stehen Schlange, aber die Konditionen sind hart. Du darfst als Bestandsinvestor mitgehen, oder zuschauen und verwässert werden.',
+    optionen: [
+      { label: 'Mitgehen (15 % des Kontos)', hinweis: 'riskant', wurf: { basis: 0.6 }, erfolg: { text: 'Die Runde wird überzeichnet. Die Bewertung steigt kräftig, und du bleibst mit deinem Anteil vorn dabei.', effekte: [VC_RUNDE(1.6), VC_AUFSTOCKEN(0.15), T({ selbstvertrauen: 1 })] }, misserfolg: { text: 'Die Runde platzt knapp, am Ende gibt es nur eine Down-Round. Dein frisches Geld verliert sofort an Wert.', effekte: [VC_AUFSTOCKEN(0.15), VC_WERT(0.7), T({ moral: -2 })] } },
+      { label: 'Nicht mitgehen und verwässern lassen', erfolg: { text: 'Die Runde klappt auch ohne dich. Dein Anteil wird kleiner, aber {startup} ist eine Stufe weiter.', effekte: [VC_RUNDE(1.3)] } },
+    ],
+  },
+  {
+    id: 'f-vc-skandal', kategorie: 'Finanzen', gewicht: 0.9, abstand: 300, bedingung: hatVcZiel,
+    titel: 'Skandal bei {startup}', text: '{reporter} hat Dokumente aufgetan: Das Gründerteam von {startup} soll bei den Spesen getrickst haben. Jetzt will die Zeitung von dir wissen, ob du weiter hinter dem Unternehmen stehst.',
+    optionen: [
+      { label: 'Zu den Gründern stehen', hinweis: 'riskant', wurf: { basis: 0.5 }, erfolg: { text: 'Die Vorwürfe zerfallen, und die Gründer danken dir mit Loyalität. {startup} wird eher stärker.', effekte: [VC_WERT(1.15), T({ ruf: 1 })] }, misserfolg: { text: 'Es kommt noch mehr heraus, und du stehst mit im Feuer. Die Bewertung bricht ein.', effekte: [VC_WERT(0.55), T({ ruf: -2, fanbeliebtheit: -3 })] } },
+      { label: 'Eine unabhängige Prüfung fordern', kosten: anteil(0.01, 500), hinweis: 'kostet Geld', wurf: { basis: 0.65 }, erfolg: { text: 'Die Prüfer finden nur Kleinigkeiten. Das schafft Vertrauen bei allen Beteiligten.', effekte: [VC_WERT(1.1), T({ professionalitaet: 1 })] }, misserfolg: { text: 'Die Prüfer finden doch einige Ungereimtheiten. Der Ruf von {startup} leidet.', effekte: [VC_WERT(0.8)] } },
+      { label: 'Anteile am Zweitmarkt verkaufen', erfolg: { text: 'Du gehst auf Abstand und verkaufst mit Abschlag. Dein Name bleibt sauber.', effekte: [VC_EXIT(0.6)] } },
+    ],
+  },
+  {
+    id: 'f-vc-beirat', kategorie: 'Finanzen', gewicht: 1, abstand: 300, bedingung: (c) => hatVcZiel(c) && c.spieler.traits.ruf > 20,
+    titel: 'Ein Sitz im Beirat', text: 'Die Gründer von {startup} bieten dir einen Sitz im Beirat an. „Dein Name öffnet uns Türen. Und du hast ein gutes Gespür.“ Das heißt aber Quartalssitzungen, Zahlenberge und weniger Zeit für dich.',
+    optionen: [
+      { label: 'Den Sitz annehmen', hinweis: 'kostet Zeit', wurf: { basis: 0.55, traits: ['professionalitaet'] }, erfolg: { text: 'Du bringst dein Netzwerk ein und lenkst das Unternehmen klug. Die Bewertung steigt.', effekte: [VC_WERT(1.2), T({ professionalitaet: 1, ruf: 1 })] }, misserfolg: { text: 'Die Sitzungen fressen deine Regeneration, und die Wirkung bleibt gering.', effekte: [VC_WERT(0.95), T({ fitness: -1, moral: -2 })] } },
+      { label: 'Ablehnen, Fußball geht vor', erfolg: { text: 'Du bleibst bei deinem Handwerk und überlässt anderen das Steuern.', effekte: [T({ professionalitaet: 1 })] } },
     ],
   },
   {

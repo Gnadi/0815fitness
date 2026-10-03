@@ -1,6 +1,6 @@
 import type { Anlage, Career, Skills, Traits } from '../../engine/types'
 
-/** Text oder Funktion, die den Text aus dem Spielstand berechnet. Platzhalter: {name} {vorname} {verein} {trainer} {kapitaen} {rivale} {freund} {berater} {partner} {reporter}; Partner-Pronomen {sie} {Sie} {ihr} {ihre}. */
+/** Text oder Funktion, die den Text aus dem Spielstand berechnet. Platzhalter: {name} {vorname} {verein} {trainer} {kapitaen} {rivale} {freund} {berater} {partner} {reporter}; Partner-Pronomen {sie} {Sie} {ihr} {ihre}; {startup} {runde} (Start-up der Investoren-Ereignisse). */
 export type Txt = string | ((c: Career) => string)
 
 export type AktionName =
@@ -42,6 +42,11 @@ export type Effekt =
   | { t: 'verletzung'; name: string; wochen: number }
   | { t: 'sperre'; spiele: number }
   | { t: 'reha'; wochen: number }
+  /** Investoren-Entscheidungen beim aktuellen Start-up (siehe `vcZiel`). */
+  | { t: 'vcWert'; faktor: number }
+  | { t: 'vcRunde'; faktor: number }
+  | { t: 'vcExit'; faktor: number }
+  | { t: 'vcPleite' }
   | { t: 'schlagzeile'; text: Txt }
   | { t: 'aktion'; name: AktionName }
 

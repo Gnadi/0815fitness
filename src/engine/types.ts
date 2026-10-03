@@ -320,6 +320,8 @@ export interface Beteiligung {
 
 export interface Deal {
   id: string
+  /** Finanzierungsrunde, in der man einsteigt (fehlt in älteren Spielständen = Seed). */
+  phase?: VcPhase
   name: string
   branche: string
   text: string

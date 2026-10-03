@@ -3,6 +3,8 @@ import { VEREINE } from '../../data/clubs'
 import { FOCUS_LIST } from '../../engine/training'
 import type { Career, TrainingFocus } from '../../engine/types'
 import { useCareer } from '../../store/careerStore'
+import { wochenEinkommen } from '../../engine/wirtschaft'
+import { fmtEuro } from '../../ui/format'
 import { Status } from './Header'
 import { TabellenKarte } from './Tabelle'
 
@@ -53,6 +55,11 @@ export function Woche({ c, zuVertrag }: { c: Career; zuVertrag: () => void }) {
       )}
 
       <Status c={c} />
+      {c.vertrag && (
+        <p className="muted small">
+          Kontostand-Plus pro Woche: {fmtEuro(wochenEinkommen(c))} netto{c.flags.sponsor === true ? ' (inkl. Sponsor)' : ''}
+        </p>
+      )}
 
       {!c.fenster && c.angebote.some((a) => a.art === 'verlaengerung') && (
         <button className="banner" onClick={zuVertrag}>📝 Dein Verein hat dir ein neues Vertragsangebot vorgelegt</button>

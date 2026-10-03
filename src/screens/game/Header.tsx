@@ -2,7 +2,8 @@ import { VEREINE } from '../../data/clubs'
 import { countryById } from '../../data/countries'
 import { alter, overall } from '../../engine/rating'
 import type { Career } from '../../engine/types'
-import { saisonLabel } from '../../ui/format'
+import { wochenEinkommen } from '../../engine/wirtschaft'
+import { fmtEuro, fmtKonto, saisonLabel } from '../../ui/format'
 
 export function Header({ c }: { c: Career }) {
   const p = c.spieler
@@ -23,6 +24,9 @@ export function Header({ c }: { c: Career }) {
       <p className="muted">
         Saison {saisonLabel(c.uhr.saison)} · {woche}
         {slot?.t === 'F' && slot.fenster && c.fenster ? ' · 🔁 Transferfenster offen' : ''}
+      </p>
+      <p className={`konto${p.geld < 0 ? ' minus' : ''}`} title={c.vertrag ? `Netto pro Woche: ${fmtEuro(wochenEinkommen(c))}` : undefined}>
+        <span aria-hidden>💶</span> Kontostand <strong>{fmtKonto(p.geld)}</strong>
       </p>
     </header>
   )

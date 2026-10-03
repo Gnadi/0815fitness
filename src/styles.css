@@ -210,3 +210,5 @@ legend { color: var(--muted); font-size: 0.9rem; padding: 0 0 6px; }
 .meters2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; }
 .meter.kompakt { grid-template-columns: 78px 1fr 22px; gap: 6px; margin: 3px 0; font-size: 0.78rem; }
 .meter.kompakt > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.offer .liga { margin: 0 0 2px; font-weight: 600; }

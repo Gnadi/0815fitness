@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { Seg } from '../../ui/Seg'
+import { NationalTeam } from './NationalTeam'
 import { LAENDER, LIGEN, VEREINE } from '../../data/clubs'
 import { EUROPA_NAMEN } from '../../engine/kalender'
 import type { Career } from '../../engine/types'
@@ -12,6 +15,16 @@ const TURNIER_STATUS: Record<string, string> = {
 }
 
 export function LigaTab({ c }: { c: Career }) {
+  const [bereich, setBereich] = useState<'liga' | 'national'>('liga')
+  return (
+    <>
+      <Seg wert={bereich} onChange={setBereich} optionen={[['liga', 'Liga & Pokale'], ['national', 'Nationalteam']]} />
+      {bereich === 'liga' ? <LigaInhalt c={c} /> : <NationalTeam c={c} />}
+    </>
+  )
+}
+
+function LigaInhalt({ c }: { c: Career }) {
   const s = c.saison
   const liga = LIGEN[s.ligaId]
 

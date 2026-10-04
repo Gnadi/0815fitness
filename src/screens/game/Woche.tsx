@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { VEREINE } from '../../data/clubs'
+import { turnierNaechster } from '../../engine/nationalteam'
 import { FOCUS_LIST } from '../../engine/training'
 import type { Career, TrainingFocus } from '../../engine/types'
 import { useCareer } from '../../store/careerStore'
@@ -27,7 +28,10 @@ export function vorschau(c: Career): string {
     }
     case 'P': return c.saison.pokal.status === 'aktiv' && c.saison.pokal.runde === slot.n ? 'Pokalspiel!' : 'Spielfreie Woche (Pokal).'
     case 'E': return c.saison.europa.wb ? 'Europapokal-Woche.' : 'Spielfreie Woche.'
-    case 'T': return c.saison.turnier ? `${c.saison.turnier.name}: Spieltag mit der Nationalmannschaft.` : 'Spielfreie Woche.'
+    case 'T': {
+      const n = turnierNaechster(c)
+      return c.saison.turnier && n ? `${c.saison.turnier.name}: ${n.runde}${n.gegner !== 'noch offen' ? ` gegen ${n.gegner}` : ''} mit der Nationalmannschaft.` : 'Spielfreie Woche.'
+    }
     case 'F': return slot.fenster === 'winter' ? 'Winterpause. Das Transferfenster ist offen.' : 'Sommerpause. Das Transferfenster ist offen.'
   }
 }

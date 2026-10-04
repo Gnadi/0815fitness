@@ -10,6 +10,7 @@ import { FOCUS, trainingDeltas } from './training'
 import { paarungFuerWoche, verbucheErgebnis } from './wettbewerbe'
 import { dealsAktualisieren, marktWoche, sparplan, vcWoche } from './finanzen'
 import { immoAngeboteAktualisieren, immoWoche } from './immobilien'
+import { natDrift, natEinsatz, natSpielVerbuchen, natVon } from './nationalteam'
 import { privatPassiv } from './privat'
 import { wochenEinkommen } from './wirtschaft'
 import { simuliereSpieltag } from './welt'
@@ -128,7 +129,7 @@ export function startWeek(c: Career, focus: TrainingFocus): Career {
         sperre -= 1
         hinweise.push('Gesperrt: Du musst dir das Spiel von der Tribüne ansehen.')
       } else {
-        einsatz = rolleEinsatz(c, rng, paarung.eigeneStaerke)
+        einsatz = rolleEinsatz(c, rng, paarung.eigeneStaerke, paarung.wettbewerb === 'turnier' ? natEinsatz(c) : undefined)
       }
     } else if (paarung && verletzt) {
       hinweise.push('Verletzt: Du fehlst im Kader.')
@@ -160,6 +161,7 @@ export function startWeek(c: Career, focus: TrainingFocus): Career {
     c2 = immoAngeboteAktualisieren(im.c, rng)
     hinweise.push(...im.meldungen)
     c2 = { ...c2, spieler: { ...c2.spieler, traits: applyTraits(c2.spieler.traits, privatPassiv(c2)) } }
+    c2 = natDrift(c2)
 
     if (!paarung) return beendeWoche(c2, rng, null, 'nicht-eingesetzt', verletzt)
     const m = neuesSpiel(c2, rng, einsatz === 'startelf' ? 'startelf' : 'einwechslung', paarung)
@@ -196,6 +198,7 @@ function beendeWoche(c: Career, rng: Rng, m: MatchState | null, einsatz: Einsatz
   let saison = c.saison
   let spielpraxis = c.spielpraxis
   let laufbahn = c.laufbahn
+  let nationalteam = c.nationalteam
   let geldPlus = 0
   let ergebnis: WeekReport['ergebnis']
   let kopf: string | undefined
@@ -255,6 +258,16 @@ function beendeWoche(c: Career, rng: Rng, m: MatchState | null, einsatz: Einsatz
       spielpraxis = 0.9 * spielpraxis
     }
 
+    if (m.wettbewerb === 'turnier') {
+      if (saison.turnier) {
+        const t = saison.turnier
+        saison = { ...saison, turnier: { ...t, einsaetze: (t.einsaetze ?? 0) + (gespielt ? 1 : 0), tore: (t.tore ?? 0) + m.spielerTore, vorlagen: (t.vorlagen ?? 0) + m.vorlagen } }
+      }
+      nationalteam = natSpielVerbuchen(natVon({ nationalteam }), {
+        saison: c.uhr.saison, label: m.label, gegner: m.gegner, tore, gegentore, einsatz, note, spielerTore: m.spielerTore,
+      }, minuten)
+    }
+
     ergebnis = {
       label: m.label, gegner: m.gegner, heim: m.heim, tore, gegentore, einsatz, note,
       spielerTore: m.spielerTore, vorlagen: m.vorlagen, gelb: m.gelb, rot: m.rot,
@@ -294,6 +307,7 @@ function beendeWoche(c: Career, rng: Rng, m: MatchState | null, einsatz: Einsatz
     ...c,
     flags,
     spieler: { ...c.spieler, traits, geld: c.spieler.geld + geldPlus },
+    nationalteam,
     form,
     spielpraxis,
     saison,

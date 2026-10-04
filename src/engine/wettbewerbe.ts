@@ -5,6 +5,7 @@ import type { Paarung } from './match'
 import { clamp } from './rating'
 import type { Rng } from './rng'
 import { gauss, jugendAbzug, tabelleEintragen } from './welt'
+import { gruppeParallelspiel, gruppenPlatz, nationName, turnierRunde } from './nationalteam'
 import type { Career, EuropaStatus, TurnierStatus } from './types'
 
 const EUROPA_KO: Record<number, { status: EuropaStatus; name: string }> = {
@@ -127,7 +128,8 @@ function turnierGegner(c: Career, rng: Rng, n: number): Paarung | null {
   const nation = pool[rng.int(0, pool.length - 1)]
   // Im K.-o.-System eher stärkere Gegner
   const stark = ko ? [...pool].sort((a, b) => b.staerke - a.staerke).slice(0, Math.max(8, Math.floor(pool.length / 2))) : pool
-  const g = ko ? stark[rng.int(0, stark.length - 1)] : nation
+  // Gruppenspiele gegen die ausgeloste Gruppe (ältere Spielstände ohne Gruppe: zufällige Gegner)
+  const g = !ko && t.gruppe ? t.gruppe.teams[n] : ko ? stark[rng.int(0, stark.length - 1)] : nation
   return {
     wettbewerb: 'turnier',
     label: `${t.name}: ${name}`,
@@ -237,13 +239,29 @@ export function verbucheErgebnis(
     if (t.status === 'gruppe') {
       t.spiele++
       t.punkte += tore > gegentore ? 3 : tore === gegentore ? 1 : 0
+      if (t.gruppe) {
+        const eigen = t.gruppe.teams[0].id
+        tabelleEintragen(t.gruppe.tabelle, eigen, gegnerId, tore, gegentore)
+        t.gruppe.ergebnisse.push({ tag: t.spiele, heim: eigen, aus: gegnerId, th: tore, ta: gegentore })
+        gruppeParallelspiel(t.gruppe, t.spiele, rng)
+      }
       if (t.spiele >= 3) {
-        const weiterKommt = t.punkte >= 4 || (t.punkte === 3 && rng.chance(0.5))
+        let weiterKommt: boolean
+        if (t.gruppe) {
+          const { platz, pkt } = gruppenPlatz(t.gruppe)
+          // Die ersten beiden kommen weiter, der Dritte mit mindestens vier Punkten
+          weiterKommt = platz <= 2 || (platz === 3 && pkt >= 4)
+          hinweise.push(weiterKommt ? `Gruppenphase als ${platz === 3 ? 'bester Dritter' : `Gruppen${platz === 1 ? 'erster' : 'zweiter'}`} überstanden (${pkt} Punkte).` : `Gruppenphase als ${platz}. mit ${pkt} Punkten beendet: Das Turnier ist vorbei.`)
+        } else {
+          weiterKommt = t.punkte >= 4 || (t.punkte === 3 && rng.chance(0.5))
+          hinweise.push(weiterKommt ? `Gruppenphase überstanden (${t.punkte} Punkte).` : `Gruppenphase mit ${t.punkte} Punkten beendet: Das Turnier ist vorbei.`)
+        }
         t.status = weiterKommt ? 'achtel' : 'aus'
-        hinweise.push(weiterKommt ? `Gruppenphase überstanden (${t.punkte} Punkte).` : `Gruppenphase mit ${t.punkte} Punkten beendet: Das Turnier ist vorbei.`)
       }
     } else {
+      const runde = turnierRunde(t.status)
       weiter = ko()
+      t.verlauf = [...(t.verlauf ?? []), { runde, gegner: nationName(gegnerId), tore, gegentore, elfmeter }]
       if (weiter) {
         t.status = TURNIER_NAECHSTE[t.status]
         if (t.status === 'sieger') {

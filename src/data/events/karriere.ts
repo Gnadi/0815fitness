@@ -1,4 +1,4 @@
-import { AKT, FLAG, NEWS, T, alterVon, flag, ov, profi, staerkeVerein, trait } from './helpers'
+import { AKT, FLAG, NAT, NEWS, T, alterVon, flag, imTurnier, natVertrauen, ov, profi, staerkeVerein, trait } from './helpers'
 import { LAENDER } from '../clubs'
 import type { EreignisDef } from './types'
 
@@ -25,7 +25,7 @@ export const KARRIERE: EreignisDef[] = [
     titel: 'Länderspielpause', text: 'Nach dem Spieltag nimmst du den Flieger zur Nationalmannschaft. Der Verein hat nur wenig Verständnis, falls du verletzt zurückkommst.',
     optionen: [
       { label: 'Anreisen und spielen', hinweis: 'Verletzungsrisiko', wurf: { basis: 0.9, traits: ['gesundheit'] }, erfolg: { text: 'Du bekommst Einsatzzeit und ein starkes Spiel. Die Nation freut sich über dich.', effekte: [AKT('laenderspiel'), T({ ruf: 2, fanbeliebtheit: 1, fitness: -4 })] }, misserfolg: { text: 'Ein Tritt gegen den Knöchel. Du reist mit dem Eisbeutel zurück zum Verein.', effekte: [AKT('laenderspiel'), { t: 'verletzung', name: 'Bänderdehnung im Sprunggelenk', wochen: 4 }, T({ trainerBeziehung: -2 })] } },
-      { label: 'Wegen Erschöpfung absagen', erfolg: { text: 'Du schonst deinen Körper. Der Verband ist nicht begeistert, der Verein schon.', effekte: [T({ fitness: 4, ruf: -1, trainerBeziehung: 1 })] } },
+      { label: 'Wegen Erschöpfung absagen', erfolg: { text: 'Du schonst deinen Körper. Der Verband ist nicht begeistert, der Verein schon.', effekte: [AKT('laenderspiel-absage'), T({ fitness: 4, ruf: -1, trainerBeziehung: 1 })] } },
     ],
   },
   {
@@ -93,5 +93,30 @@ export const KARRIERE: EreignisDef[] = [
       { label: 'Wird schon', erfolg: { text: 'Die Beine reden für sich. Hoffentlich.', effekte: [] } },
     ],
   },
+  {
+    id: 'ka-natt-gespraech', kategorie: 'Karriere', gewicht: 2, abstand: 150, bedingung: (c) => profi(c) && flag(c, 'nationalspieler') && natVertrauen(c) < 42,
+    titel: 'Gespräch mit dem Nationaltrainer', text: 'Der Nationaltrainer bittet dich zum Einzelgespräch. „Ich sehe dich im Moment eher am Rand des Kaders. Ich will wissen, ob du dich weiter dafür zerreißt.“',
+    optionen: [
+      { label: 'Um den Platz kämpfen', hinweis: 'riskant', wurf: { basis: 0.5, traits: ['ehrgeiz', 'selbstvertrauen'] }, erfolg: { text: 'Du überzeugst ihn mit Haltung und Argumenten. Er verspricht, dich im nächsten Lehrgang genauer anzusehen.', effekte: [NAT(10), T({ ehrgeiz: 2, selbstvertrauen: 3 })] }, misserfolg: { text: 'Das Gespräch wirkt trotzig. Der Trainer notiert sich etwas und schweigt.', effekte: [NAT(-4), T({ moral: -3 })] } },
+      { label: 'Auf deine Leistungen im Verein verweisen', erfolg: { text: 'Er nickt: „Genau das will ich sehen. Mach so weiter.“', effekte: [NAT(5), T({ selbstvertrauen: 1 })] } },
+      { label: 'Die Rolle annehmen', erfolg: { text: 'Du sagst, dass du dem Team hilfst, wo du gebraucht wirst. Das ist ehrlich, aber es ändert nichts.', effekte: [T({ moral: -2, kabine: 1 })] } },
+    ],
+  },
+  {
+    id: 'ka-natt-kapitaen', kategorie: 'Karriere', gewicht: 1.5, abstand: 600, bedingung: (c) => profi(c) && flag(c, 'nationalspieler') && c.laufbahn.laenderspiele >= 30 && natVertrauen(c) > 70 && !c.nationalteam?.kapitaen,
+    titel: 'Die Kapitänsbinde', text: 'Der Nationaltrainer ruft vor dem Lehrgang an: „Unser Kapitän tritt zurück. Ich möchte, dass du die Mannschaft führst.“',
+    optionen: [
+      { label: 'Die Binde übernehmen', erfolg: { text: 'Du führst deine Nation aufs Feld. Die Familie sitzt auf der Tribüne und weint.', effekte: [NAT(8, true), T({ ruf: 3, fanbeliebtheit: 3, moral: 5, selbstvertrauen: 4 }), NEWS('{name} wird neuer Kapitän der Nationalmannschaft')] } },
+      { label: 'Dankend ablehnen', erfolg: { text: 'Du willst dich auf dein Spiel konzentrieren. Der Trainer respektiert das.', effekte: [NAT(3), T({ professionalitaet: 1 })] } },
+    ],
+  },
+  {
+    id: 'ka-natt-turnierdruck', kategorie: 'Karriere', gewicht: 4, abstand: 40, bedingung: (c) => profi(c) && imTurnier(c),
+    titel: 'Turnierfieber', text: 'Das ganze Land spricht nur noch über das Turnier. Vor dem Mannschaftshotel warten Fans, im Fernsehen läuft jede Stunde ein Rückblick auf die Gruppe. Der Druck wächst.',
+    optionen: [
+      { label: 'Bei den Fans vorbeischauen', erfolg: { text: 'Du gibst Autogramme und Selfies. Die Stimmung im Land hebt sich.', effekte: [T({ fanbeliebtheit: 3, ruf: 1, fitness: -1 })] } },
+      { label: 'Im Hotel bleiben und Kräfte sparen', erfolg: { text: 'Du gehst früh schlafen und denkst nur ans nächste Spiel.', effekte: [T({ fitness: 3, professionalitaet: 1, fanbeliebtheit: -1 })] } },
+      { label: 'Ein Interview geben', hinweis: 'riskant', wurf: { basis: 0.7, traits: ['professionalitaet'] }, erfolg: { text: 'Du bleibst ruhig und sachlich. Die Schlagzeile ist sauber.', effekte: [T({ ruf: 2, fanbeliebtheit: 2 })] }, misserfolg: { text: 'Ein flapsiger Satz wird aus dem Zusammenhang gerissen. Der Trainer ist nicht begeistert.', effekte: [NAT(-4), T({ ruf: -1, kabine: -2 })] } },
+    ],
+  },
 ]
-

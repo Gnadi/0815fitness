@@ -172,6 +172,7 @@ function wechselLigaMitten(alt: Career, next: Career, rng: Rng): Career {
       pokal: { ...saison.pokal, status: 'ausgeschieden' },
       europa: { ...saison.europa, wb: null, status: 'aus' },
       turnier: alt.saison.turnier,
+      turnierInfo: alt.saison.turnierInfo,
     },
     uhr: { ...next.uhr, woche: Math.max(1, woche) },
   }

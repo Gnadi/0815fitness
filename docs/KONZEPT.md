@@ -51,7 +51,11 @@ und **Spielertyp** (Straßenfußballer / Akademie-Talent / Spätzünder). Das Po
 - **Ligen:** Jede Liga hat einen Doppel-/Mehrfachrundenspielplan. Nur die Liga des Spielers wird wöchentlich simuliert, alle anderen am Saisonende.
 - **Auf-/Abstieg** für alle Länder mit mehreren Ligastufen, Vereinsstärken entwickeln sich (Rückkehr zum Ankerwert + Zufall + Platzierung).
 - **Pokale:** nationaler K.-o.-Pokal; **Europa:** Ligaphase mit 8 Spielen (Punkteschwellen), dann K.-o.-Runden; Teilnehmer aus den Abschlusstabellen.
-- **Nationalmannschaft:** Nominierung per Ereignis, Länderspiele, EM/WM alle zwei Jahre (Gruppenphase + K.-o.).
+- **Nationalmannschaft:** Nominierung per Ereignis. Im Liga-Tab zeigt „Nationalteam“ Trainer, Teamstärke, geschätzten Rang im 23-Mann-Kader, Rolle (Stammspieler/Rotation/Ergänzungsspieler/Außenseiter),
+  das **Vertrauen des Nationaltrainers** (wächst mit Leistung in Verein und Länderspielen, bestimmt Einsatzzeit und Turnierkader), Länderspielbilanz (Tore, Minuten, Ø Note), die letzten Länderspiele und die Turnier-Historie.
+  Länderspielpausen sind echte Spiele (Gegner, Ergebnis, Einsatz, Note; in Turnierjahren als Qualifikation). EM/WM alle zwei Jahre: Qualifikation und Nominierung werden zu Saisonbeginn entschieden
+  (auch „verpasst“ bzw. „nicht nominiert“ wird angezeigt), dann ausgeloste Vierergruppe mit Live-Tabelle und simulierten Parallelspielen (die ersten beiden und ein Dritter ab 4 Punkten kommen weiter),
+  danach K.-o.-Runden mit protokolliertem Weg. Eigene Einsätze, Tore und Vorlagen im Turnier. Ereignisse: Gespräch mit dem Nationaltrainer, Kapitänsbinde, Turnierfieber.
 - **Wirtschaft:** Marktwert (Stärke, Alter, Potenzial, Ruf), Gehälter je Land/Liga/Vereinsstärke, Netto-Wocheneinkommen, Lebensstil-Kosten.
 
 ## Verträge & Transfers
@@ -90,7 +94,7 @@ Eigener Tab „Privat“ (🏡) mit vier Bereichen:
 - Fünf neue Privat-Ereignisse (Hund vor der Tür, Dach der Eltern, Jahrestag, Reise mit den Jungs, neues Hobby).
 
 ## Ereignissystem
-Ereignisse sind datengetriebene Karten (`src/data/events/*`, rund 145 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
+Ereignisse sind datengetriebene Karten (`src/data/events/*`, rund 148 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
 Würfen (Skills/Traits/feste Chance), Effekten und **Folgeereignissen** (verzögerte Ketten):
 
 - **Jugend, Kabine, Trainer, Privat, Familie, Medien, Karriere, Verein, Gesundheit**

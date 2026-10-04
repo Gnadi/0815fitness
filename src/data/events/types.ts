@@ -9,6 +9,7 @@ export type AktionName =
   | 'verlaengerung-anbieten'
   | 'nationalspieler'
   | 'laenderspiel'
+  | 'laenderspiel-absage'
   | 'trainer-wechsel'
   | 'partner-neu'
   | 'partner-ende'
@@ -36,6 +37,8 @@ export type Effekt =
   | { t: 'invest'; anlage: Anlage; anteil: number }
   /** Löst einen Anteil einer Anlage auf (`alle` = alle Anlagen). */
   | { t: 'abheben'; anlage: Anlage | 'alle'; anteil: number }
+  /** Vertrauen des Nationaltrainers verändern; optional Kapitänsbinde. */
+  | { t: 'nat'; vertrauen: number; kapitaen?: boolean }
   /** Multipliziert den Wert aller Immobilien (Markteinbruch oder -boom). */
   | { t: 'immo'; faktor: number }
   /** Schenkt dem Spieler Privatbesitz aus dem Katalog (z. B. einen Hund). */

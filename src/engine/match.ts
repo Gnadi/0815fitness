@@ -14,10 +14,11 @@ export function applyTraits(traits: Traits, delta: Partial<Traits> | undefined):
 const ROLLEN_BONUS: Record<Rolle, number> = { Stammspieler: 2, Rotation: 0, Perspektive: -2, Jugend: 0 }
 
 /** Würfelt, ob der Spieler spielt: Stammelf, Einwechslung oder gar nicht. */
-export function rolleEinsatz(c: Career, rng: Rng, teamStaerke: number): Einsatz {
+export function rolleEinsatz(c: Career, rng: Rng, teamStaerke: number, national?: { bonus: number; vertrauen: number }): Einsatz {
   const t = c.spieler.traits
-  const diff = overall(c.spieler) - teamStaerke + (c.vertrag ? ROLLEN_BONUS[c.vertrag.rolle] : 0)
-  const x = diff / 4 + (t.trainerBeziehung - 50) / 40 + (c.form - 50) / 60
+  const bonus = national ? national.bonus : c.vertrag ? ROLLEN_BONUS[c.vertrag.rolle] : 0
+  const diff = overall(c.spieler) - teamStaerke + bonus
+  const x = diff / 4 + ((national ? national.vertrauen : t.trainerBeziehung) - 50) / 40 + (c.form - 50) / 60
   const pStart = clamp(1 / (1 + Math.exp(-x)), 0.03, 0.97)
   if (rng.chance(pStart)) return 'startelf'
   return rng.chance(0.55) ? 'einwechslung' : 'nicht-eingesetzt'

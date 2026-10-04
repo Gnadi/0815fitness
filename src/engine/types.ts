@@ -143,7 +143,90 @@ export interface Saison {
   kalender: Slot[]
   pokal: { status: PokalStatus; runde: number; runden: number }
   europa: { wb: EuropaWettbewerb | null; status: EuropaStatus; punkte: number; spiele: number }
-  turnier: { name: string; status: TurnierStatus; punkte: number; spiele: number } | null
+  turnier: Turnier | null
+  /** Wenn kein Turnier gespielt wird: warum (Qualifikation verpasst, nicht nominiert). */
+  turnierInfo?: { name: string; ergebnis: string; text: string }
+}
+
+// ---------------------------------------------------------------- Nationalmannschaft
+
+export type NatRolle = 'Stammspieler' | 'Rotation' | 'Ergänzungsspieler' | 'Außenseiter'
+
+export interface TurnierTeam {
+  id: string
+  name: string
+  staerke: number
+}
+
+export interface TurnierErgebnis {
+  /** Gruppenspieltag 1–3. */
+  tag: number
+  heim: string
+  aus: string
+  th: number
+  ta: number
+}
+
+export interface TurnierGruppe {
+  /** Eigene Nation zuerst, danach die drei Gegner in Spielreihenfolge. */
+  teams: TurnierTeam[]
+  tabelle: Record<string, Zeile>
+  ergebnisse: TurnierErgebnis[]
+}
+
+export interface TurnierSpiel {
+  runde: string
+  gegner: string
+  tore: number
+  gegentore: number
+  elfmeter?: 'gewonnen' | 'verloren'
+}
+
+export interface Turnier {
+  name: string
+  status: TurnierStatus
+  punkte: number
+  spiele: number
+  quali?: string
+  kader?: NatRolle
+  gruppe?: TurnierGruppe
+  /** K.-o.-Spiele in Reihenfolge. */
+  verlauf?: TurnierSpiel[]
+  /** Eigene Bilanz im Turnier. */
+  einsaetze?: number
+  tore?: number
+  vorlagen?: number
+}
+
+export interface NatSpiel {
+  saison: number
+  label: string
+  gegner: string
+  tore: number
+  gegentore: number
+  einsatz: Einsatz
+  note: number | null
+  spielerTore: number
+}
+
+export interface TurnierBilanz {
+  saison: number
+  name: string
+  ergebnis: string
+  einsaetze: number
+  tore: number
+}
+
+export interface Nationalteam {
+  trainer: string
+  /** Vertrauen des Nationaltrainers, 0–100. */
+  vertrauen: number
+  kapitaen: boolean
+  spiele: NatSpiel[]
+  turniere: TurnierBilanz[]
+  minuten: number
+  notenSumme: number
+  notenAnzahl: number
 }
 
 // ---------------------------------------------------------------- Spiel & Berichte
@@ -396,6 +479,8 @@ export interface Career {
   /** Immobilien und Marktangebote; fehlen in älteren Spielständen. */
   immobilien?: Immobilie[]
   immoAngebote?: ImmoAngebot[]
+  /** Nationalmannschaft (ab der ersten Nominierung); fehlt in älteren Spielständen. */
+  nationalteam?: Nationalteam
   /** Besitz und Aktivitäten im Privatleben; fehlt in älteren Spielständen. */
   privat?: PrivatZustand
   vereinId: string // '' = vereinslos

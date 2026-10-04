@@ -1,6 +1,7 @@
 import { LIGEN, VEREINE } from '../data/clubs'
 import { SKILL_KEYS, alter, clamp, overall } from './rating'
 import { createRng, type Rng } from './rng'
+import { bilanzVon, natVon } from './nationalteam'
 import { baueSaison, istJugend } from './saisonAufbau'
 import { jugendGehalt } from './wirtschaft'
 import { rangliste, schliesseWeltAb } from './welt'
@@ -87,6 +88,17 @@ export function beendeSaison(c: Career, rng: Rng): Career {
     }
   }
 
+  // Nationalmannschaft: Turnier-Bilanz festhalten
+  let nationalteam = c.nationalteam
+  if (s.turnier) {
+    const b = bilanzVon(c.uhr.saison, s.turnier)
+    nationalteam = { ...natVon(c), turniere: [...natVon(c).turniere, b] }
+    hinweise.push(`${s.turnier.name}: ${b.ergebnis}${b.einsaetze ? ` (${b.einsaetze} Einsätze, ${b.tore} Tore)` : ' (ohne Einsatz)'}.`)
+  } else if (s.turnierInfo) {
+    nationalteam = { ...natVon(c), turniere: [...natVon(c).turniere, { saison: c.uhr.saison, name: s.turnierInfo.name, ergebnis: s.turnierInfo.ergebnis, einsaetze: 0, tore: 0 }] }
+    hinweise.push(s.turnierInfo.text)
+  }
+
   const geschlossen: SeasonStats = { ...c.saisonStats, overallEnde: overall(spieler), platz, liga: liga.name }
   const dieseSaison = [...c.historie.filter((h) => h.saison === c.uhr.saison), geschlossen]
   const start = dieseSaison[0]
@@ -98,6 +110,7 @@ export function beendeSaison(c: Career, rng: Rng): Career {
     welt,
     saisonStats: geschlossen,
     historie: [...c.historie, geschlossen],
+    nationalteam,
     flags,
     laufbahn: { ...c.laufbahn, titel: laufbahnTitel, auszeichnungen },
     saisonBericht: {
@@ -132,6 +145,10 @@ export function naechsteSaison(c: Career, rngState?: number): Career {
     phase: 'planung',
     bericht: null,
   }
+  const nachricht = neueSaison.turnier
+    ? `${neueSaison.turnier.name}: ${neueSaison.turnier.quali}. Du stehst im Turnierkader (${neueSaison.turnier.kader}).`
+    : neueSaison.turnierInfo?.text
+  if (nachricht) next.log = [...next.log, `${saison}/${String(saison + 1).slice(2)}: ${nachricht}`].slice(-80)
   const out = betreteWoche(next, rng)
   return { ...out, rngState: rng.state() }
 }

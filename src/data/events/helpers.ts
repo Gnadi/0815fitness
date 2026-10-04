@@ -54,3 +54,6 @@ export const BESITZ = (id: string): Effekt => ({ t: 'besitz', id })
 export const immoAnzahl = (c: Career): number => (c.immobilien ?? []).filter((i) => i.status === 'aktiv').length
 export const vermietet = (c: Career): boolean => (c.immobilien ?? []).some((i) => i.status === 'aktiv' && i.miete > 0)
 export const hatBesitz = (c: Career, id: string): boolean => id in (c.privat?.besitz ?? {})
+export const NAT = (vertrauen: number, kapitaen?: boolean): Effekt => ({ t: 'nat', vertrauen, kapitaen })
+export const natVertrauen = (c: Career): number => c.nationalteam?.vertrauen ?? 50
+export const imTurnier = (c: Career): boolean => !!c.saison.turnier && c.saison.turnier.status !== 'aus' && c.saison.turnier.status !== 'sieger'

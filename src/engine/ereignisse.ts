@@ -9,6 +9,11 @@ import type { Rng } from './rng'
 import { ANLAGE_INFO, ANLAGEN, auszahlen, depotVon, einzahlen, neuerDeal, skaliere, vcAktiv, vcAufstocken, vcEinsteigen } from './finanzen'
 import { immoAktiv, immoSkalieren, immoWert } from './immobilien'
 import { PRIVAT_BY_ID } from '../data/privat'
+import { nationen } from '../data/nationen'
+import { turnierName } from './kalender'
+import { natEinsatz, natSpielVerbuchen, natStaerke, natVon } from './nationalteam'
+import { gauss, simuliereTore } from './welt'
+import { rolleEinsatz } from './match'
 import { erzeugeAngebote, vereinsAngebot } from './wirtschaft'
 import { fuehreWechselAus, neueMitarbeiter } from './transfers'
 import type { AktionName } from '../data/events/types'
@@ -177,6 +182,13 @@ export function wendeEffekteAn(c: Career, effekte: readonly Effekt[], rng: Rng):
         }
         break
       }
+      case 'nat': {
+        const nt = natVon(next)
+        next = { ...next, nationalteam: { ...nt, vertrauen: clamp(nt.vertrauen + e.vertrauen), kapitaen: e.kapitaen ?? nt.kapitaen } }
+        if (e.vertrauen) wirkung.push(`Vertrauen des Nationaltrainers ${vz(e.vertrauen)}`)
+        if (e.kapitaen) wirkung.push('Kapitän der Nationalmannschaft')
+        break
+      }
       case 'immo': {
         if (!immoAktiv(next).length) break
         const vorher = immoWert(next)
@@ -252,14 +264,41 @@ function fuehreAktionAus(c: Career, name: AktionName, rng: Rng): { c: Career; wi
       const angebot: Angebot = vereinsAngebot(c, rng, c.vereinId, 'verlaengerung')
       return { c: { ...c, angebote: [...c.angebote.filter((x) => x.art !== 'verlaengerung'), angebot] }, wirkung: ['Vertragsangebot im Menü „Vertrag“'] }
     }
-    case 'nationalspieler':
-      return { c: { ...c, flags: { ...c.flags, nationalspieler: true } }, wirkung: ['Nationalspieler!'] }
-    case 'laenderspiel': {
-      const tore = rng.chance(c.spieler.position === 'ST' ? 0.3 : 0.08) ? 1 : 0
+    case 'nationalspieler': {
+      const nt = natVon(c)
       return {
-        c: { ...c, laufbahn: { ...c.laufbahn, laenderspiele: c.laufbahn.laenderspiele + 1, laenderspielTore: c.laufbahn.laenderspielTore + tore } },
-        wirkung: [`Länderspiel${tore ? ' mit Tor' : ''}`],
+        c: { ...c, flags: { ...c.flags, nationalspieler: true }, nationalteam: { ...nt, trainer: c.nationalteam ? nt.trainer : zufallsName(c.spieler.nationalitaet, rng), vertrauen: c.nationalteam ? nt.vertrauen : 45 } },
+        wirkung: ['Nationalspieler!'],
       }
+    }
+    case 'laenderspiel': {
+      const nt = natVon(c)
+      const turnierJahr = turnierName(c.uhr.saison)
+      const pool = nationen(false, c.spieler.nationalitaet)
+      const gegner = pool[rng.int(0, pool.length - 1)]
+      const eigene = natStaerke(c)
+      const einsatz = rolleEinsatz(c, rng, eigene, natEinsatz(c))
+      const [tore, gegentore] = simuliereTore(eigene, gegner.staerke, rng, 0)
+      const gespielt = einsatz !== 'nicht-eingesetzt'
+      const spielerTore = gespielt && rng.chance(c.spieler.position === 'ST' ? 0.3 : 0.08) && tore > 0 ? 1 : 0
+      const note = gespielt ? Math.round(clamp(6.2 + (tore - gegentore) * 0.35 + spielerTore * 0.8 + gauss(rng) * 0.8, 3, 10) * 10) / 10 : null
+      const minuten = einsatz === 'startelf' ? 90 : gespielt ? 25 : 0
+      const label = turnierJahr ? `${turnierJahr}-Qualifikation` : 'Länderspiel'
+      const nt2 = natSpielVerbuchen(nt, { saison: c.uhr.saison, label, gegner: gegner.name, tore, gegentore, einsatz, note, spielerTore }, minuten)
+      const lauf = c.laufbahn
+      const einsatzText = einsatz === 'startelf' ? 'Startelf' : einsatz === 'einwechslung' ? 'eingewechselt' : 'auf der Bank'
+      return {
+        c: {
+          ...c,
+          nationalteam: nt2,
+          laufbahn: gespielt ? { ...lauf, laenderspiele: lauf.laenderspiele + 1, laenderspielTore: lauf.laenderspielTore + spielerTore } : lauf,
+        },
+        wirkung: [`${label}: ${tore}:${gegentore} gegen ${gegner.name} (${einsatzText}${note !== null ? `, Note ${note.toFixed(1).replace('.', ',')}` : ''}${spielerTore ? ', Tor' : ''})`],
+      }
+    }
+    case 'laenderspiel-absage': {
+      const nt = natVon(c)
+      return { c: { ...c, nationalteam: { ...nt, vertrauen: clamp(nt.vertrauen - 6) } }, wirkung: ['Vertrauen des Nationaltrainers sinkt'] }
     }
     case 'trainer-wechsel':
       return {

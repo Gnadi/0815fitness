@@ -2,6 +2,8 @@ import { LIGEN, VEREINE } from '../data/clubs'
 import { alter, clamp, overall } from './rating'
 import type { Rng } from './rng'
 import { gauss, ligaVonVerein } from './welt'
+import { immoNettoWoche } from './immobilien'
+import { privatLaufend } from './privat'
 import type { Angebot, AngebotArt, Career, Player, Rolle, Welt } from './types'
 
 // log10(Marktwert in €) an Stützstellen der Gesamtstärke
@@ -47,12 +49,14 @@ export function jugendGehalt(vereinId: string): number {
 
 /** Wochenverdienst netto abzüglich Lebenshaltung. */
 export function wochenEinkommen(c: Career): number {
-  if (!c.vertrag) return 0
-  if (c.saison.jugend) return Math.round((c.vertrag.gehalt * 0.9) / 52)
+  const immo = immoNettoWoche(c)
+  if (!c.vertrag) return Math.round(immo)
+  if (c.saison.jugend) return Math.round((c.vertrag.gehalt * 0.9) / 52 + immo)
   const lebensstil = Number(c.flags.lebensstil ?? 0)
   const sponsor = c.flags.sponsor === true ? c.spieler.traits.ruf * 1_500 + c.spieler.traits.fanbeliebtheit * 500 : 0
   const miete = Number(c.flags.mieteinnahmen ?? 0)
-  return Math.round((c.vertrag.gehalt * 0.6 + sponsor + miete - 9_000 - lebensstil) / 52)
+  const laufend = privatLaufend(c)
+  return Math.round((c.vertrag.gehalt * 0.6 + sponsor + miete - 9_000 - lebensstil - laufend) / 52 + immo)
 }
 
 export const spielerOverall = (c: Career): number => overall(c.spieler)

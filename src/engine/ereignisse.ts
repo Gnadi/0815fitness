@@ -7,6 +7,8 @@ import { clamp } from './rating'
 import { SKILL_KEYS } from './rating'
 import type { Rng } from './rng'
 import { ANLAGE_INFO, ANLAGEN, auszahlen, depotVon, einzahlen, neuerDeal, skaliere, vcAktiv, vcAufstocken, vcEinsteigen } from './finanzen'
+import { immoAktiv, immoSkalieren, immoWert } from './immobilien'
+import { PRIVAT_BY_ID } from '../data/privat'
 import { erzeugeAngebote, vereinsAngebot } from './wirtschaft'
 import { fuehreWechselAus, neueMitarbeiter } from './transfers'
 import type { AktionName } from '../data/events/types'
@@ -172,6 +174,22 @@ export function wendeEffekteAn(c: Career, effekte: readonly Effekt[], rng: Rng):
         if (ziel && betrag > 0) {
           next = vcAufstocken(next, ziel.id, betrag)
           wirkung.push(`${euro(betrag)} in ${ziel.name} nachgelegt`)
+        }
+        break
+      }
+      case 'immo': {
+        if (!immoAktiv(next).length) break
+        const vorher = immoWert(next)
+        next = immoSkalieren(next, e.faktor)
+        const d = immoWert(next) - vorher
+        if (Math.abs(d) >= 1) wirkung.push(`Immobilien ${d >= 0 ? '+' : '−'}${euro(Math.abs(d))}`)
+        break
+      }
+      case 'besitz': {
+        const p = PRIVAT_BY_ID[e.id]
+        if (p && !(e.id in (next.privat?.besitz ?? {}))) {
+          next = { ...next, privat: { zeiten: next.privat?.zeiten ?? {}, besitz: { ...(next.privat?.besitz ?? {}), [e.id]: next.wochenGesamt } } }
+          wirkung.push(`${p.name} dazugewonnen`)
         }
         break
       }

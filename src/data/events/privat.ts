@@ -1,4 +1,4 @@
-import { AKT, FLAG, FOLGE, ZAEHLE, G, LEBEN, NEWS, S, T, alterVon, anteil, flag, gehalt, hatPartner, jugend, profi, trait, verletzt, zahl } from './helpers'
+import { AKT, BESITZ, hatBesitz, FLAG, FOLGE, ZAEHLE, G, LEBEN, NEWS, S, T, alterVon, anteil, flag, gehalt, hatPartner, jugend, profi, trait, verletzt, zahl } from './helpers'
 import type { EreignisDef } from './types'
 
 export const PRIVAT: EreignisDef[] = [
@@ -144,5 +144,46 @@ export const PRIVAT: EreignisDef[] = [
       { label: 'Das Spiel ihm widmen', wurf: { basis: 0.55, traits: ['moral'] }, erfolg: { text: 'Du triffst und zeigst zum Himmel. Das ganze Stadion klatscht.', effekte: [T({ fanbeliebtheit: 4, ruf: 1, moral: 3 })] }, misserfolg: { text: 'Du kämpfst mit den Tränen und spielst schwach. Es ist verständlich.', effekte: [T({ moral: -4, fanbeliebtheit: 2 })] } },
     ],
   },
+  {
+    id: 'p-hund', kategorie: 'Privat', gewicht: 1.5, abstand: 800, bedingung: (c) => profi(c) && !hatBesitz(c, 'hund'),
+    titel: 'Ein Hund vor der Tür', text: 'Nach dem Training sitzt ein kleiner, struppiger Hund vor deinem Auto und schaut dich an. Er hat kein Halsband. Der Zeugwart sagt: „Der wartet auf dich.“',
+    optionen: [
+      { label: 'Mitnehmen und behalten', hinweis: 'laufende Kosten', erfolg: { text: 'Er springt sofort auf den Rücksitz. Von nun an hast du einen treuen Begleiter, der dich nach jedem Spiel feiert.', effekte: [BESITZ('hund'), T({ privatglueck: 8, moral: 3 })] } },
+      { label: 'Im Tierheim abgeben', erfolg: { text: 'Das Tierheim findet schnell ein Zuhause für ihn. Du denkst trotzdem noch öfter an ihn.', effekte: [T({ privatglueck: -1 })] } },
+    ],
+  },
+  {
+    id: 'p-eltern-renovierung', kategorie: 'Familie', gewicht: 1.5, abstand: 500, bedingung: (c) => profi(c) && c.spieler.geld > 20_000 && !hatBesitz(c, 'eltern-haus'),
+    titel: 'Das Dach der Eltern', text: 'Deine Mutter erzählt beiläufig, dass das Dach im Elternhaus undicht ist. Sie will dir keine Sorgen machen, aber ihre Stimme verrät es.',
+    optionen: [
+      { label: 'Die Reparatur bezahlen', kosten: 15_000, hinweis: 'kostet 15.000 €', erfolg: { text: 'Deine Eltern wehren sich zuerst, dann umarmt dich dein Vater lange. Es ist ein stiller Moment.', effekte: [T({ privatglueck: 9, moral: 4, ruf: 1 })] } },
+      { label: 'Selbst vorbeifahren und mit anpacken', erfolg: { text: 'Ihr verbringt ein Wochenende auf dem Dach. Das tut euch allen gut, auch wenn der Rücken zwickt.', effekte: [T({ privatglueck: 6, fitness: -3, moral: 3 })] } },
+      { label: 'Später darum kümmern', erfolg: { text: 'Du versprichst, es nachzuholen. Das schlechte Gewissen bleibt.', effekte: [T({ privatglueck: -4 })] } },
+    ],
+  },
+  {
+    id: 'p-jahrestag', kategorie: 'Privat', gewicht: 1.5, abstand: 300, bedingung: (c) => hatPartner(c) && profi(c),
+    titel: 'Der Jahrestag', text: 'Morgen ist euer Jahrestag. {partner} hat nichts gesagt, aber du kennst sie gut genug, um zu wissen, dass sie darauf wartet. Gleichzeitig ruft der Trainer ein Sondertraining an.',
+    optionen: [
+      { label: 'Ein Abend zu zweit organisieren', kosten: 500, hinweis: 'kostet 500 €', erfolg: { text: 'Kerzen, Lieblingsessen, ein kleiner Brief. {partner} ist gerührt.', effekte: [T({ privatglueck: 9, moral: 3 })] } },
+      { label: 'Das Sondertraining wahrnehmen', erfolg: { text: 'Der Trainer lobt deinen Einsatz. {partner} nickt zu Hause, aber ihre Augen sagen etwas anderes.', effekte: [T({ trainerBeziehung: 3, professionalitaet: 2, privatglueck: -6 }), FOLGE('p-beziehung-krise', 30, 0.4)] } },
+    ],
+  },
+  {
+    id: 'p-freunde-reise', kategorie: 'Privat', gewicht: 2, abstand: 250, bedingung: (c) => profi(c) && c.spieler.geld > 3_000,
+    titel: 'Reise mit den Jungs', text: '{freund} schlägt vor, dass ihr nach der Saison mal wieder gemeinsam verreist wie früher. Eine Hütte in den Bergen, Grillen, Karten spielen, null Handyempfang.',
+    optionen: [
+      { label: 'Ja, das brauche ich', kosten: 1_500, hinweis: 'kostet 1.500 €', erfolg: { text: 'Ihr lacht zum ersten Mal seit Monaten wieder richtig. Dein Kopf wird frei.', effekte: [T({ privatglueck: 9, moral: 4, fitness: 3 })] } },
+      { label: 'Lieber trainieren', erfolg: { text: 'Du nutzt die freien Tage für Extraschichten. {freund} nimmt es dir nicht übel, aber es wird ruhig am Telefon.', effekte: [T({ disziplin: 2, privatglueck: -3 })] } },
+    ],
+  },
+  {
+    id: 'p-hobby', kategorie: 'Privat', gewicht: 1.5, abstand: 600, bedingung: (c) => profi(c) && !hatBesitz(c, 'gitarre') && !hatBesitz(c, 'golf'),
+    titel: 'Ein neues Hobby', text: 'In einer freien Stunde zeigt dir ein Teamkollege, wie man Gitarre spielt. Ein anderer lädt dich zum Golfen ein. Du merkst, dass du neben dem Fußball etwas Eigenes brauchst.',
+    optionen: [
+      { label: 'Gitarre lernen', kosten: 800, hinweis: 'kostet 800 €', erfolg: { text: 'Nach wenigen Wochen spielst du drei Akkorde. Die Kabine singt mit, mal besser, mal schlechter.', effekte: [BESITZ('gitarre'), T({ privatglueck: 4, kabine: 2 })] } },
+      { label: 'Golf ausprobieren', kosten: 2_500, hinweis: 'kostet 2.500 €', erfolg: { text: 'Die Ruhe auf dem Platz gefällt dir. Der Slice weniger.', effekte: [T({ privatglueck: 4, moral: 2 })] } },
+      { label: 'Keine Zeit für so etwas', erfolg: { text: 'Fußball ist dein Leben. Das reicht, sagst du dir, zumindest vorerst.', effekte: [] } },
+    ],
+  },
 ]
-

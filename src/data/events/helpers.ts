@@ -16,7 +16,7 @@ export const profi = (c: Career): boolean => !c.saison.jugend && c.vereinId !== 
 export const gehalt = (c: Career): number => c.vertrag?.gehalt ?? 0
 export const geldAb = (n: number) => (c: Career): boolean => c.spieler.geld >= n
 export const depotWert = (c: Career): number => depotGesamt(c)
-export const anlageWert = (c: Career, k: 'tagesgeld' | 'etf' | 'krypto'): number => depotVon(c)[k].wert
+export const anlageWert = (c: Career, k: Anlage): number => depotVon(c)[k].wert
 export const hatPartner = (c: Career): boolean => c.personen.partner !== null
 export const verletzt = (c: Career): boolean => c.verletzung !== null
 export const staerkeVerein = (c: Career): number => c.welt.staerke[c.vereinId] ?? 0
@@ -49,3 +49,8 @@ export const vcAktivAnzahl = (c: Career): number => (c.beteiligungen ?? []).filt
 export const DEPOT = (anlage: Anlage | 'alle', faktor: number): Effekt => ({ t: 'depot', anlage, faktor })
 export const INVEST = (anlage: Anlage, anteil: number): Effekt => ({ t: 'invest', anlage, anteil })
 export const ABHEBEN = (anlage: Anlage | 'alle', anteil: number): Effekt => ({ t: 'abheben', anlage, anteil })
+export const IMMO = (faktor: number): Effekt => ({ t: 'immo', faktor })
+export const BESITZ = (id: string): Effekt => ({ t: 'besitz', id })
+export const immoAnzahl = (c: Career): number => (c.immobilien ?? []).filter((i) => i.status === 'aktiv').length
+export const vermietet = (c: Career): boolean => (c.immobilien ?? []).some((i) => i.status === 'aktiv' && i.miete > 0)
+export const hatBesitz = (c: Career, id: string): boolean => id in (c.privat?.besitz ?? {})

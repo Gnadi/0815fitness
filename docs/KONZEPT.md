@@ -61,16 +61,36 @@ und **Spielertyp** (Straßenfußballer / Akademie-Talent / Spätzünder). Das Po
 - Winterwechsel in andere Ligen: die neue Liga wird bis zum aktuellen Spieltag nachsimuliert.
 
 ## Finanzen
-Kleines, einfaches Finanzsystem (Tab „Finanzen“): Kontostand, Wochenverdienst und ein Depot mit drei Anlagen
-(Tagesgeld ca. 2,5 % p. a., Aktien-ETF Ø 7 % mit spürbarer Schwankung, Krypto hochriskant). Ein- und Auszahlen geht in Prozentschritten,
-die Kurse bewegen sich jede Woche. Optional: ETF-Sparplan (30 % des Wochenverdiensts). Dazu Immobilien (Mieteinnahmen) und
-eine Sportinvaliditätsversicherung. **Venture Capital:** Alle 13 Wochen gibt es Start-up-Deals (ab 5.000 € auf dem Konto). Der Einsatz ist bis zum Exit gebunden;
-wöchentlich gibt es Finanzierungsrunden, Down-Rounds, Pleiten (etwa jedes zweite Start-up) oder Exits/Börsengänge (Ø ca. 2× Einsatz bei hoher Streuung).
-Vorzeitiger Verkauf am Zweitmarkt mit 40 % Abschlag. 17 Finanz-Ereignisse (Börsencrash/-boom, Krypto-Hype und -Absturz, Start-up, Anlagebetrug, Casino, Spenden …)
-greifen ins Depot ein. Ältere Spielstände ohne Depot funktionieren weiter.
+Tab „Finanzen“ mit vier Bereichen: **Übersicht** (Kontostand, Gesamtvermögen, Vermögensverteilung, ETF-Sparplan mit 30 % des Wochenverdiensts),
+**Geldanlagen**, **Immobilien** und **Start-ups**. Ältere Spielstände ohne neue Felder funktionieren weiter.
+
+- **Geldanlagen (8 Klassen):** Tagesgeld (2,5 %), Staatsanleihen (3,5 %, ruhig), Dividenden-Aktien (6 %), Aktien-ETF (7 %), Immobilienfonds/REIT (5,5 %),
+  Gold (4 %), Einzelaktien/Tech (9 %, sehr volatil) und Krypto (hochriskant). Ein- und Auszahlen in Prozentschritten, Kurse bewegen sich jede Woche.
+- **Immobilien:** Alle 26 Wochen gibt es fünf Marktangebote (Studenten-Apartment, Eigentumswohnung, Mehrfamilienhaus, Gewerbeobjekt, Ferienhaus, Baugrundstück,
+  Eigenheim, Luxusvilla) in einfacher, guter oder Top-Lage. Kauf bar oder mit Kredit (20 % Eigenkapital, 3,8 % Zinsen, 2 % Tilgung, Kreditrahmen aus Gehalt und Depot),
+  6 % Kaufnebenkosten. Jede Woche laufen Miete (nach Auslastung), Nebenkosten, Zinsen und Tilgung in den Wocheneinkommen-Saldo ein;
+  Wert schwankt je Objekt, dazu Reparaturen und Mietausfälle. Modernisieren (+9 % Wert/Miete, einmal pro Jahr), Kredit tilgen, Verkaufen (6 % Kosten).
+  Eigenheim und Villa sind Wohnsitze (nur einer möglich): kein Mietaufwand, mehr Privatglück pro Woche, die Villa bringt zusätzlich Prestige.
+- **Venture Capital:** Alle 13 Wochen gibt es Start-up-Deals (ab 5.000 € auf dem Konto). Der Einsatz ist bis zum Exit gebunden;
+  wöchentlich gibt es Finanzierungsrunden, Down-Rounds, Pleiten (etwa jedes zweite Start-up) oder Exits/Börsengänge (Ø ca. 2× Einsatz bei hoher Streuung).
+  Vorzeitiger Verkauf am Zweitmarkt mit 40 % Abschlag.
+- Dazu eine Sportinvaliditätsversicherung und rund 24 Finanz-Ereignisse (Börsencrash/-boom, Krypto, Start-up, Anlagebetrug, Casino, Immobilienboom/-crash,
+  Mietnomaden, Goldrausch, Zinswende, Dividenden, Tech-Hype …), die ins Depot und ins Immobilienportfolio eingreifen.
+
+## Privatleben
+Eigener Tab „Privat“ (🏡) mit vier Bereichen:
+
+- **Übersicht:** Privatglück mit Einordnung (Rundum glücklich … Ausgebrannt), Beziehung, Kinder, Herkunft, bester Freund, Wohnsituation, Besitz und laufende Lebenshaltungskosten pro Jahr.
+- **Aktivitäten:** einmalige Ausgaben mit direkter Wirkung und Wartezeit (Date-Abend, Geschenk, Paarberatung, Wochenend-Trip, Luxusurlaub, Familienbesuch,
+  Familienfeier, Ausflug mit den Kindern, Freunde, Konzert, Spenden, Wellness, Sportpsychologe). Manche brauchen Partner oder Kinder.
+- **Besitz:** dauerhafte Anschaffungen mit Wochenwirkung und teils laufenden Kosten: Hund, Gitarre, Gaming-Setup, Golfclub, Segelboot, Mentalcoach, Physio-Abo,
+  Privatkoch, Kinderbetreuung, Haus für die Eltern, Autos (Kleinwagen/Sportwagen/Supersportwagen, ersetzen sich gegenseitig), Luxusuhr, Assistent, eigene Stiftung.
+  Abos lassen sich kündigen.
+- **Wohnen:** Mietwohnungen (schick, Penthouse) mit Kaution und Jahresmiete; sie ruhen, sobald man ein Eigenheim besitzt.
+- Fünf neue Privat-Ereignisse (Hund vor der Tür, Dach der Eltern, Jahrestag, Reise mit den Jungs, neues Hobby).
 
 ## Ereignissystem
-Ereignisse sind datengetriebene Karten (`src/data/events/*`, 133 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
+Ereignisse sind datengetriebene Karten (`src/data/events/*`, rund 145 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
 Würfen (Skills/Traits/feste Chance), Effekten und **Folgeereignissen** (verzögerte Ketten):
 
 - **Jugend, Kabine, Trainer, Privat, Familie, Medien, Karriere, Verein, Gesundheit**
@@ -79,7 +99,7 @@ Würfen (Skills/Traits/feste Chance), Effekten und **Folgeereignissen** (verzög
 - Folgen: Sperren, Ruf-/Fan-Verlust, Sponsor weg, Geldstrafen bis hin zum erzwungenen Karriereende.
 
 ## Erfolge & Ruhm
-38 Erfolge, Auszeichnungen (Weltfußballer, Spieler des Jahres), Ruhm-Punkte aus Titeln (gewichtet nach Einsatzzeit), Toren, Länderspielen,
+44 Erfolge, Auszeichnungen (Weltfußballer, Spieler des Jahres), Ruhm-Punkte aus Titeln (gewichtet nach Einsatzzeit), Toren, Länderspielen,
 Spitzenstärke, Erfolgen, abzüglich Skandalen.
 
 ## Technik
@@ -93,5 +113,5 @@ Spitzenstärke, Erfolgen, abzüglich Skandalen.
 - **Bot/Simulation:** `src/engine/sim.ts` spielt Karrieren automatisch (Tests, Balancing).
 
 ## Ideen für später
-Trainerkarriere nach dem Karriereende, mehr Ereignisse (je Land), Spielerrat-Streik als Kette, Lebensstil-Käufe, Transfers mit Kaufoption,
+Trainerkarriere nach dem Karriereende, mehr Ereignisse (je Land), Spielerrat-Streik als Kette, Transfers mit Kaufoption,
 zweite Nationalität, IndexedDB bei sehr großen Spielständen.

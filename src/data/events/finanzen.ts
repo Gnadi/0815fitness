@@ -1,4 +1,4 @@
-import { ABHEBEN, DEPOT, FLAG, FOLGE, G, INVEST, NEWS, T, VC_AUFSTOCKEN, VC_EINSTIEG, ZAEHLE, alterVon, anlageWert, anteil, depotWert, flag, gehalt, profi, vcAktivAnzahl, zahl } from './helpers'
+import { ABHEBEN, DEPOT, IMMO, immoAnzahl, vermietet, FLAG, FOLGE, G, INVEST, NEWS, T, VC_AUFSTOCKEN, VC_EINSTIEG, ZAEHLE, alterVon, anlageWert, anteil, depotWert, flag, gehalt, profi, vcAktivAnzahl, zahl } from './helpers'
 import type { EreignisDef } from './types'
 
 const hatGeld = (c: { spieler: { geld: number } }): boolean => c.spieler.geld >= 2_000
@@ -6,7 +6,7 @@ const hatGeld = (c: { spieler: { geld: number } }): boolean => c.spieler.geld >=
 export const FINANZEN: EreignisDef[] = [
   {
     id: 'f-erste-schritte', kategorie: 'Finanzen', gewicht: 0, pflicht: true, bedingung: (c) => hatGeld(c) && !flag(c, 'depotErklaert'),
-    titel: 'Dein Geld soll arbeiten', text: 'Auf deinem Konto liegt inzwischen ein hübsches Sümmchen. {berater} erklärt dir bei einem Kaffee: „Geld auf dem Girokonto bringt nichts. Du solltest dir ein Depot anlegen.“ Im Tab „Finanzen“ kannst du Geld in Tagesgeld, Aktien-ETF und Krypto stecken.',
+    titel: 'Dein Geld soll arbeiten', text: 'Auf deinem Konto liegt inzwischen ein hübsches Sümmchen. {berater} erklärt dir bei einem Kaffee: „Geld auf dem Girokonto bringt nichts. Du solltest dir ein Depot anlegen.“ Im Tab „Finanzen“ kannst du Geld in Tagesgeld, Anleihen, Aktien, Gold, Immobilien und mehr stecken.',
     optionen: [
       { label: '20 % ins Tagesgeld legen', hinweis: 'sicher', erfolg: { text: 'Sicher ist sicher: Das Tagesgeld bringt kleine, aber verlässliche Zinsen.', effekte: [FLAG('depotErklaert'), INVEST('tagesgeld', 0.2), T({ professionalitaet: 1 })] } },
       { label: '20 % in einen Aktien-ETF stecken', hinweis: 'mittel', erfolg: { text: 'Langfristig der Klassiker. Kurzfristig schwankt er aber ordentlich.', effekte: [FLAG('depotErklaert'), INVEST('etf', 0.2), T({ professionalitaet: 2 })] } },
@@ -157,6 +157,63 @@ export const FINANZEN: EreignisDef[] = [
     optionen: [
       { label: 'Versicherung abschließen', kosten: anteil(0.02, 1000), hinweis: 'kostet Geld', erfolg: { text: 'Das beruhigt. Im Fall der Fälle bekommst du eine schöne Summe.', effekte: [FLAG('versicherung'), T({ professionalitaet: 2, moral: 1 })] } },
       { label: 'Darauf vertraue ich', erfolg: { text: 'Du verlässt dich auf deine Gesundheit. Hoffentlich geht das gut.', effekte: [] } },
+    ],
+  },
+  {
+    id: 'f-immo-boom', kategorie: 'Finanzen', gewicht: 1, abstand: 350, bedingung: (c) => immoAnzahl(c) > 0,
+    titel: 'Immobilienboom', text: 'Die Zinsen sinken, die Nachfrage steigt. In der Zeitung steht: „Betongold glänzt wieder.“ Dein Makler ruft an und schwärmt von Rekordpreisen.',
+    optionen: [
+      { label: 'Abwarten und Miete kassieren', erfolg: { text: 'Du lehnst dich zurück. Dein Portfolio ist über Nacht deutlich mehr wert.', effekte: [IMMO(1.12), T({ professionalitaet: 1 })] } },
+      { label: 'Den Berater um Rat fragen', erfolg: { text: 'Er rät dir, nicht gierig zu werden, aber auch nichts zu überstürzen. Die Preise steigen trotzdem.', effekte: [IMMO(1.1), T({ professionalitaet: 2 })] } },
+    ],
+  },
+  {
+    id: 'f-immo-crash', kategorie: 'Finanzen', gewicht: 0.9, abstand: 450, bedingung: (c) => immoAnzahl(c) > 0,
+    titel: 'Immobilienblase platzt', text: 'Die Zinsen schießen nach oben, Käufer bleiben aus. In deinem Postfach liegen drei besorgte Briefe der Bank. Dein Berater bleibt ruhig: „Immobilien sind Langzeitanlagen.“',
+    optionen: [
+      { label: 'Ruhe bewahren und aussitzen', erfolg: { text: 'Du verkaufst nichts. Die Preise geben nach, aber du kannst dir das leisten.', effekte: [IMMO(0.88), T({ professionalitaet: 2, moral: -2 })] } },
+      { label: 'Neu verhandeln und Reserven bilden', kosten: anteil(0.03, 2000), hinweis: 'kostet Geld', erfolg: { text: 'Du holst dir fachkundigen Rat. Die Preise fallen trotzdem, aber du schläfst ruhiger.', effekte: [IMMO(0.9), T({ professionalitaet: 3 })] } },
+    ],
+  },
+  {
+    id: 'f-mietnomade', kategorie: 'Finanzen', gewicht: 1.2, abstand: 300, bedingung: (c) => vermietet(c),
+    titel: 'Ärger mit den Mietern', text: 'Ein Mieter zahlt seit Monaten nicht und lässt sich auch nicht erreichen. Der Hausverwalter fragt, wie es weitergehen soll.',
+    optionen: [
+      { label: 'Anwalt einschalten', kosten: 3_000, hinweis: 'kostet 3.000 €', wurf: { basis: 0.6 }, erfolg: { text: 'Die Räumung klappt, die Wohnung wird renoviert und schnell neu vermietet.', effekte: [G(4_000), T({ professionalitaet: 2 })] }, misserfolg: { text: 'Das Verfahren zieht sich. Am Ende bleibt viel Arbeit und wenig Geld.', effekte: [T({ moral: -3 })] } },
+      { label: 'Kulanz zeigen und Ratenzahlung anbieten', erfolg: { text: 'Der Mieter ist dankbar und zahlt in Raten. Es dauert, aber es bleibt friedlich.', effekte: [G(1_500), T({ privatglueck: 2 })] } },
+      { label: 'Den Verwalter machen lassen', erfolg: { text: 'Der Verwalter regelt das. Eine Gebühr fällt an, aber du hast keinen Stress.', effekte: [G(-800)] } },
+    ],
+  },
+  {
+    id: 'f-gold-rally', kategorie: 'Finanzen', gewicht: 1, abstand: 400, bedingung: (c) => anlageWert(c, 'gold') > 2_000,
+    titel: 'Goldrausch', text: 'Eine Krise verunsichert die Märkte. Anleger flüchten in Gold, der Preis klettert Woche für Woche. Dein Berater sagt: „Dein Gold war die richtige Wette.“',
+    optionen: [
+      { label: 'Gewinne mitnehmen (halbe Position)', erfolg: { text: 'Du verkaufst die Hälfte auf dem Hoch und verbuchst einen schönen Gewinn.', effekte: [DEPOT('gold', 1.2), ABHEBEN('gold', 0.5), T({ professionalitaet: 2 })] } },
+      { label: 'Halten', erfolg: { text: 'Du bleibst investiert. Der Preis macht weiter Sprünge nach oben.', effekte: [DEPOT('gold', 1.18)] } },
+    ],
+  },
+  {
+    id: 'f-zinswende', kategorie: 'Finanzen', gewicht: 1, abstand: 450, bedingung: (c) => anlageWert(c, 'anleihen') > 2_000,
+    titel: 'Zinswende', text: 'Die Zentralbank erhöht überraschend die Zinsen. Das drückt die Kurse deiner Anleihen, aber neue Anleihen werfen künftig mehr ab.',
+    optionen: [
+      { label: 'Anleihen halten', erfolg: { text: 'Auf dem Papier verlierst du etwas, aber du bist entspannt: Am Ende bekommst du dein Geld zurück.', effekte: [DEPOT('anleihen', 0.94), T({ professionalitaet: 1 })] } },
+      { label: 'Verkaufen und ins Tagesgeld wechseln', erfolg: { text: 'Du realisierst einen kleinen Verlust und legst das Geld sicher an.', effekte: [DEPOT('anleihen', 0.95), ABHEBEN('anleihen', 1), INVEST('tagesgeld', 0.3)] } },
+    ],
+  },
+  {
+    id: 'f-dividende', kategorie: 'Finanzen', gewicht: 1.2, abstand: 200, bedingung: (c) => anlageWert(c, 'dividenden') > 5_000,
+    titel: 'Dividendenregen', text: 'Deine Dividenden-Aktien schütten eine Sonderdividende aus. Der Betrag landet direkt auf deinem Konto.',
+    optionen: [
+      { label: 'Genießen und aufs Konto', erfolg: { text: 'Ein feiner Nebenverdienst, ganz ohne Training.', effekte: [G((c) => Math.round(anlageWert(c, 'dividenden') * 0.03)), T({ moral: 2 })] } },
+      { label: 'Wieder anlegen', erfolg: { text: 'Der Zinseszins lässt grüßen. Du investierst die Ausschüttung direkt weiter.', effekte: [DEPOT('dividenden', 1.03), T({ professionalitaet: 2 })] } },
+    ],
+  },
+  {
+    id: 'f-tech-hype', kategorie: 'Finanzen', gewicht: 0.9, abstand: 350, bedingung: (c) => c.spieler.geld > 20_000 && profi(c),
+    titel: 'Der heiße Tech-Tipp', text: 'Ein Mitspieler schwört auf eine Tech-Aktie, die „sicher“ explodiert. Die Kabine diskutiert nur noch darüber.',
+    optionen: [
+      { label: '10 % des Kontos in Einzelaktien stecken', hinweis: 'riskant', wurf: { basis: 0.5 }, erfolg: { text: 'Die Aktie springt wirklich an. Dein Mitspieler führt ein kleines Freudentänzchen auf.', effekte: [INVEST('einzelaktien', 0.1), DEPOT('einzelaktien', 1.45), T({ kabine: 2 })] }, misserfolg: { text: 'Der Kurs bricht ein, weil die Zahlen enttäuschen. Die Kabine schweigt betreten.', effekte: [INVEST('einzelaktien', 0.1), DEPOT('einzelaktien', 0.6), T({ moral: -2 })] } },
+      { label: 'Finger weg', erfolg: { text: 'Du bleibst bei deinem Plan. Langweilig, aber vernünftig.', effekte: [T({ professionalitaet: 1 })] } },
     ],
   },
 ]

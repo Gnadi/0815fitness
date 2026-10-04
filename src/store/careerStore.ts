@@ -33,6 +33,12 @@ interface CareerState {
   sparplan(an: boolean): void
   vcEinsteigen(dealId: string, anteil: number): void
   vcVerkaufen(id: string): void
+  immoKaufen(id: string, finanziert: boolean): void
+  immoVerkaufen(id: string): void
+  immoTilgen(id: string): void
+  immoSanieren(id: string): void
+  privat(id: string): void
+  privatKuendigen(id: string): void
 }
 
 export const useCareer = create<CareerState>((set, get) => {
@@ -45,6 +51,16 @@ export const useCareer = create<CareerState>((set, get) => {
     const next = fn(c)
     speichern(next)
     set({ career: next })
+  }
+  /** Wendet eine Aktion an und zeigt ihren Ergebnistext als Meldung. */
+  const mitText = (fn: (c: Career) => { c: Career; text: string }) => {
+    let text = ''
+    apply((c) => {
+      const r = fn(c)
+      text = r.text
+      return r.c
+    })
+    if (text) set({ meldung: text })
   }
   return {
     career: null,
@@ -99,5 +115,11 @@ export const useCareer = create<CareerState>((set, get) => {
     sparplan: (an) => apply((c) => Aktionen.sparplan(c, an)),
     vcEinsteigen: (id, p) => apply((c) => Aktionen.vcEinsteigen(c, id, p)),
     vcVerkaufen: (id) => apply((c) => Aktionen.vcVerkaufen(c, id)),
+    immoKaufen: (id, f) => mitText((c) => Aktionen.immoKaufen(c, id, f)),
+    immoVerkaufen: (id) => mitText((c) => Aktionen.immoVerkaufen(c, id)),
+    immoTilgen: (id) => mitText((c) => Aktionen.immoTilgen(c, id)),
+    immoSanieren: (id) => mitText((c) => Aktionen.immoSanieren(c, id)),
+    privat: (id) => mitText((c) => Aktionen.privat(c, id)),
+    privatKuendigen: (id) => mitText((c) => Aktionen.privatKuendigen(c, id)),
   }
 })

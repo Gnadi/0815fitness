@@ -287,7 +287,7 @@ export interface Laufbahn {
   skandale: number
 }
 
-export type Anlage = 'tagesgeld' | 'etf' | 'krypto'
+export type Anlage = 'tagesgeld' | 'anleihen' | 'dividenden' | 'etf' | 'reit' | 'gold' | 'einzelaktien' | 'krypto'
 
 export interface Posten {
   /** Aktueller Wert in Euro. */
@@ -324,6 +324,54 @@ export interface Deal {
   qualitaet: number
 }
 
+// ---------------------------------------------------------------- Immobilien & Privatleben
+
+export type ImmoTyp = 'apartment' | 'wohnung' | 'mfh' | 'gewerbe' | 'ferienhaus' | 'bauland' | 'eigenheim' | 'villa'
+export type ImmoLage = 'einfach' | 'mittel' | 'top'
+
+/** Am Markt angebotene Immobilie. */
+export interface ImmoAngebot {
+  id: string
+  typ: ImmoTyp
+  lage: ImmoLage
+  stadt: string
+  preis: number
+  /** Jahresmiete in Euro (0 bei selbst genutzten Objekten und Bauland). */
+  miete: number
+  /** Erwartete jährliche Wertsteigerung. */
+  mu: number
+}
+
+export interface Immobilie {
+  id: string
+  typ: ImmoTyp
+  lage: ImmoLage
+  stadt: string
+  kaufpreis: number
+  /** Aktueller Marktwert; bei Verkauf der Erlös nach Abzug der Kosten. */
+  wert: number
+  /** Restschuld der Finanzierung. */
+  kredit: number
+  kreditStart: number
+  /** Zinssatz pro Jahr. */
+  zins: number
+  /** Jahresmiete bei voller Auslastung. */
+  miete: number
+  mu: number
+  sigma: number
+  /** Absolute Woche des Kaufs. */
+  seit: number
+  /** Absolute Woche der letzten Sanierung (0 = nie). */
+  saniert: number
+  status: 'aktiv' | 'verkauft'
+}
+
+/** Privatleben: gekaufter Besitz (Woche des Kaufs) und letzte Nutzung von Aktivitäten (absolute Woche). */
+export interface PrivatZustand {
+  besitz: Record<string, number>
+  zeiten: Record<string, number>
+}
+
 export interface Einstellungen {
   /** Schlüsselszenen automatisch (sichere Option) entscheiden. */
   autoSzenen: boolean
@@ -345,6 +393,11 @@ export interface Career {
   /** Start-up-Beteiligungen und aktuell angebotene Deals; fehlen in älteren Spielständen. */
   beteiligungen?: Beteiligung[]
   deals?: Deal[]
+  /** Immobilien und Marktangebote; fehlen in älteren Spielständen. */
+  immobilien?: Immobilie[]
+  immoAngebote?: ImmoAngebot[]
+  /** Besitz und Aktivitäten im Privatleben; fehlt in älteren Spielständen. */
+  privat?: PrivatZustand
   vereinId: string // '' = vereinslos
   vertrag: Vertrag | null
   leihe: Leihe | null

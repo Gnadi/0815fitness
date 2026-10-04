@@ -36,6 +36,10 @@ export type Effekt =
   | { t: 'invest'; anlage: Anlage; anteil: number }
   /** Löst einen Anteil einer Anlage auf (`alle` = alle Anlagen). */
   | { t: 'abheben'; anlage: Anlage | 'alle'; anteil: number }
+  /** Multipliziert den Wert aller Immobilien (Markteinbruch oder -boom). */
+  | { t: 'immo'; faktor: number }
+  /** Schenkt dem Spieler Privatbesitz aus dem Katalog (z. B. einen Hund). */
+  | { t: 'besitz'; id: string }
   | { t: 'flag'; k: string; v?: boolean | number | string }
   | { t: 'zaehle'; k: string; d: number }
   | { t: 'folge'; id: string; wochen: number; p?: number }

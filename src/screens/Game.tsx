@@ -7,6 +7,7 @@ import { Header } from './game/Header'
 import { FinanzenTab } from './game/Finanzen'
 import { KarriereTab } from './game/Karriere'
 import { LigaTab } from './game/Liga'
+import { PrivatTab } from './game/Privat'
 import { Report } from './game/Report'
 import { Scene } from './game/Scene'
 import { SeasonEnd } from './game/SeasonEnd'
@@ -14,9 +15,9 @@ import { SpielerTab } from './game/Spieler'
 import { VertragTab } from './game/Vertrag'
 import { Woche } from './game/Woche'
 
-type Tab = 'woche' | 'spieler' | 'liga' | 'vertrag' | 'finanzen' | 'karriere'
+type Tab = 'woche' | 'spieler' | 'liga' | 'vertrag' | 'finanzen' | 'privat' | 'karriere'
 const TABS: [Tab, string, string][] = [
-  ['woche', '⚽', 'Woche'], ['spieler', '👤', 'Spieler'], ['liga', '📊', 'Liga'], ['vertrag', '📝', 'Vertrag'], ['finanzen', '💰', 'Finanzen'], ['karriere', '🏆', 'Karriere'],
+  ['woche', '⚽', 'Woche'], ['spieler', '👤', 'Spieler'], ['liga', '📊', 'Liga'], ['vertrag', '📝', 'Vertrag'], ['finanzen', '💰', 'Finanzen'], ['privat', '🏡', 'Privat'], ['karriere', '🏆', 'Karriere'],
 ]
 
 export default function Game() {
@@ -43,6 +44,7 @@ export default function Game() {
       {planung && tab === 'liga' && <LigaTab c={c} />}
       {planung && tab === 'vertrag' && <VertragTab c={c} />}
       {planung && tab === 'finanzen' && <FinanzenTab c={c} />}
+      {planung && tab === 'privat' && <PrivatTab c={c} />}
       {planung && tab === 'karriere' && <KarriereTab c={c} />}
 
       {c.phase === 'szene' && c.match && <Scene c={c} />}

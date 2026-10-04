@@ -2,33 +2,44 @@ import { gauss } from './welt'
 import type { Rng } from './rng'
 import type { Anlage, Beteiligung, Career, Deal, Depot } from './types'
 
-export const ANLAGEN: readonly Anlage[] = ['tagesgeld', 'etf', 'krypto']
+export const ANLAGEN: readonly Anlage[] = ['tagesgeld', 'anleihen', 'dividenden', 'etf', 'reit', 'gold', 'einzelaktien', 'krypto']
 
 export const ANLAGE_INFO: Record<Anlage, { name: string; text: string; risiko: 'sicher' | 'mittel' | 'riskant' }> = {
   tagesgeld: { name: 'Tagesgeld', text: 'Sicher, ca. 2,5 % Zinsen pro Jahr.', risiko: 'sicher' },
+  anleihen: { name: 'Staatsanleihen', text: 'Ca. 3,5 % pro Jahr, ruhiger Kurs. Der Klassiker für Vorsichtige.', risiko: 'sicher' },
+  dividenden: { name: 'Dividenden-Aktien', text: 'Etablierte Konzerne, Ø ca. 6 % pro Jahr, etwas weniger Schwankung als der Markt.', risiko: 'mittel' },
   etf: { name: 'Aktien-ETF', text: 'Ø ca. 7 % pro Jahr, schwankt spürbar.', risiko: 'mittel' },
+  reit: { name: 'Immobilienfonds (REIT)', text: 'Beteiligung an vielen Immobilien ohne Mieterstress, Ø ca. 5,5 % pro Jahr.', risiko: 'mittel' },
+  gold: { name: 'Gold', text: 'Krisenwährung, Ø ca. 4 % pro Jahr. Glänzt oft, wenn Aktien fallen.', risiko: 'mittel' },
+  einzelaktien: { name: 'Einzelaktien (Tech)', text: 'Hohe Chancen, hohe Schwankung. Einzelne Titel können sich vervielfachen oder abstürzen.', risiko: 'riskant' },
   krypto: { name: 'Krypto', text: 'Kann sich verdoppeln oder halbieren. Nur mit Spielgeld.', risiko: 'riskant' },
 }
 
 /** Jahresrendite (mu) und Schwankung (sigma) je Anlage. */
 const MARKT: Record<Anlage, { mu: number; sigma: number; min: number; max: number }> = {
   tagesgeld: { mu: 0.025, sigma: 0, min: 0, max: 1 },
+  anleihen: { mu: 0.035, sigma: 0.04, min: -0.03, max: 0.03 },
+  dividenden: { mu: 0.06, sigma: 0.13, min: -0.1, max: 0.1 },
   etf: { mu: 0.07, sigma: 0.16, min: -0.12, max: 0.12 },
+  reit: { mu: 0.055, sigma: 0.17, min: -0.11, max: 0.11 },
+  gold: { mu: 0.04, sigma: 0.15, min: -0.08, max: 0.08 },
+  einzelaktien: { mu: 0.09, sigma: 0.32, min: -0.2, max: 0.25 },
   krypto: { mu: 0.12, sigma: 0.75, min: -0.4, max: 0.5 },
 }
 
-export const leeresDepot = (): Depot => ({
-  tagesgeld: { wert: 0, eingezahlt: 0 },
-  etf: { wert: 0, eingezahlt: 0 },
-  krypto: { wert: 0, eingezahlt: 0 },
-})
+export const leeresDepot = (): Depot =>
+  Object.fromEntries(ANLAGEN.map((k) => [k, { wert: 0, eingezahlt: 0 }])) as Depot
 
-export const depotVon = (c: Pick<Career, 'depot'>): Depot => c.depot ?? leeresDepot()
+/** Ältere Spielstände kennen nicht alle Anlageklassen: fehlende werden leer ergänzt. */
+export const depotVon = (c: Pick<Career, 'depot'>): Depot => (c.depot ? { ...leeresDepot(), ...c.depot } : leeresDepot())
 
 export const depotGesamt = (c: Pick<Career, 'depot'>): number => ANLAGEN.reduce((a, k) => a + depotVon(c)[k].wert, 0)
 
-export const vermoegen = (c: Pick<Career, 'depot' | 'spieler' | 'beteiligungen'>): number =>
-  c.spieler.geld + depotGesamt(c) + (c.beteiligungen ?? []).reduce((a, b) => a + (b.status === 'aktiv' ? b.wert : 0), 0)
+export const vermoegen = (c: Pick<Career, 'depot' | 'spieler' | 'beteiligungen' | 'immobilien'>): number =>
+  c.spieler.geld +
+  depotGesamt(c) +
+  (c.beteiligungen ?? []).reduce((a, b) => a + (b.status === 'aktiv' ? b.wert : 0), 0) +
+  (c.immobilien ?? []).reduce((a, i) => a + (i.status === 'aktiv' ? i.wert - i.kredit : 0), 0)
 
 /** Legt `betrag` vom Konto in der Anlage an (begrenzt auf den Kontostand). */
 export function einzahlen(c: Career, anlage: Anlage, betrag: number): Career {

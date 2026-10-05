@@ -51,6 +51,8 @@ function Karte({ c, p }: { c: Career; p: PrivatPosten }) {
   )
 }
 
+const fmtFollower = (tsd: number): string => (tsd >= 1000 ? `${(tsd / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 })} Mio.` : `${Math.round(tsd).toLocaleString('de-DE')} Tsd.`)
+
 function Uebersicht({ c }: { c: Career }) {
   const p = c.spieler
   const stufe = glueckStufe(p.traits.privatglueck)
@@ -77,6 +79,7 @@ function Uebersicht({ c }: { c: Career }) {
           <li><span className="muted">Kinder:</span> {kinder > 0 ? kinder : 'keine'}</li>
           <li><span className="muted">Herkunft:</span> {HERKUNFT[p.hintergrund]}{land ? ` · ${land.flagge} ${land.name}` : ''}</li>
           <li><span className="muted">Bester Freund:</span> {c.personen.freund}</li>
+          {Number(c.flags.follower ?? 0) > 0 && <li><span className="muted">Follower:</span> {fmtFollower(Number(c.flags.follower))}</li>}
           {hatBesitz(c, 'eltern-haus') && <li>🏡 Deine Eltern wohnen dank dir in einem neuen Haus.</li>}
         </ul>
       </section>

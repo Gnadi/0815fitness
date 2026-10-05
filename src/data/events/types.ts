@@ -40,6 +40,8 @@ export type Effekt =
   | { t: 'immo'; faktor: number }
   /** Schenkt dem Spieler Privatbesitz aus dem Katalog (z. B. einen Hund). */
   | { t: 'besitz'; id: string }
+  /** Verändert die Stärke des aktuellen Vereins (Investor, Insolvenz, Trainerbeben …). */
+  | { t: 'vereinsstaerke'; d: number }
   | { t: 'flag'; k: string; v?: boolean | number | string }
   | { t: 'zaehle'; k: string; d: number }
   | { t: 'folge'; id: string; wochen: number; p?: number }

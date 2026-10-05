@@ -90,7 +90,7 @@ Eigener Tab „Privat“ (🏡) mit vier Bereichen:
 - Fünf neue Privat-Ereignisse (Hund vor der Tür, Dach der Eltern, Jahrestag, Reise mit den Jungs, neues Hobby).
 
 ## Ereignissystem
-Ereignisse sind datengetriebene Karten (`src/data/events/*`, rund 145 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
+Ereignisse sind datengetriebene Karten (`src/data/events/*`, rund 215 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
 Würfen (Skills/Traits/feste Chance), Effekten und **Folgeereignissen** (verzögerte Ketten):
 
 - **Jugend, Kabine, Trainer, Privat, Familie, Medien, Karriere, Verein, Gesundheit**
@@ -98,8 +98,24 @@ Würfen (Skills/Traits/feste Chance), Effekten und **Folgeereignissen** (verzög
   Steuertrick → Razzia; Fremdgehen → Erpressung; Bestechung. Jede Ketten-Stufe hat einen Erwischt-Wurf – man kann damit durchkommen.
 - Folgen: Sperren, Ruf-/Fan-Verlust, Sponsor weg, Geldstrafen bis hin zum erzwungenen Karriereende.
 
+### Ereignis-Pakete
+Vier thematische Pakete erweitern die Grundkategorien (je eine Datei in `src/data/events/`):
+
+- **Saison (`saison.ts`):** Trainerwechsel mit Trainer-Typ (Motivator, Taktiker, Diktator, Altmeister, Jugendförderer; Flag `trainerTyp`, gesetzt von der Aktion `trainer-wechsel`),
+  Interimstrainer, Abstiegskampf (Krisensitzung, Kasernierung, Sechs-Punkte-Spiel, Fanforderung), Titelrennen (Endspurt, Meisterschaft in Reichweite) und Pokalblamage.
+  Am Saisonende plant `beendeSaison` je nach Ergebnis Meisterkorso, verspielten Titel oder Rettung als Folgeereignis für die erste Woche der neuen Saison.
+- **Lebensphasen (`lebensphasen.ts`):** Hochzeitsplanung und Flitterwochen (Folge des Heiratsantrags), Ehekrise, Scheidung samt Rosenkrieg und Unterhalt,
+  Schlafentzug nach der Geburt, Kind kickt im Verein, Todesfall mit Trauerphase, Burnout, Lebensmitte-Krise und „Was kommt nach der Karriere?“.
+- **Social Media (`social.ts`):** Follower in Tausend als Zähler (`flags.follower`, sichtbar im Privat-Tab). Viraler Clip, Werbedeals mit Schleichwerbung,
+  Krypto-Werbung mit Sammelklage als Folge, alter Post, gekaufte Follower, Livestream-Patzer, Streaming-Kanal, Podcast, Autobiografie, Hackerangriff, Meme, Haltung, Hass-Nachrichten.
+- **Vereinsleben (`vereinsleben.ts`):** Investor, Insolvenz (mögliche Folge der Finanzkrise), Präsidentenrücktritt, Stadion-Neubau, Fanproteste, Pyro-Strafe, Derby-Woche,
+  Rückennummer 10, Elfmeterschütze mit Serie, neuer Sportdirektor, Asien-Tour und Dubai-Trainingslager sowie **länderspezifische Ereignisse** (`la-*`) für Türkei, England, Italien,
+  warme und nordische Länder, Osteuropa, Deutschland, Frankreich, Alpenländer, Steueroasen und Niederlande/Dänemark/Belgien. Für Spieler im Ausland kommen Sprachbarriere,
+  Heimweh, Behördengang und die zweite Staatsbürgerschaft dazu.
+- Neuer Effekt `vereinsstaerke`: verändert die Stärke des aktuellen Vereins (Investor, Insolvenz, Krisenbewältigung).
+
 ## Erfolge & Ruhm
-44 Erfolge, Auszeichnungen (Weltfußballer, Spieler des Jahres), Ruhm-Punkte aus Titeln (gewichtet nach Einsatzzeit), Toren, Länderspielen,
+50 Erfolge, Auszeichnungen (Weltfußballer, Spieler des Jahres), Ruhm-Punkte aus Titeln (gewichtet nach Einsatzzeit), Toren, Länderspielen,
 Spitzenstärke, Erfolgen, abzüglich Skandalen.
 
 ## Technik
@@ -113,5 +129,5 @@ Spitzenstärke, Erfolgen, abzüglich Skandalen.
 - **Bot/Simulation:** `src/engine/sim.ts` spielt Karrieren automatisch (Tests, Balancing).
 
 ## Ideen für später
-Trainerkarriere nach dem Karriereende, mehr Ereignisse (je Land), Spielerrat-Streik als Kette, Transfers mit Kaufoption,
-zweite Nationalität, IndexedDB bei sehr großen Spielständen.
+Trainerkarriere nach dem Karriereende, weitere länderspezifische Ereignisse, Spielerrat-Streik als Kette, Transfers mit Kaufoption,
+echter Verbandswechsel nach der zweiten Staatsbürgerschaft, Saisonziele des Vereins, Dynastie (Kind wird Profi), IndexedDB bei sehr großen Spielständen.

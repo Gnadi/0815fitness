@@ -69,6 +69,12 @@ export const ERFOLGE: ErfolgDef[] = [
   { id: 'sponsor', name: 'Werbegesicht', text: 'Einen Sponsorenvertrag unterschrieben.', check: (c) => c.flags.sponsor === true },
   { id: 'doku', name: 'Streaming-Star', text: 'Eine Doku über dich gedreht.', check: (c) => flag(c, 'doku') },
   { id: 'haus', name: 'Eigenheim', text: 'Ein Haus gekauft.', check: (c) => flag(c, 'haus') },
+  { id: 'influencer', name: 'Influencer', text: 'Eine Million Follower.', check: (c) => Number(c.flags.follower ?? 0) >= 1000 },
+  { id: 'abstiegskaempfer', name: 'Abstiegskämpfer', text: 'Im Abstiegskampf alles gegeben.', check: (c) => flag(c, 'abstiegskaempfer') },
+  { id: 'zweite-heimat', name: 'Zweite Heimat', text: 'Eine zweite Staatsbürgerschaft angenommen.', check: (c) => flag(c, 'zweitePass') },
+  { id: 'nervenstaerke', name: 'Nervenstärke', text: 'Zum Elfmeterschützen des Vereins geworden.', check: (c) => flag(c, 'elferschuetze') },
+  { id: 'papa-stolz', name: 'Papa-Stolz', text: 'Dein Kind kickt im Verein.', check: (c) => flag(c, 'kindFussball') },
+  { id: 'autor', name: 'Autor', text: 'Eine Autobiografie veröffentlicht.', check: (c) => flag(c, 'buch') },
   { id: 'lizenz', name: 'Plan B', text: 'Trainerlizenz oder Studium gestartet.', check: (c) => flag(c, 'trainerlizenz') || flag(c, 'studium') },
 ]
 

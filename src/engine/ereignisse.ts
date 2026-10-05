@@ -14,6 +14,9 @@ import { fuehreWechselAus, neueMitarbeiter } from './transfers'
 import type { AktionName } from '../data/events/types'
 import type { Angebot, Career, Skills, Traits } from './types'
 
+/** Charaktere neuer Trainer; steuert die Trainer-Ereignisse in `saison.ts`. */
+const TRAINER_TYPEN = ['motivator', 'taktiker', 'diktator', 'altmeister', 'jugendfoerderer']
+
 const TRAIT_LABEL: Record<keyof Traits, string> = {
   moral: 'Moral', selbstvertrauen: 'Selbstvertrauen', disziplin: 'Disziplin', professionalitaet: 'Professionalität',
   ehrgeiz: 'Ehrgeiz', ruf: 'Ruf', fanbeliebtheit: 'Fans', trainerBeziehung: 'Trainer', kabine: 'Kabine',
@@ -193,6 +196,14 @@ export function wendeEffekteAn(c: Career, effekte: readonly Effekt[], rng: Rng):
         }
         break
       }
+      case 'vereinsstaerke': {
+        if (!next.vereinId) break
+        const alt = next.welt.staerke[next.vereinId] ?? 0
+        const neu = clamp(alt + e.d, 20, 100)
+        next = { ...next, welt: { ...next.welt, staerke: { ...next.welt.staerke, [next.vereinId]: neu } } }
+        if (neu !== alt) wirkung.push(`Vereinsstärke ${vz(neu - alt)}`)
+        break
+      }
       case 'flag':
         next = { ...next, flags: { ...next.flags, [e.k]: e.v ?? true } }
         break
@@ -263,7 +274,7 @@ function fuehreAktionAus(c: Career, name: AktionName, rng: Rng): { c: Career; wi
     }
     case 'trainer-wechsel':
       return {
-        c: { ...c, personen: neueMitarbeiter(land, rng, c.personen), spieler: { ...c.spieler, traits: applyTraits(c.spieler.traits, { trainerBeziehung: 50 - c.spieler.traits.trainerBeziehung }) } },
+        c: { ...c, flags: { ...c.flags, trainerTyp: rng.pick(TRAINER_TYPEN) }, personen: neueMitarbeiter(land, rng, c.personen), spieler: { ...c.spieler, traits: applyTraits(c.spieler.traits, { trainerBeziehung: 50 - c.spieler.traits.trainerBeziehung }) } },
         wirkung: ['Neuer Trainer'],
       }
     case 'partner-neu':

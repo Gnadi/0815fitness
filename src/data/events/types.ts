@@ -13,7 +13,9 @@ export type AktionName =
   | 'partner-neu'
   | 'partner-ende'
   | 'wechselwunsch'
-  | 'verein-wechseln-erzwingen'
+  /** Holt Transferangebote ins Vertrags-Menü (nur im Transferfenster): von Spitzenklubs bzw. vom freien Markt. */
+  | 'angebote-spitze'
+  | 'angebote-markt'
   | 'sponsor-neu'
   | 'sponsor-ende'
   | 'skandal'

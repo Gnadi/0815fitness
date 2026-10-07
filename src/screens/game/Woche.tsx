@@ -20,7 +20,7 @@ export function vorschau(c: Career): string {
       const tag = c.saison.spielplan[slot.n - 1]
       const idx = c.saison.teams.indexOf(c.vereinId)
       const spiel = tag?.find(([h, a]) => h === idx || a === idx)
-      if (!spiel) return `Spieltag ${slot.n}: spielfrei.`
+      if (!spiel) return c.vereinId === '' ? `Spieltag ${slot.n}: Du bist ohne Verein.` : `Spieltag ${slot.n}: spielfrei.`
       const heim = spiel[0] === idx
       const gegner = VEREINE[c.saison.teams[heim ? spiel[1] : spiel[0]]]?.name ?? '?'
       return `Spieltag ${slot.n}: ${heim ? 'Heimspiel' : 'Auswärtsspiel'} gegen ${gegner}${c.saison.jugend ? ' U19' : ''}.`

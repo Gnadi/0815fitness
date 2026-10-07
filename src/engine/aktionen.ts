@@ -4,7 +4,7 @@ import { optionVerfuegbar, waehleEreignisOption } from './ereignisse'
 import { auszahlen, depotVon, einzahlen, vcEinsteigen, vcVerkaufen } from './finanzen'
 import { immoKaufen, immoSanieren, immoTilgen, immoVerkaufen } from './immobilien'
 import { privatAktion, privatKuendigen } from './privat'
-import { brauchtVertrag, leiheAnfragen, lehneAb, nimmAn, verhandleAngebot, wechselwunschUmschalten } from './transfers'
+import { brauchtVertrag, leiheAnfragen, lehneAb, nimmAn, pausenjahrUmschalten, verhandleAngebot, wechselwunschUmschalten } from './transfers'
 import { naechsteSaison } from './season'
 import { startWeek, waehle, weiter, weiterImSpiel, ereignisWeiter, withRng, beendeKarriere } from './week'
 import type { Anlage, Career, TrainingFocus } from './types'
@@ -32,6 +32,7 @@ export const Aktionen = {
   },
   leiheAnfragen: (c: Career) => withRng(c, (rng) => leiheAnfragen(c, rng)),
   wechselwunsch: (c: Career) => wechselwunschUmschalten(c),
+  pausenjahr: (c: Career) => pausenjahrUmschalten(c),
   einzahlen: (c: Career, anlage: Anlage, anteil: number) => einzahlen(c, anlage, c.spieler.geld * anteil),
   auszahlen: (c: Career, anlage: Anlage, anteil: number) => auszahlen(c, anlage, depotVon(c)[anlage].wert * anteil),
   vcEinsteigen: (c: Career, dealId: string, anteil: number): Career => {

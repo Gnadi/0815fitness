@@ -58,6 +58,12 @@ und **Spielertyp** (Straßenfußballer / Akademie-Talent / Spätzünder). Das Po
 - Transferfenster im Winter und Sommer erzeugen Angebote (Transfer, Leihe, Profivertrag, vereinslos).
 - Angebote lassen sich annehmen, ablehnen oder nachverhandeln (Gehalt/Rolle/Laufzeit, Absage-Risiko). Wechselwunsch erhöht die Angebotszahl, belastet aber Trainer und Kabine.
 - Vertragsende → vereinslos; zum Fensterende wird automatisch das beste Angebot gewählt.
+- **Pausenjahr (ein Jahr ohne Verein):** Im Sommerfenster ohne Vertrag kann der Spieler im Menü „Vertrag“ ein Jahr vereinslos bleiben (`flags.pausenjahrWunsch`).
+  Meldet sich außerdem kein Verein und ist der Spieler zu schwach (unter dem schwächsten Verein des Heimatlandes minus 6) oder mindestens 32, passiert das einmalig automatisch.
+  Die Saison läuft dann in der Liga des letzten Vereins ohne eigenes Team (kein Spiel, kein Pokal, kein Europapokal, Lebenshaltung ohne Gehalt, Historie „Vereinslos“).
+  Im Winter und im nächsten Sommer gibt es neue Angebote. Ein Angebot vorher anzunehmen beendet das Pausenjahr.
+- Ereignisse (Ausstiegsklausel, Deadline Day) erzwingen keinen Wechsel mehr: Die Aktionen `angebote-spitze` und `angebote-markt` legen Angebote ins Menü „Vertrag“.
+  Melden sich keine Vereine, steht das im Ereignis-Ergebnis. Nach einem angenommenen Transfer folgt mit 25 % das Ereignis „Medizincheck“.
 - Winterwechsel in andere Ligen: die neue Liga wird bis zum aktuellen Spieltag nachsimuliert.
 
 ## Finanzen

@@ -1,23 +1,28 @@
-import { LAENDER, VEREINE } from '../data/clubs'
+import { LAENDER, LIGEN, VEREINE } from '../data/clubs'
 import { baueKalender, pokalRunden, turnierName } from './kalender'
 import { alter, clamp, overall } from './rating'
 import type { Rng } from './rng'
 import type { Career, Saison } from './types'
 import { ligaVonVerein, neueLigaSaison } from './welt'
 
-/** Liga-ID des aktuellen Vereins. */
-export function aktuelleLiga(c: Pick<Career, 'welt' | 'vereinId'>): string {
+/** Liga-ID des aktuellen Vereins. Ohne Verein (Pausenjahr) die Liga des letzten Vereins, sonst die 1. Liga des Heimatlandes. */
+export function aktuelleLiga(c: Pick<Career, 'welt' | 'vereinId' | 'flags' | 'spieler'>): string {
+  if (c.vereinId === '') {
+    const letzte = c.flags.pausenLiga
+    return typeof letzte === 'string' && letzte in c.welt.ligen ? letzte : `${c.spieler.nationalitaet}1`
+  }
   return ligaVonVerein(c.welt, c.vereinId) ?? VEREINE[c.vereinId].ligaStart
 }
 
 /** Baut Tabelle, Spielplan, Wettbewerbe und Kalender für die Saison `c.uhr.saison` des aktuellen Vereins. */
 export function baueSaison(c: Career, rng: Rng, jugend: boolean): Saison {
   const ligaId = aktuelleLiga(c)
-  const land = VEREINE[c.vereinId].land
+  const ohneVerein = c.vereinId === ''
+  const land = ohneVerein ? LIGEN[ligaId].land : VEREINE[c.vereinId].land
   const { teams, spielplan, tabelle } = neueLigaSaison(c.welt, ligaId, rng)
 
   let wb: Saison['europa']['wb'] = null
-  if (!jugend) {
+  if (!jugend && !ohneVerein) {
     for (const k of ['CL', 'EL', 'ECL'] as const) if (c.welt.europa[k].includes(c.vereinId)) wb = k
   }
 
@@ -39,7 +44,7 @@ export function baueSaison(c: Career, rng: Rng, jugend: boolean): Saison {
     spielplan,
     tabelle,
     kalender: baueKalender({ spieltage: spielplan.length, pokalRunden: runden, europa: wb, turnier: !!turnier, jugend }),
-    pokal: { status: jugend ? 'ausgeschieden' : 'aktiv', runde: 1, runden },
+    pokal: { status: jugend || ohneVerein ? 'ausgeschieden' : 'aktiv', runde: 1, runden },
     europa: { wb, status: wb ? 'liga' : 'aus', punkte: 0, spiele: 0 },
     turnier,
   }

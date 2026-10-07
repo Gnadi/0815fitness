@@ -10,7 +10,7 @@ import { ANLAGE_INFO, ANLAGEN, auszahlen, depotVon, einzahlen, neuerDeal, skalie
 import { immoAktiv, immoSkalieren, immoWert } from './immobilien'
 import { PRIVAT_BY_ID } from '../data/privat'
 import { erzeugeAngebote, vereinsAngebot } from './wirtschaft'
-import { fuehreWechselAus, neueMitarbeiter } from './transfers'
+import { neueMitarbeiter } from './transfers'
 import type { AktionName } from '../data/events/types'
 import type { Angebot, Career, Skills, Traits } from './types'
 
@@ -283,10 +283,17 @@ function fuehreAktionAus(c: Career, name: AktionName, rng: Rng): { c: Career; wi
       return { c: { ...c, personen: { ...c.personen, partner: null } }, wirkung: ['Beziehung vorbei'] }
     case 'wechselwunsch':
       return { c: { ...c, wechselwunsch: true }, wirkung: ['Wechselwunsch hinterlegt'] }
-    case 'verein-wechseln-erzwingen': {
-      const angebote = erzeugeAngebote(c, rng, { art: 'transfer', anzahl: 1, ausser: [c.vereinId] })
-      if (!angebote.length) return { c, wirkung: [] }
-      return { c: fuehreWechselAus({ ...c, fenster: null }, rng, angebote[0]), wirkung: [`Wechsel zu ${VEREINE[angebote[0].vereinId].name}`] }
+    case 'angebote-spitze':
+    case 'angebote-markt': {
+      if (!c.fenster || !c.vertrag) return { c, wirkung: ['Das Transferfenster ist gerade nicht offen.'] }
+      const spitze = name === 'angebote-spitze'
+      const ausser = [c.vereinId, ...(c.leihe ? [c.leihe.vonVerein] : []), ...c.angebote.map((a) => a.vereinId)]
+      const neu = erzeugeAngebote(c, rng, {
+        art: 'transfer', anzahl: spitze ? 2 : rng.int(1, 3), ausser,
+        minStaerke: spitze ? (c.welt.staerke[c.vereinId] ?? 0) - 2 : undefined,
+      })
+      if (!neu.length) return { c, wirkung: ['Kein Verein meldet sich: Die Leistung überzeugt (noch) nicht genug.'] }
+      return { c: { ...c, angebote: [...c.angebote, ...neu] }, wirkung: [`${neu.length === 1 ? 'Ein Angebot' : `${neu.length} Angebote`} im Menü „Vertrag“`] }
     }
     case 'sponsor-neu':
       return { c: { ...c, flags: { ...c.flags, sponsor: true } }, wirkung: ['Neuer Sponsor'] }

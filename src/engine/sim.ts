@@ -21,6 +21,7 @@ export function bot(c: Career, o: BotOptionen = {}): Career {
   const z = o.zufall
   switch (c.phase) {
     case 'planung': {
+      if (z && c.fenster === 'sommer' && c.vertrag === null && !c.saison.jugend && c.flags.pausenjahrWunsch !== true && z.chance(0.15)) return Aktionen.pausenjahr(c)
       if (z && c.fenster && c.angebote.length && z.chance(0.7)) {
         const a = z.pick(c.angebote)
         const r = z.next()

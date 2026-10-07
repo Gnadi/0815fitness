@@ -1,4 +1,4 @@
-import { AKT, FLAG, FOLGE, G, ZAEHLE, NEWS, T, anteil, fensterArt, flag, gehalt, ov, profi, staerkeVerein, trait, zahl } from './helpers'
+import { AKT, FLAG, G, ZAEHLE, NEWS, T, anteil, fensterArt, flag, gehalt, ov, profi, staerkeVerein, trait, zahl } from './helpers'
 import type { EreignisDef } from './types'
 
 const fenster = (c: Parameters<typeof fensterArt>[0]): boolean => profi(c) && fensterArt(c) !== null
@@ -8,9 +8,9 @@ const vertragLaeuft = (c: Parameters<typeof gehalt>[0]): boolean => c.vertrag !=
 export const TRANSFER: EreignisDef[] = [
   {
     id: 'tr-ausstiegsklausel', kategorie: 'Karriere', gewicht: 1.4, abstand: 500, bedingung: (c) => fenster(c) && ov(c) >= staerkeVerein(c) - 2 && trait(c, 'ruf') > 40 && !flag(c, 'klausel'),
-    titel: 'Die Ausstiegsklausel', text: 'Dein Berater legt dir ein Papier hin: „In deinem Vertrag steht eine Ausstiegsklausel. Ein Klub aus der Spitzengruppe wäre bereit, sie zu ziehen.“ Der Verein weiß davon noch nichts.',
+    titel: 'Die Ausstiegsklausel', text: 'Dein Berater legt dir ein Papier hin: „In deinem Vertrag steht eine Ausstiegsklausel. Klubs aus der Spitzengruppe würden sie wohl ziehen.“ Der Verein weiß davon noch nichts.',
     optionen: [
-      { label: 'Klausel ziehen lassen', hinweis: 'verändert deine Lage', erfolg: { text: 'Die Überweisung geht durch, der Verein tobt. Du wechselst mit einem Koffer voller Hoffnung und einem Rucksack voller Kritik.', effekte: [FLAG('klausel'), T({ fanbeliebtheit: -8, kabine: -4, ruf: 2, ehrgeiz: 3 }), AKT('verein-wechseln-erzwingen'), NEWS('{name} zieht die Ausstiegsklausel')] } },
+      { label: 'Klausel ins Spiel bringen und Angebote einholen', hinweis: 'verändert deine Lage', erfolg: { text: 'Dein Berater lässt die Klausel durchsickern, der Verein tobt. Mehrere Topklubs melden sich. Die Entscheidung triffst du im Menü „Vertrag“.', effekte: [FLAG('klausel'), T({ fanbeliebtheit: -4, kabine: -3, ruf: 1, ehrgeiz: 2 }), AKT('angebote-spitze'), NEWS('{name} liebäugelt mit der Ausstiegsklausel')] } },
       { label: 'Intern verhandeln und die Klausel als Druckmittel nutzen', hinweis: 'riskant', wurf: { basis: 0.5, traits: ['ruf', 'selbstvertrauen'] }, erfolg: { text: 'Der Verein bessert dein Gehalt deutlich auf, um dich zu halten.', effekte: [FLAG('klausel'), AKT('gehaltserhoehung'), T({ moral: 4, trainerBeziehung: 1 })] }, misserfolg: { text: 'Der Verein reagiert beleidigt: „Wer droht, spielt nicht.“ Die Stimmung ist vergiftet.', effekte: [FLAG('klausel'), T({ trainerBeziehung: -5, moral: -3 })] } },
       { label: 'Treu bleiben', erfolg: { text: 'Du zerreißt das Papier nicht, legst es aber in die Schublade. Die Fans erfahren davon und lieben dich dafür.', effekte: [FLAG('klausel'), T({ fanbeliebtheit: 6, ruf: 1, trainerBeziehung: 2 })] } },
     ],
@@ -45,7 +45,7 @@ export const TRANSFER: EreignisDef[] = [
     id: 'tr-deadline-day', kategorie: 'Karriere', gewicht: 1.6, abstand: 200, bedingung: (c) => profi(c) && c.saison.kalender[c.uhr.woche - 1]?.t === 'F' && (c.saison.kalender[c.uhr.woche - 1] as { letzte?: boolean }).letzte === true && trait(c, 'ruf') > 25,
     titel: 'Deadline Day', text: 'Letzter Tag der Transferperiode: Dein Berater telefoniert im Zehnsekundentakt, Sky-Reporter stehen vor deiner Haustür, und ein Klub will dich um jeden Preis. Die Uhr tickt.',
     optionen: [
-      { label: 'Unterschreiben, bevor die Frist abläuft', hinweis: 'verändert deine Lage', erfolg: { text: 'Fax, Medizincheck, Unterschrift: Um 23:58 Uhr geht alles klar. Du fällst erschöpft ins Bett.', effekte: [AKT('verein-wechseln-erzwingen'), FOLGE('tr-medizincheck', 1, 0.4), T({ ruf: 1, moral: 3, kabine: -2 })] } },
+      { label: 'Angebote prüfen, solange die Frist läuft', hinweis: 'verändert deine Lage', erfolg: { text: 'Dein Berater ruft im Minutentakt an. Was auf dem Tisch landet, findest du im Menü „Vertrag“, aber nur bis Mitternacht.', effekte: [AKT('angebote-markt'), T({ ruf: 1, moral: 2, kabine: -1 })] } },
       { label: 'Ablehnen und bleiben', erfolg: { text: 'Du sagst nein. Um Mitternacht ist das Fenster zu. Du fühlst dich erleichtert.', effekte: [T({ fanbeliebtheit: 3, trainerBeziehung: 2, moral: 2 })] } },
       { label: 'Es auf die Spitze treiben', hinweis: 'riskant', wurf: { basis: 0.4, traits: ['selbstvertrauen'] }, erfolg: { text: 'Beide Seiten bieten mehr. Du bleibst, aber mit einem satten Aufschlag.', effekte: [AKT('gehaltserhoehung'), T({ ruf: 1, selbstvertrauen: 3 })] }, misserfolg: { text: 'Zu pokern kostet dich beide Angebote. Du sitzt am nächsten Tag mit leeren Händen da.', effekte: [T({ moral: -5, ruf: -1, trainerBeziehung: -2 })] } },
     ],

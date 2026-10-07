@@ -50,7 +50,12 @@ export function jugendGehalt(vereinId: string): number {
 /** Wochenverdienst netto abzüglich Lebenshaltung. */
 export function wochenEinkommen(c: Career): number {
   const immo = immoNettoWoche(c)
-  if (!c.vertrag) return Math.round(immo)
+  if (!c.vertrag) {
+    // Ohne Vertrag (Pausenjahr) läuft die Lebenshaltung weiter, ohne Gehalt
+    if (c.vereinId !== '' || c.fenster) return Math.round(immo)
+    const lebensstil0 = Number(c.flags.lebensstil ?? 0)
+    return Math.round((Number(c.flags.mieteinnahmen ?? 0) - 9_000 - lebensstil0 - privatLaufend(c)) / 52 + immo)
+  }
   if (c.saison.jugend) return Math.round((c.vertrag.gehalt * 0.9) / 52 + immo)
   const lebensstil = Number(c.flags.lebensstil ?? 0)
   const sponsor = c.flags.sponsor === true ? c.spieler.traits.ruf * 1_500 + c.spieler.traits.fanbeliebtheit * 500 : 0

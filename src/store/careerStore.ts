@@ -27,6 +27,7 @@ interface CareerState {
   verhandeln(id: string, was: 'gehalt' | 'rolle' | 'laufzeit'): void
   leiheAnfragen(): void
   wechselwunsch(): void
+  pausenjahr(): void
   autoSzenen(an: boolean): void
   einzahlen(anlage: Anlage, anteil: number): void
   auszahlen(anlage: Anlage, anteil: number): void
@@ -109,6 +110,7 @@ export const useCareer = create<CareerState>((set, get) => {
     },
     leiheAnfragen: () => apply(Aktionen.leiheAnfragen),
     wechselwunsch: () => apply(Aktionen.wechselwunsch),
+    pausenjahr: () => apply(Aktionen.pausenjahr),
     autoSzenen: (an) => apply((c) => Aktionen.einstellung(c, an)),
     einzahlen: (a, p) => apply((c) => Aktionen.einzahlen(c, a, p)),
     auszahlen: (a, p) => apply((c) => Aktionen.auszahlen(c, a, p)),

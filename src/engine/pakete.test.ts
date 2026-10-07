@@ -5,7 +5,7 @@ import { beendeSaison } from './season'
 import { fuelleText, ereignisVerfuegbar, wendeEffekteAn } from './ereignisse'
 import { createCareer, type NewCareerInput } from './newCareer'
 import { createRng } from './rng'
-import { spieleSaisons } from './sim'
+import { bot, spieleSaisons } from './sim'
 import type { Career } from './types'
 
 const input: NewCareerInput = {
@@ -88,5 +88,48 @@ describe('Ereignis-Pakete (Saison, Lebensphasen, Social, Vereinsleben)', () => {
     expect(nach.verletzung).toBeNull()
     expect(nach.geplant.map((g) => g.id)).toContain('vl-comeback')
     expect(nach.flags.rehaWochen).toBe(0)
+  })
+
+  it('Transferangebote statt Zwangswechsel: Ereignis-Aktion legt Angebote ins Menü, ohne den Verein zu wechseln', () => {
+    const profi = spieleSaisons(createCareer({ ...input, vereinId: 'DE.fc-bayern-muenchen' }), 2)
+    const offen: Career = { ...profi, phase: 'planung', fenster: 'sommer', angebote: [] }
+    const r = wendeEffekteAn(offen, [{ t: 'aktion', name: 'angebote-markt' }], createRng(5))
+    expect(r.c.vereinId).toBe(offen.vereinId)
+    expect(r.c.angebote.length).toBeGreaterThanOrEqual(0)
+    expect(r.c.angebote.every((a) => a.art === 'transfer' && a.vereinId !== offen.vereinId)).toBe(true)
+    const zu = wendeEffekteAn({ ...offen, fenster: null }, [{ t: 'aktion', name: 'angebote-spitze' }], createRng(5))
+    expect(zu.c.angebote).toHaveLength(0)
+    expect(zu.wirkung.join()).toContain('nicht offen')
+    // Spitzenklubs: nur Vereine ab (eigene Stärke − 2)
+    const spitze = wendeEffekteAn(offen, [{ t: 'aktion', name: 'angebote-spitze' }], createRng(9))
+    for (const a of spitze.c.angebote) expect(spitze.c.welt.staerke[a.vereinId]).toBeGreaterThanOrEqual(offen.welt.staerke[offen.vereinId] - 2)
+  })
+
+  it('Pausenjahr: ein Jahr ohne Verein läuft durch, danach gibt es wieder einen Vertrag', () => {
+    let c = spieleSaisons(createCareer({ ...input, vereinId: 'DE.hannover-96' }), 2)
+    c = { ...c, vertrag: { ...c.vertrag!, endeSaison: c.uhr.saison } }
+    let guard = 0
+    while (!(c.fenster === 'sommer' && c.vertrag === null) && guard++ < 5000) c = bot(c)
+    expect(c.vertrag).toBeNull()
+    c = Aktionen.pausenjahr({ ...c, angebote: [] })
+    expect(c.flags.pausenjahrWunsch).toBe(true)
+    while (c.phase !== 'saisonende' && guard++ < 20_000) c = bot(c)
+    expect(c.vereinId).toBe('')
+    c = Aktionen.naechsteSaison(c)
+    expect(c.vereinId).toBe('')
+    expect(c.vertrag).toBeNull()
+    expect(c.flags.pausenjahre).toBe(1)
+    expect(c.saison.jugend).toBe(false)
+    expect(c.saison.teams).not.toContain('')
+    expect(c.saison.pokal.status).toBe('ausgeschieden')
+    // Das Jahr ohne Verein läuft durch (Winterangebote oder neuer Vertrag im Sommer sind erlaubt)
+    const spaeter = spieleSaisons(c, 1)
+    expect(spaeter.phase === 'karriereende' || spaeter.vertrag !== null || spaeter.vereinId === '').toBe(true)
+    expect(spaeter.historie.some((h) => h.verein === 'Vereinslos')).toBe(true)
+  })
+
+  it('Pausenjahr lässt sich nur im Sommerfenster ohne Vertrag planen', () => {
+    const profi = spieleSaisons(createCareer({ ...input, vereinId: 'DE.hannover-96' }), 2)
+    expect(Aktionen.pausenjahr(profi).flags.pausenjahrWunsch).not.toBe(true)
   })
 })

@@ -3,6 +3,7 @@ import { countryById } from '../../data/countries'
 import { IMMO_TYPEN } from '../../data/immobilien'
 import { PRIVAT, PRIVAT_KATEGORIEN, type PrivatPosten } from '../../data/privat'
 import { hatWohnsitz, immoAktiv, immoName } from '../../engine/immobilien'
+import { POST_RATEN, STREAM_INHALTE, STREAM_RATEN, TOENE, WERBUNG, einstellung, hatKanal, kanaele, socialRechnung, type SocialKey } from '../../engine/social'
 import { aktiverBesitz, glueckStufe, hatBesitz, privatLaufend, privatPruefung } from '../../engine/privat'
 import type { Career } from '../../engine/types'
 import { useCareer } from '../../store/careerStore'
@@ -10,7 +11,7 @@ import { fmtEuro, fmtGeld } from '../../ui/format'
 import { Seg } from '../../ui/Seg'
 import { Meter } from './Header'
 
-type Bereich = 'uebersicht' | 'aktivitaeten' | 'besitz' | 'wohnen'
+type Bereich = 'uebersicht' | 'aktivitaeten' | 'besitz' | 'wohnen' | 'social'
 
 const WIRKUNG: Record<string, string> = {
   moral: 'Moral', selbstvertrauen: 'Selbstvertrauen', ruf: 'Ruf', fanbeliebtheit: 'Fans', fitness: 'Fitness', gesundheit: 'Gesundheit',
@@ -51,6 +52,15 @@ function Karte({ c, p }: { c: Career; p: PrivatPosten }) {
   )
 }
 
+const reichweiteText = (c: Career): string => {
+  const k = kanaele(c)
+  return [
+    k.insta ? `Instagram ${fmtFollower(Number(c.flags.follower ?? 0))}` : '',
+    k.twitch ? `Twitch ${fmtFollower(Number(c.flags.twitch ?? 0))}` : '',
+    k.youtube ? `YouTube ${fmtFollower(Number(c.flags.abos ?? 0))}` : '',
+  ].filter(Boolean).join(' · ')
+}
+
 const fmtFollower = (tsd: number): string => (tsd >= 1000 ? `${(tsd / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 })} Mio.` : `${Math.round(tsd).toLocaleString('de-DE')} Tsd.`)
 
 function Uebersicht({ c }: { c: Career }) {
@@ -79,7 +89,7 @@ function Uebersicht({ c }: { c: Career }) {
           <li><span className="muted">Kinder:</span> {kinder > 0 ? kinder : 'keine'}</li>
           <li><span className="muted">Herkunft:</span> {HERKUNFT[p.hintergrund]}{land ? ` · ${land.flagge} ${land.name}` : ''}</li>
           <li><span className="muted">Bester Freund:</span> {c.personen.freund}</li>
-          {Number(c.flags.follower ?? 0) > 0 && <li><span className="muted">Follower:</span> {fmtFollower(Number(c.flags.follower))}</li>}
+          {hatKanal(c) && <li><span className="muted">Reichweite:</span> {reichweiteText(c)}</li>}
           {hatBesitz(c, 'eltern-haus') && <li>🏡 Deine Eltern wohnen dank dir in einem neuen Haus.</li>}
         </ul>
       </section>
@@ -106,6 +116,69 @@ function Uebersicht({ c }: { c: Career }) {
   )
 }
 
+function Einstellung({ c, k, titel, optionen }: { c: Career; k: SocialKey; titel: string; optionen: readonly (readonly [string, string])[] }) {
+  const setzen = useCareer((s) => s.social)
+  return (
+    <div className="stack">
+      <p className="muted small">{titel}</p>
+      <Seg wert={einstellung(c, k)} optionen={optionen} onChange={(v) => setzen(k, v)} />
+    </div>
+  )
+}
+
+function Social({ c }: { c: Career }) {
+  const k = kanaele(c)
+  const r = socialRechnung(c)
+  if (!hatKanal(c)) {
+    return (
+      <section className="card">
+        <h2>Social Media</h2>
+        <p className="muted">Du hast noch keinen Kanal. Im Lauf der Karriere melden sich Agenturen und Plattformen bei dir, dann kannst du hier Instagram, Twitch und YouTube steuern.</p>
+      </section>
+    )
+  }
+  return (
+    <>
+      <section className="card">
+        <h2>Deine Kanäle</h2>
+        <div className="grid2">
+          {k.insta && <div><span className="muted">Instagram</span><strong>{fmtFollower(Number(c.flags.follower ?? 0))}</strong></div>}
+          {k.twitch && <div><span className="muted">Twitch</span><strong>{fmtFollower(Number(c.flags.twitch ?? 0))}</strong></div>}
+          {k.youtube && <div><span className="muted">YouTube</span><strong>{fmtFollower(Number(c.flags.abos ?? 0))}</strong></div>}
+        </div>
+        <div className="grid2">
+          <div><span className="muted">Einnahmen / Woche</span><strong>{fmtEuro(r.euro)}</strong></div>
+          <div><span className="muted">Belastung / Woche</span><strong>Fitness {r.fitness.toFixed(1).replace('.', ',')} · Privat {r.privat.toFixed(1).replace('.', ',')}</strong></div>
+        </div>
+        <p className="muted small">Mehr Beiträge und Streams bringen Reichweite und Geld, kosten aber Fitness und Privatglück. Ohne Aktivität schrumpft die Reichweite langsam.</p>
+      </section>
+
+      {(k.insta || k.youtube) && (
+        <section className="card">
+          <h2>Beiträge &amp; Videos</h2>
+          <Einstellung c={c} k="postRate" titel="Wie oft postest du auf Instagram und YouTube?" optionen={POST_RATEN} />
+        </section>
+      )}
+
+      {k.twitch && (
+        <section className="card">
+          <h2>Streaming (Twitch)</h2>
+          <Einstellung c={c} k="streamRate" titel="Wie oft gehst du live?" optionen={STREAM_RATEN} />
+          <Einstellung c={c} k="streamInhalt" titel="Inhalt der Streams" optionen={STREAM_INHALTE} />
+          <p className="muted small">Gaming wächst am schnellsten, Fußball bringt Fans und Ruf, Alltag (IRL) bringt Nähe, kostet aber Privatglück, Talk stärkt den Ruf.</p>
+        </section>
+      )}
+
+      <section className="card">
+        <h2>Auftritt</h2>
+        <Einstellung c={c} k="socialTon" titel="Tonfall" optionen={TOENE} />
+        <Einstellung c={c} k="socialWerbung" titel="Werbung in deinen Kanälen" optionen={WERBUNG} />
+        <p className="muted small">Ein provokanter Ton lässt Kanäle schneller wachsen, löst aber öfter Aufregung aus. Viel Werbung bringt Geld, kostet aber Fans.</p>
+      </section>
+    </>
+  )
+}
+
 export function PrivatTab({ c }: { c: Career }) {
   const [bereich, setBereich] = useState<Bereich>('uebersicht')
   const aktionen = PRIVAT.filter((p) => p.art === 'aktion')
@@ -117,9 +190,10 @@ export function PrivatTab({ c }: { c: Career }) {
       <Seg
         wert={bereich}
         onChange={setBereich}
-        optionen={[['uebersicht', 'Übersicht'], ['aktivitaeten', `Aktivitäten${bereit ? ` (${bereit})` : ''}`], ['besitz', 'Besitz'], ['wohnen', 'Wohnen']]}
+        optionen={[['uebersicht', 'Übersicht'], ['aktivitaeten', `Aktivitäten${bereit ? ` (${bereit})` : ''}`], ['besitz', 'Besitz'], ['wohnen', 'Wohnen'], ['social', 'Social']]}
       />
       {bereich === 'uebersicht' && <Uebersicht c={c} />}
+      {bereich === 'social' && <Social c={c} />}
       {bereich === 'aktivitaeten' && (
         <>
           <p className="muted small">Einmalige Ausgaben mit direkter Wirkung. Danach ist eine Wartezeit nötig, bis du sie wiederholen kannst.</p>

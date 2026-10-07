@@ -95,3 +95,11 @@ export const fensterArt = (c: Career): 'sommer' | 'winter' | null => {
 /** Ein Turnier (EM/WM) läuft und der Verein des Spielers hat es noch nicht verlassen. */
 export const turnierAktiv = (c: Career): boolean => c.saison.turnier !== null && c.saison.turnier.status !== 'aus' && c.saison.turnier.status !== 'sieger' && c.saison.kalender[c.uhr.woche - 1]?.t === 'T'
 export const nationalspieler = (c: Career): boolean => flag(c, 'nationalspieler')
+/** Twitch-Follower bzw. YouTube-Abonnenten in Tausend. */
+export const twitch = (c: Career): number => Number(c.flags.twitch ?? 0)
+export const abos = (c: Career): number => Number(c.flags.abos ?? 0)
+export const TWITCH = (d: number): Effekt => ({ t: 'zaehle', k: 'twitch', d })
+export const ABOS = (d: number): Effekt => ({ t: 'zaehle', k: 'abos', d })
+export const hatTwitch = (c: Career): boolean => !jugend(c) && flag(c, 'twitchKanal')
+export const hatYoutube = (c: Career): boolean => !jugend(c) && flag(c, 'youtube')
+export const hatInsta = (c: Career): boolean => !jugend(c) && flag(c, 'insta')

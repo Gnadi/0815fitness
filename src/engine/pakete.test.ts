@@ -6,6 +6,7 @@ import { fuelleText, ereignisVerfuegbar, wendeEffekteAn } from './ereignisse'
 import { createCareer, type NewCareerInput } from './newCareer'
 import { createRng } from './rng'
 import { bot, spieleSaisons } from './sim'
+import { REICHWEITE_MAX, bekanntheit, hatKanal, socialRechnung, socialSetzen, socialWoche } from './social'
 import type { Career } from './types'
 
 const input: NewCareerInput = {
@@ -17,8 +18,8 @@ const NEU = ['s-', 'l-', 'so-', 'vd-', 'la-', 'tr-', 'vl-', 'nt-', 'rv-', 'sk-',
 const neueEreignisse = ALLE_EREIGNISSE.filter((e) => NEU.some((p) => e.id.startsWith(p)))
 
 describe('Ereignis-Pakete (Saison, Lebensphasen, Social, Vereinsleben)', () => {
-  it('bringt mindestens 120 neue Ereignisse mit', () => {
-    expect(neueEreignisse.length).toBeGreaterThanOrEqual(120)
+  it('bringt mindestens 140 neue Ereignisse mit', () => {
+    expect(neueEreignisse.length).toBeGreaterThanOrEqual(140)
   })
 
   it('Texte, Titel und Bedingungen laufen in jeder Lage ohne Fehler', () => {
@@ -168,5 +169,79 @@ describe('Ereignis-Pakete (Saison, Lebensphasen, Social, Vereinsleben)', () => {
     // Weiterspielen funktioniert
     const weiter = spieleSaisons(r.c, 1)
     expect(weiter.phase === 'karriereende' || weiter.vereinId !== '').toBe(true)
+  })
+
+  describe('Social-Media-Kanäle', () => {
+    const basis = (): Career => createCareer({ ...input, vereinId: 'DE.hannover-96' })
+    const mitKanaelen = (flags: Career['flags']): Career => {
+      const c = basis()
+      return { ...c, spieler: { ...c.spieler, traits: { ...c.spieler.traits, ruf: 50, fanbeliebtheit: 50, fitness: 80 } }, flags: { ...c.flags, ...flags } }
+    }
+
+    it('ohne Kanal passiert nichts', () => {
+      const c = basis()
+      expect(hatKanal(c)).toBe(false)
+      expect(socialWoche(c, createRng(1))).toBe(c)
+    })
+
+    it('Einstellungen werden geprüft', () => {
+      const c = basis()
+      expect(socialSetzen(c, 'streamRate', 'normal').flags.streamRate).toBe('normal')
+      expect(socialSetzen(c, 'streamRate', 'quatsch')).toBe(c)
+      expect(socialSetzen(c, 'socialTon', 'provokant').flags.socialTon).toBe('provokant')
+    })
+
+    it('Mehr Posten bringt mehr Reichweite und Geld, Pause lässt Reichweite schrumpfen', () => {
+      const viel = socialWoche(mitKanaelen({ insta: true, follower: 5, postRate: 'viel' }), createRng(2))
+      const aus = socialWoche(mitKanaelen({ insta: true, follower: 5, postRate: 'aus' }), createRng(2))
+      expect(Number(viel.flags.follower)).toBeGreaterThan(5)
+      expect(Number(aus.flags.follower)).toBeLessThan(5)
+      expect(viel.spieler.geld).toBeGreaterThan(aus.spieler.geld)
+    })
+
+    it('Streaming kostet Fitness und Privatglück, bringt aber Twitch-Follower und Einnahmen', () => {
+      const c = mitKanaelen({ twitchKanal: true, twitch: 3, streamRate: 'viel', streamInhalt: 'irl' })
+      const r = socialRechnung(c)
+      expect(r.euro).toBeGreaterThan(0)
+      expect(r.fitness).toBeLessThan(0)
+      expect(r.privat).toBeLessThan(0)
+      const n = socialWoche(c, createRng(3))
+      expect(Number(n.flags.twitch)).toBeGreaterThan(3)
+      expect(n.spieler.traits.fitness).toBeLessThan(c.spieler.traits.fitness)
+      expect(n.spieler.traits.privatglueck).toBeLessThan(c.spieler.traits.privatglueck)
+      expect(n.spieler.geld).toBeGreaterThan(c.spieler.geld)
+    })
+
+    it('Reichweiten-Zähler fallen nie unter null', () => {
+      const c = mitKanaelen({ insta: true, follower: 5, twitchKanal: true, twitch: 2, youtube: true, abos: 1 })
+      const r = wendeEffekteAn(c, [{ t: 'zaehle', k: 'follower', d: -999 }, { t: 'zaehle', k: 'twitch', d: -999 }, { t: 'zaehle', k: 'abos', d: -999 }], createRng(1))
+      expect([r.c.flags.follower, r.c.flags.twitch, r.c.flags.abos]).toEqual([0, 0, 0])
+    })
+
+    it('Bekanntheit hängt vom Verein ab und begrenzt die Reichweite', () => {
+      const klein = createCareer({ ...input, vereinId: 'DE.hannover-96' })
+      const gross = createCareer({ ...input, vereinId: 'DE.fc-bayern-muenchen' })
+      expect(bekanntheit(gross)).toBeGreaterThan(bekanntheit(klein))
+      expect(REICHWEITE_MAX.follower(bekanntheit(gross))).toBeGreaterThan(REICHWEITE_MAX.follower(bekanntheit(klein)))
+      for (const f of [0, 0.3, 0.6, 1]) expect(REICHWEITE_MAX.twitch(f)).toBeLessThan(REICHWEITE_MAX.follower(f))
+    })
+
+    it('Ereignisse können die Reichweite nur bis 130 % der Obergrenze treiben', () => {
+      const c = mitKanaelen({ insta: true, follower: 10 })
+      const grenze = REICHWEITE_MAX.follower(bekanntheit(c)) * 1.3
+      const r = wendeEffekteAn(c, [{ t: 'zaehle', k: 'follower', d: 1_000_000 }], createRng(1))
+      expect(Number(r.c.flags.follower)).toBeLessThanOrEqual(grenze + 0.01)
+      expect(Number(r.c.flags.follower)).toBeGreaterThanOrEqual(10)
+    })
+
+    it('eine ganze Saison mit allen Kanälen und provokantem Ton bleibt stabil', () => {
+      let c = mitKanaelen({ insta: true, follower: 30, twitchKanal: true, twitch: 20, youtube: true, abos: 5, streamRate: 'viel', postRate: 'viel', socialTon: 'provokant', socialWerbung: 'viel' })
+      c = spieleSaisons(c, 1)
+      for (const k of ['follower', 'twitch', 'abos']) {
+        expect(Number.isFinite(Number(c.flags[k]))).toBe(true)
+        expect(Number(c.flags[k])).toBeGreaterThanOrEqual(0)
+      }
+      expect(Number.isFinite(c.spieler.geld)).toBe(true)
+    })
   })
 })

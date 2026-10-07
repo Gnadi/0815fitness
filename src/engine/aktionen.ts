@@ -6,6 +6,7 @@ import { immoKaufen, immoSanieren, immoTilgen, immoVerkaufen } from './immobilie
 import { privatAktion, privatKuendigen } from './privat'
 import { brauchtVertrag, leiheAnfragen, lehneAb, nimmAn, pausenjahrUmschalten, verhandleAngebot, wechselwunschUmschalten } from './transfers'
 import { naechsteSaison } from './season'
+import { socialSetzen, type SocialKey } from './social'
 import { startWeek, waehle, weiter, weiterImSpiel, ereignisWeiter, withRng, beendeKarriere } from './week'
 import type { Anlage, Career, TrainingFocus } from './types'
 
@@ -33,6 +34,7 @@ export const Aktionen = {
   leiheAnfragen: (c: Career) => withRng(c, (rng) => leiheAnfragen(c, rng)),
   wechselwunsch: (c: Career) => wechselwunschUmschalten(c),
   pausenjahr: (c: Career) => pausenjahrUmschalten(c),
+  social: (c: Career, key: SocialKey, wert: string) => socialSetzen(c, key, wert),
   einzahlen: (c: Career, anlage: Anlage, anteil: number) => einzahlen(c, anlage, c.spieler.geld * anteil),
   auszahlen: (c: Career, anlage: Anlage, anteil: number) => auszahlen(c, anlage, depotVon(c)[anlage].wert * anteil),
   vcEinsteigen: (c: Career, dealId: string, anteil: number): Career => {

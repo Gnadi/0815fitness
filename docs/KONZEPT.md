@@ -14,6 +14,7 @@ Läuft nur im Browser (mobile-first, PWA), alle Daten liegen lokal.
 | Spiele | Ergebnis + Schlüsselszenen, keine Minuten-Simulation |
 | Moral/Risiko | Doping, Wetten, Manipulation, Steuertricks – mit Konsequenzen, aber man kann damit durchkommen |
 | Sprache/Plattform | Nur Deutsch, nur mobil, als PWA |
+| Installation | Button „App installieren“ auf dem Startbildschirm (`ui/pwaInstall.ts`): Chrome/Edge/Android über `beforeinstallprompt`, iOS mit Anleitung „Teilen → Zum Home-Bildschirm“; ausgeblendet, sobald die App installiert ist |
 | Länder | Alle 55 UEFA-Verbände (937 Vereine in 68 Ligen) |
 | Speicherung | Nur Browser (localStorage), Export/Import als JSON |
 
@@ -80,6 +81,21 @@ Tab „Finanzen“ mit vier Bereichen: **Übersicht** (Kontostand, Gesamtvermög
 - **Venture Capital:** Alle 13 Wochen gibt es Start-up-Deals (ab 5.000 € auf dem Konto). Der Einsatz ist bis zum Exit gebunden;
   wöchentlich gibt es Finanzierungsrunden, Down-Rounds, Pleiten (etwa jedes zweite Start-up) oder Exits/Börsengänge (Ø ca. 2× Einsatz bei hoher Streuung).
   Vorzeitiger Verkauf am Zweitmarkt mit 40 % Abschlag.
+- **Exposé:** Jedes Immobilienangebot und jedes gekaufte Objekt hat ein Exposé wie in einem Immobilienportal (`engine/expose.ts`, `screens/game/Expose.tsx`, `ui/immo/`).
+  Die Daten (Wohnfläche, Zimmer, Baujahr, Energieklasse und -bedarf, Geschoss, Grundstück, Ausstattung, Abzeichen wie „Provisionsfrei“, Makler, Titel, Beschreibung, Lagetexte und Entfernungen)
+  werden aus der Objekt-ID abgeleitet, nicht aus dem Spielzufall. Der Spielstand bleibt unverändert und alte Spielstände funktionieren. Die Fläche ergibt sich aus dem Preis und einem ortsüblichen Quadratmeterpreis
+  (Typ, Lage, Stadt). Illustrationen sind reine SVG ohne Zusatzpakete: eine Außenansicht je Objektart (Stimmung nach Lage: bedeckt, sonnig, goldene Stunde), ein Grundriss (Treemap-Aufteilung, Erd- und
+  Obergeschoss, Regelgeschoss bei Mehrfamilienhaus und Gewerbe, Lageplan bei Bauland), eine stilisierte Lagekarte und die Energieskala A+ bis H. Die Karte in der Liste zeigt Titelbild, Preis, Kurzfakten und
+  Rendite, das Detail-Exposé öffnet als Vollbild mit wischbarer Galerie, Preis und Finanzierung, Eckdaten, Energieeffizienz, Ausstattung, Beschreibung, Lage und Makler sowie Kauf- bzw. Verkaufsbuttons.
+- **3D-Ansicht für Villa, Eigenheim, Mehrfamilienhaus und Ferienhaus (`ui/immo/villa3d/`):** Im Exposé dieser vier Objektarten öffnet der Knopf „🧊 3D-Ansicht“ einen Vollbild-Viewer mit Three.js (`Haus3DViewer`; `typen.ts` kennt die Objektarten ohne Three.js, `modelle.ts` wählt das Modell).
+  `mehrfamilienhaus.ts` baut ein drei- bis fünfgeschossiges Haus (Klinker oder Putz) mit zwei Treppenhaus-Eingängen, Balkonen, Gauben, Schornsteinen, Straße mit parkenden Autos, Straßenlaternen, Nachbargebäuden und Hinterhof; die Geschosse kommen aus dem Exposé, die Länge aus der Fläche.
+  `ferienhaus.ts` baut ein Holzhaus auf Pfählen am Strand mit Walmdach (Reet oder Ziegel), umlaufender Veranda, Hängematte, Surfbrettern, Lichterkette, Außendusche, Strandweg, Steg mit Boot, Meer (animiert), Strandschirmen, Kajak, Feuerstelle und Palmen.
+  Dach-, Fenster-, Wandtextur- und Walmdach-Baukästen liegen in `bausteine.ts`. Der Viewer ist ein eigener Chunk (rund 610 KB, 155 KB gzip), wird erst beim
+  Öffnen nachgeladen und liegt nicht im Offline-Paket der PWA, sondern im Laufzeit-Cache (`vite.config.ts`). `szene.ts` baut die Villa prozedural aus Objekt-Seed, Lage und Wohnfläche
+  (Geschosse mit Glasfronten und Holzblenden, Pool mit animiertem Wasser, Terrasse, Liegen, Schirm, Auto, Palmen, Zypressen, Hecken, Gartenleuchten, eingerichtetes Wohnzimmer).
+  `bausteine.ts` enthält die gemeinsamen Teile (Materialien, Pflanzen, Auto, Wasser, Aufräumen). `eigenheim.ts` baut ein Einfamilienhaus mit Satteldach (Ziegeltextur, Gaube, Schornstein), Fenstern mit Rahmen und optionalen Läden, Haustür mit Vordach, Garage (ein- oder zweitorig, Basketballkorb), Lattenzaun, Beeten, Holzterrasse mit Pergola, Trampolin, Schaukel, Sandkasten und Gartenhaus; die Länge folgt der Wohnfläche.
+  Der Viewer bietet vier Stimmungen (Bedeckt, Tag, Abend, Nacht) mit Himmelsverlauf, Sonne bzw. Mond, Nebel, Schatten, Umgebungsreflexion, leuchtenden Fenstern und Poolbeleuchtung; die Anfangsstimmung folgt der Lage.
+  Steuerung per Ziehen und Zoomen (OrbitControls, Auto-Rotation bis zur ersten Berührung, aus bei „Bewegung reduzieren“). Ohne WebGL erscheint ein Hinweis, die SVG-Illustration bleibt. Beim Schließen werden Geometrien, Texturen und der WebGL-Kontext freigegeben.
 - Dazu eine Sportinvaliditätsversicherung und rund 24 Finanz-Ereignisse (Börsencrash/-boom, Krypto, Start-up, Anlagebetrug, Casino, Immobilienboom/-crash,
   Mietnomaden, Goldrausch, Zinswende, Dividenden, Tech-Hype …), die ins Depot und ins Immobilienportfolio eingreifen.
 
@@ -96,7 +112,7 @@ Eigener Tab „Privat“ (🏡) mit vier Bereichen:
 - Fünf neue Privat-Ereignisse (Hund vor der Tür, Dach der Eltern, Jahrestag, Reise mit den Jungs, neues Hobby).
 
 ## Ereignissystem
-Ereignisse sind datengetriebene Karten (`src/data/events/*`, rund 285 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
+Ereignisse sind datengetriebene Karten (`src/data/events/*`, rund 310 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
 Würfen (Skills/Traits/feste Chance), Effekten und **Folgeereignissen** (verzögerte Ketten):
 
 - **Jugend, Kabine, Trainer, Privat, Familie, Medien, Karriere, Verein, Gesundheit**
@@ -112,8 +128,17 @@ Vier thematische Pakete erweitern die Grundkategorien (je eine Datei in `src/dat
   Am Saisonende plant `beendeSaison` je nach Ergebnis Meisterkorso, verspielten Titel oder Rettung als Folgeereignis für die erste Woche der neuen Saison.
 - **Lebensphasen (`lebensphasen.ts`):** Hochzeitsplanung und Flitterwochen (Folge des Heiratsantrags), Ehekrise, Scheidung samt Rosenkrieg und Unterhalt,
   Schlafentzug nach der Geburt, Kind kickt im Verein, Todesfall mit Trauerphase, Burnout, Lebensmitte-Krise und „Was kommt nach der Karriere?“.
-- **Social Media (`social.ts`):** Follower in Tausend als Zähler (`flags.follower`, sichtbar im Privat-Tab). Viraler Clip, Werbedeals mit Schleichwerbung,
-  Krypto-Werbung mit Sammelklage als Folge, alter Post, gekaufte Follower, Livestream-Patzer, Streaming-Kanal, Podcast, Autobiografie, Hackerangriff, Meme, Haltung, Hass-Nachrichten.
+- **Social Media (`social.ts`, `social2.ts`, `engine/social.ts`):** Drei Kanäle mit eigenen Zählern in Tausend: Instagram (`flags.follower`), Twitch (`flags.twitch`, Kanal per `twitchKanal`)
+  und YouTube (`flags.abos`, Kanal per `youtube`). Sie werden über Ereignisse freigeschaltet (Account, Streaming-Kanal, Vlog-Kanal). Rund 40 Ereignisse: viraler Clip, Werbedeals mit Schleichwerbung,
+  Krypto-Werbung mit Sammelklage, alter Post, gekaufte Follower, Raid, Donation, toxischer Chat, Ausraster im Stream, Kanalsperre, Verein verbietet Streams, Kollab, Charity-Marathon, Partnerprogramm,
+  Streamer-Burnout, Clickbait, Monetarisierung, Shorts, Agentur, Beef, Ausrüster-Konflikt, TikTok-Challenge, Podcast, Autobiografie, Hackerangriff, Meme, Haltung, Hass-Nachrichten.
+  Im Privat-Tab gibt es den Bereich **Social** mit Einstellungen (Flags `postRate`, `streamRate`, `streamInhalt`, `socialTon`, `socialWerbung`): Posting-Häufigkeit, Stream-Häufigkeit (Pause bis täglich),
+  Inhalt (Gaming, Talk, Fußball, Alltag), Tonfall (brav bis provokant) und Werbung (keine bis viel). `socialWoche` wirkt jede Woche: Reichweite wächst oder schrumpft, Einnahmen fließen aufs Konto,
+  Fitness und Privatglück sinken bei viel Aktivität, ein provokanter Ton löst gelegentlich Aufregung aus. Reichweiten-Zähler fallen nie unter 0.
+  **Balancing:** Die Reichweite wächst auf eine Obergrenze zu, die aus der Bekanntheit folgt (`bekanntheit`: Ruf, Fans, Spielstärke, vor allem die Stärke des Vereins; `REICHWEITE_MAX`).
+  Ein Zweitligist erreicht so einige hundert Tausend Follower, ein Spieler bei einem Topklub mehrere Millionen. Ereignisse dürfen maximal bis 130 % der Obergrenze treiben, darüber pendelt es sich ein.
+  Einnahmen liegen in den Simulationen (zehn Profisaisons, Zweitligist und Topklub) meist bei 5 bis 30 % des Gehalts. Mit täglichem Streaming, Posten, provokantem Ton und viel Werbung sind es in den
+  ersten Profijahren deutlich mehr, dafür sinkt das Privatglück auf 20 bis 50.
 - **Vereinsleben (`vereinsleben.ts`):** Investor, Insolvenz (mögliche Folge der Finanzkrise), Präsidentenrücktritt, Stadion-Neubau, Fanproteste, Pyro-Strafe, Derby-Woche,
   Rückennummer 10, Elfmeterschütze mit Serie, neuer Sportdirektor, Asien-Tour und Dubai-Trainingslager sowie **länderspezifische Ereignisse** (`la-*`) für Türkei, England, Italien,
   warme und nordische Länder, Osteuropa, Deutschland, Frankreich, Alpenländer, Steueroasen und Niederlande/Dänemark/Belgien. Für Spieler im Ausland kommen Sprachbarriere,

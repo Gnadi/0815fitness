@@ -13,7 +13,7 @@ export const KARRIERE: EreignisDef[] = [
     ],
   },
   {
-    id: 'ka-nationalmannschaft', kategorie: 'Karriere', gewicht: 3, abstand: 80, bedingung: (c) => profi(c) && alterVon(c) >= 18 && !flag(c, 'nationalspieler') && ov(c) >= LAENDER[c.spieler.nationalitaet].national - 14 && trait(c, 'ruf') > 20,
+    id: 'ka-nationalmannschaft', kategorie: 'Karriere', gewicht: 3, abstand: 80, bedingung: (c) => profi(c) && alterVon(c) >= 18 && !flag(c, 'nationalspieler') && !flag(c, 'nationalRuecktritt') && ov(c) >= LAENDER[c.spieler.nationalitaet].national - 14 && trait(c, 'ruf') > 20,
     titel: 'Erste Nominierung für die Nationalmannschaft', text: 'Der Bundestrainer ruft an: „{name}, ich nominiere dich für die kommenden Länderspiele.“ Du brauchst einen Moment, bis du den Satz verstanden hast.',
     optionen: [
       { label: 'Zusagen, natürlich!', erfolg: { text: 'Beim ersten Länderspiel stehst du bei der Hymne mit Gänsehaut da. Dein Name steht auf dem Trikot der Nation.', effekte: [AKT('nationalspieler'), AKT('laenderspiel'), T({ ruf: 8, fanbeliebtheit: 5, selbstvertrauen: 6, moral: 6 }), NEWS('{name} feiert Länderspiel-Debüt')] } },

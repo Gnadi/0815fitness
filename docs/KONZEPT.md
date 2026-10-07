@@ -90,7 +90,7 @@ Eigener Tab „Privat“ (🏡) mit vier Bereichen:
 - Fünf neue Privat-Ereignisse (Hund vor der Tür, Dach der Eltern, Jahrestag, Reise mit den Jungs, neues Hobby).
 
 ## Ereignissystem
-Ereignisse sind datengetriebene Karten (`src/data/events/*`, rund 215 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
+Ereignisse sind datengetriebene Karten (`src/data/events/*`, rund 270 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
 Würfen (Skills/Traits/feste Chance), Effekten und **Folgeereignissen** (verzögerte Ketten):
 
 - **Jugend, Kabine, Trainer, Privat, Familie, Medien, Karriere, Verein, Gesundheit**
@@ -112,6 +112,12 @@ Vier thematische Pakete erweitern die Grundkategorien (je eine Datei in `src/dat
   Rückennummer 10, Elfmeterschütze mit Serie, neuer Sportdirektor, Asien-Tour und Dubai-Trainingslager sowie **länderspezifische Ereignisse** (`la-*`) für Türkei, England, Italien,
   warme und nordische Länder, Osteuropa, Deutschland, Frankreich, Alpenländer, Steueroasen und Niederlande/Dänemark/Belgien. Für Spieler im Ausland kommen Sprachbarriere,
   Heimweh, Behördengang und die zweite Staatsbürgerschaft dazu.
+- **Transfer (`transfer.ts`):** Ausstiegsklausel, Kaufoption bei Leihe, Berater verhandelt hinter dem Rücken, Gerüchteküche, Deadline Day, Vertragspoker, Handgeld, Wiedersehen mit dem Ex-Klub, großer Abschied, Medizincheck.
+- **Verletzung (`verletzung.ts`):** Zweitmeinung, Reha-Motivation, Schmerzmittel-Kette (Spritze → Abhängigkeit → Kontrolle), früheres Comeback, Comeback-Ereignis nach mindestens vier Reha-Wochen
+  (`flags.rehaWochen`, geplant in `startWeek`), Angst im Zweikampf nach dem Kreuzbandriss, Liebe zur Physiotherapeutin.
+- **Nationalteam (`nationalteam.ts`):** Streit mit dem Nationaltrainer, Verein gegen Verband, Hymne, Kapitänsbinde, Turnierkader, Teamhotel, Elfmeterschießen, Fans im Turnierland, Rücktritt aus der Nationalmannschaft.
+- **Rivale (`rivale.ts`):** Kette über `flags.rivalitaet` (Duell → Fehde → Showdown → Versöhnung oder Eiszeit) plus Trainingswette, Foul und Wiedersehen als Mitspieler.
+- **Skandale (`skandale.ts`):** Berater-Betrug mit Prozess, Stalker, Einbruch, Clan-Erpressung, falsche Schlagzeile, Autounfall, Zoll, Klage des Ex-Vereins, Doping-Gerücht.
 - Neuer Effekt `vereinsstaerke`: verändert die Stärke des aktuellen Vereins (Investor, Insolvenz, Krisenbewältigung).
 
 ## Erfolge & Ruhm

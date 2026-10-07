@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ALLE_EREIGNISSE, EREIGNIS_BY_ID } from '../data/events'
+import { Aktionen } from './aktionen'
 import { beendeSaison } from './season'
 import { fuelleText, ereignisVerfuegbar, wendeEffekteAn } from './ereignisse'
 import { createCareer, type NewCareerInput } from './newCareer'
@@ -12,12 +13,12 @@ const input: NewCareerInput = {
   fuss: 'rechts', hintergrund: 'arbeiterfamilie', archetyp: 'strassenfussballer', seed: 7,
 }
 
-const NEU = ['s-', 'l-', 'so-', 'vd-', 'la-']
+const NEU = ['s-', 'l-', 'so-', 'vd-', 'la-', 'tr-', 'vl-', 'nt-', 'rv-', 'sk-']
 const neueEreignisse = ALLE_EREIGNISSE.filter((e) => NEU.some((p) => e.id.startsWith(p)))
 
 describe('Ereignis-Pakete (Saison, Lebensphasen, Social, Vereinsleben)', () => {
-  it('bringt mindestens 60 neue Ereignisse mit', () => {
-    expect(neueEreignisse.length).toBeGreaterThanOrEqual(60)
+  it('bringt mindestens 110 neue Ereignisse mit', () => {
+    expect(neueEreignisse.length).toBeGreaterThanOrEqual(110)
   })
 
   it('Texte, Titel und Bedingungen laufen in jeder Lage ohne Fehler', () => {
@@ -78,5 +79,14 @@ describe('Ereignis-Pakete (Saison, Lebensphasen, Social, Vereinsleben)', () => {
     const verspielt = beendeSaison(zweiter, createRng(1))
     expect(verspielt.geplant.map((g) => g.id)).toContain('s-titel-verspielt')
     expect(verspielt.flags.titelkampf).toBeUndefined()
+  })
+
+  it('nach langer Reha wird das Comeback-Ereignis geplant', () => {
+    const profi = spieleSaisons(createCareer({ ...input, vereinId: 'DE.fc-bayern-muenchen' }), 2)
+    const verletzt: Career = { ...profi, phase: 'planung', ereignis: null, verletzung: { name: 'Zerrung', wochen: 1 }, flags: { ...profi.flags, rehaWochen: 4 }, geplant: [] }
+    const nach = Aktionen.trainieren(verletzt, 'ausgewogen')
+    expect(nach.verletzung).toBeNull()
+    expect(nach.geplant.map((g) => g.id)).toContain('vl-comeback')
+    expect(nach.flags.rehaWochen).toBe(0)
   })
 })

@@ -83,3 +83,13 @@ export const inLand = (c: Career, ...land: string[]): boolean => profi(c) && lan
 /** Social-Media-Reichweite in Tausend Followern (0 = noch kein Kanal). */
 export const follower = (c: Career): number => Number(c.flags.follower ?? 0)
 export const FOLLOWER = (d: number): Effekt => ({ t: 'zaehle', k: 'follower', d })
+/** Verkürzt die laufende Verletzung um `wochen`. */
+export const REHA = (wochen: number): Effekt => ({ t: 'reha', wochen })
+/** Art des aktuellen Transferfensters (null außerhalb). */
+export const fensterArt = (c: Career): 'sommer' | 'winter' | null => {
+  const s = c.saison.kalender[c.uhr.woche - 1]
+  return s?.t === 'F' ? (s.fenster ?? null) : null
+}
+/** Ein Turnier (EM/WM) läuft und der Verein des Spielers hat es noch nicht verlassen. */
+export const turnierAktiv = (c: Career): boolean => c.saison.turnier !== null && c.saison.turnier.status !== 'aus' && c.saison.turnier.status !== 'sieger' && c.saison.kalender[c.uhr.woche - 1]?.t === 'T'
+export const nationalspieler = (c: Career): boolean => flag(c, 'nationalspieler')

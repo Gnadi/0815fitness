@@ -14,7 +14,7 @@ const BLUMEN = [0xe84a5f, 0xffd23f, 0xf78fb3, 0xffffff, 0xa268d8, 0xff8c42]
 export function baueEigenheim(p: VillaParameter): VillaSzene {
   const rng = createRng(p.seed)
   const w = werkzeug(rng)
-  const { gruppe, innenLichter, aussenLichter, schwankend, std, kiste, innenWarm, glas, rundbaum } = w
+  const { gruppe, innenLichter, aussenLichter, schwankend, std, kiste, glas, rundbaum } = w
 
   const L = Math.max(8.8, Math.min(14.5, p.flaeche / 14))
   const B = 8.2

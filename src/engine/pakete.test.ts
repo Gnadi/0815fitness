@@ -6,7 +6,7 @@ import { fuelleText, ereignisVerfuegbar, wendeEffekteAn } from './ereignisse'
 import { createCareer, type NewCareerInput } from './newCareer'
 import { createRng } from './rng'
 import { bot, spieleSaisons } from './sim'
-import { hatKanal, socialRechnung, socialSetzen, socialWoche } from './social'
+import { REICHWEITE_MAX, bekanntheit, hatKanal, socialRechnung, socialSetzen, socialWoche } from './social'
 import type { Career } from './types'
 
 const input: NewCareerInput = {
@@ -192,21 +192,21 @@ describe('Ereignis-Pakete (Saison, Lebensphasen, Social, Vereinsleben)', () => {
     })
 
     it('Mehr Posten bringt mehr Reichweite und Geld, Pause lässt Reichweite schrumpfen', () => {
-      const viel = socialWoche(mitKanaelen({ insta: true, follower: 100, postRate: 'viel' }), createRng(2))
-      const aus = socialWoche(mitKanaelen({ insta: true, follower: 100, postRate: 'aus' }), createRng(2))
-      expect(Number(viel.flags.follower)).toBeGreaterThan(100)
-      expect(Number(aus.flags.follower)).toBeLessThan(100)
+      const viel = socialWoche(mitKanaelen({ insta: true, follower: 5, postRate: 'viel' }), createRng(2))
+      const aus = socialWoche(mitKanaelen({ insta: true, follower: 5, postRate: 'aus' }), createRng(2))
+      expect(Number(viel.flags.follower)).toBeGreaterThan(5)
+      expect(Number(aus.flags.follower)).toBeLessThan(5)
       expect(viel.spieler.geld).toBeGreaterThan(aus.spieler.geld)
     })
 
     it('Streaming kostet Fitness und Privatglück, bringt aber Twitch-Follower und Einnahmen', () => {
-      const c = mitKanaelen({ twitchKanal: true, twitch: 80, streamRate: 'viel', streamInhalt: 'irl' })
+      const c = mitKanaelen({ twitchKanal: true, twitch: 3, streamRate: 'viel', streamInhalt: 'irl' })
       const r = socialRechnung(c)
       expect(r.euro).toBeGreaterThan(0)
       expect(r.fitness).toBeLessThan(0)
       expect(r.privat).toBeLessThan(0)
       const n = socialWoche(c, createRng(3))
-      expect(Number(n.flags.twitch)).toBeGreaterThan(80)
+      expect(Number(n.flags.twitch)).toBeGreaterThan(3)
       expect(n.spieler.traits.fitness).toBeLessThan(c.spieler.traits.fitness)
       expect(n.spieler.traits.privatglueck).toBeLessThan(c.spieler.traits.privatglueck)
       expect(n.spieler.geld).toBeGreaterThan(c.spieler.geld)
@@ -216,6 +216,22 @@ describe('Ereignis-Pakete (Saison, Lebensphasen, Social, Vereinsleben)', () => {
       const c = mitKanaelen({ insta: true, follower: 5, twitchKanal: true, twitch: 2, youtube: true, abos: 1 })
       const r = wendeEffekteAn(c, [{ t: 'zaehle', k: 'follower', d: -999 }, { t: 'zaehle', k: 'twitch', d: -999 }, { t: 'zaehle', k: 'abos', d: -999 }], createRng(1))
       expect([r.c.flags.follower, r.c.flags.twitch, r.c.flags.abos]).toEqual([0, 0, 0])
+    })
+
+    it('Bekanntheit hängt vom Verein ab und begrenzt die Reichweite', () => {
+      const klein = createCareer({ ...input, vereinId: 'DE.hannover-96' })
+      const gross = createCareer({ ...input, vereinId: 'DE.fc-bayern-muenchen' })
+      expect(bekanntheit(gross)).toBeGreaterThan(bekanntheit(klein))
+      expect(REICHWEITE_MAX.follower(bekanntheit(gross))).toBeGreaterThan(REICHWEITE_MAX.follower(bekanntheit(klein)))
+      for (const f of [0, 0.3, 0.6, 1]) expect(REICHWEITE_MAX.twitch(f)).toBeLessThan(REICHWEITE_MAX.follower(f))
+    })
+
+    it('Ereignisse können die Reichweite nur bis 130 % der Obergrenze treiben', () => {
+      const c = mitKanaelen({ insta: true, follower: 10 })
+      const grenze = REICHWEITE_MAX.follower(bekanntheit(c)) * 1.3
+      const r = wendeEffekteAn(c, [{ t: 'zaehle', k: 'follower', d: 1_000_000 }], createRng(1))
+      expect(Number(r.c.flags.follower)).toBeLessThanOrEqual(grenze + 0.01)
+      expect(Number(r.c.flags.follower)).toBeGreaterThanOrEqual(10)
     })
 
     it('eine ganze Saison mit allen Kanälen und provokantem Ton bleibt stabil', () => {

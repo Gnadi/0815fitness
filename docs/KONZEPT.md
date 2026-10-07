@@ -119,6 +119,10 @@ Vier thematische Pakete erweitern die Grundkategorien (je eine Datei in `src/dat
   Im Privat-Tab gibt es den Bereich **Social** mit Einstellungen (Flags `postRate`, `streamRate`, `streamInhalt`, `socialTon`, `socialWerbung`): Posting-Häufigkeit, Stream-Häufigkeit (Pause bis täglich),
   Inhalt (Gaming, Talk, Fußball, Alltag), Tonfall (brav bis provokant) und Werbung (keine bis viel). `socialWoche` wirkt jede Woche: Reichweite wächst oder schrumpft, Einnahmen fließen aufs Konto,
   Fitness und Privatglück sinken bei viel Aktivität, ein provokanter Ton löst gelegentlich Aufregung aus. Reichweiten-Zähler fallen nie unter 0.
+  **Balancing:** Die Reichweite wächst auf eine Obergrenze zu, die aus der Bekanntheit folgt (`bekanntheit`: Ruf, Fans, Spielstärke, vor allem die Stärke des Vereins; `REICHWEITE_MAX`).
+  Ein Zweitligist erreicht so einige hundert Tausend Follower, ein Spieler bei einem Topklub mehrere Millionen. Ereignisse dürfen maximal bis 130 % der Obergrenze treiben, darüber pendelt es sich ein.
+  Einnahmen liegen in den Simulationen (zehn Profisaisons, Zweitligist und Topklub) meist bei 5 bis 30 % des Gehalts. Mit täglichem Streaming, Posten, provokantem Ton und viel Werbung sind es in den
+  ersten Profijahren deutlich mehr, dafür sinkt das Privatglück auf 20 bis 50.
 - **Vereinsleben (`vereinsleben.ts`):** Investor, Insolvenz (mögliche Folge der Finanzkrise), Präsidentenrücktritt, Stadion-Neubau, Fanproteste, Pyro-Strafe, Derby-Woche,
   Rückennummer 10, Elfmeterschütze mit Serie, neuer Sportdirektor, Asien-Tour und Dubai-Trainingslager sowie **länderspezifische Ereignisse** (`la-*`) für Türkei, England, Italien,
   warme und nordische Länder, Osteuropa, Deutschland, Frankreich, Alpenländer, Steueroasen und Niederlande/Dänemark/Belgien. Für Spieler im Ausland kommen Sprachbarriere,

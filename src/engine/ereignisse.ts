@@ -5,6 +5,7 @@ import { zufallsName } from '../data/names'
 import { applyTraits } from './match'
 import { clamp, overall } from './rating'
 import { SKILL_KEYS } from './rating'
+import { REICHWEITE_MAX, bekanntheit } from './social'
 import type { Rng } from './rng'
 import { ANLAGE_INFO, ANLAGEN, auszahlen, depotVon, einzahlen, neuerDeal, skaliere, vcAktiv, vcAufstocken, vcEinsteigen } from './finanzen'
 import { immoAktiv, immoSkalieren, immoWert } from './immobilien'
@@ -211,7 +212,15 @@ export function wendeEffekteAn(c: Career, effekte: readonly Effekt[], rng: Rng):
         next = { ...next, flags: { ...next.flags, [e.k]: e.v ?? true } }
         break
       case 'zaehle':
-        next = { ...next, flags: { ...next.flags, [e.k]: ZAEHLER_OHNE_MINUS.has(e.k) ? Math.max(0, Number(next.flags[e.k] ?? 0) + e.d) : Number(next.flags[e.k] ?? 0) + e.d } }
+        if (ZAEHLER_OHNE_MINUS.has(e.k)) {
+          // Reichweite wächst durch Ereignisse höchstens bis 130 % der Obergrenze, die zur Bekanntheit passt
+          const alt = Number(next.flags[e.k] ?? 0)
+          const grenze = REICHWEITE_MAX[e.k as 'follower' | 'twitch' | 'abos'](bekanntheit(next)) * 1.3
+          const neu = Math.max(0, e.d > 0 ? Math.max(alt, Math.min(alt + e.d, grenze)) : alt + e.d)
+          next = { ...next, flags: { ...next.flags, [e.k]: Math.round(neu * 100) / 100 } }
+        } else {
+          next = { ...next, flags: { ...next.flags, [e.k]: Number(next.flags[e.k] ?? 0) + e.d } }
+        }
         break
       case 'folge':
         if (e.p === undefined || rng.chance(e.p)) {

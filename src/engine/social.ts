@@ -1,4 +1,5 @@
 import { applyTraits } from './match'
+import { clamp, overall } from './rating'
 import type { Rng } from './rng'
 import type { Career, Traits } from './types'
 
@@ -52,17 +53,33 @@ export function socialRechnung(c: Pick<Career, 'flags'>): { euro: number; fitnes
   const w = WERBE_FAKTOR[einstellung(c, 'socialWerbung')]
   const werbung = einstellung(c, 'socialWerbung')
   const euro =
-    (k.insta && posts > 0 ? zahl(c, 'follower') * 3 * w : 0) +
-    (k.twitch && streams > 0 ? zahl(c, 'twitch') * streams * 1.5 * w : 0) +
-    (k.youtube && posts > 0 ? zahl(c, 'abos') * 4 * w : 0)
+    (k.insta && posts > 0 ? zahl(c, 'follower') * 1 * w : 0) +
+    (k.twitch && streams > 0 ? zahl(c, 'twitch') * streams * 0.9 * w : 0) +
+    (k.youtube && posts > 0 ? zahl(c, 'abos') * 1.5 * w : 0)
   const inhalt = einstellung(c, 'streamInhalt')
   return {
     euro: Math.round(euro),
-    fitness: -(streams * 0.7 + posts * 0.15 + (inhalt === 'gaming' ? streams * 0.2 : 0)),
-    privat: -((streams >= 6 ? 1 : streams >= 3 ? 0.3 : 0) + (posts >= 3 ? 0.3 : 0) + (inhalt === 'irl' ? streams * 0.15 : 0)),
+    fitness: -(streams * 0.8 + posts * 0.15 + (inhalt === 'gaming' ? streams * 0.2 : 0)),
+    privat: -((streams >= 6 ? 0.8 : streams >= 3 ? 0.15 : 0) + (posts >= 3 ? 0.2 : 0) + (inhalt === 'irl' ? streams * 0.1 : 0)),
     fans: werbung === 'viel' ? -0.15 : werbung === 'keine' ? 0.05 : 0,
   }
 }
+
+/** Bekanntheit 0–1 aus Ruf, Fans, Spielstärke und Verein: bestimmt, wie groß ein Kanal werden kann. */
+export function bekanntheit(c: Career): number {
+  const t = c.spieler.traits
+  const verein = c.vereinId ? (c.welt.staerke[c.vereinId] ?? 50) : 40
+  return clamp(0.15 * (t.ruf / 100) + 0.05 * (t.fanbeliebtheit / 100) + 0.3 * clamp((overall(c.spieler) - 45) / 40, 0, 1) + 0.5 * clamp((verein - 40) / 50, 0, 1), 0, 1)
+}
+
+/** Obergrenze der Reichweite je Kanal (in Tausend). Die Kanäle wachsen darauf zu, statt unbegrenzt zu explodieren. */
+export const REICHWEITE_MAX: Record<'follower' | 'twitch' | 'abos', (f: number) => number> = {
+  follower: (f) => 10 + 200 * (f / 0.5) ** 6.8,
+  twitch: (f) => 5 + 80 * (f / 0.5) ** 6.8,
+  abos: (f) => 5 + 60 * (f / 0.5) ** 6.8,
+}
+/** Anteil der Lücke zur Obergrenze, der pro Beitrag bzw. Stream und Woche geschlossen wird. */
+const WACHSTUMSRATE = { follower: 0.006, twitch: 0.0035, abos: 0.004 }
 
 const MEILENSTEINE = [10, 50, 100, 500, 1000]
 const KANAL_NAME: Record<string, string> = { follower: 'Instagram', twitch: 'Twitch', abos: 'YouTube' }
@@ -72,7 +89,7 @@ export function socialWoche(c: Career, rng: Rng): Career {
   const k = kanaele(c)
   if (!hatKanal(c)) return c
   const t = c.spieler.traits
-  const reichweite = 0.5 + t.ruf / 60 + t.fanbeliebtheit / 120
+  const ruhm = bekanntheit(c)
   const ton = einstellung(c, 'socialTon')
   const inhalt = einstellung(c, 'streamInhalt')
   const streams = k.twitch ? STREAMS[einstellung(c, 'streamRate')] : 0
@@ -89,13 +106,16 @@ export function socialWoche(c: Career, rng: Rng): Career {
       if (alt < m && neu >= m) log.push(`${c.uhr.saison}/${String(c.uhr.saison + 1).slice(2)}: ${KANAL_NAME[key]}: ${m >= 1000 ? `${m / 1000} Mio.` : `${m} Tsd.`} Follower`)
     }
   }
-  if (k.insta) wachse('follower', posts > 0 ? posts * reichweite * 0.6 * TON_WACHSTUM[ton] * zufall() + zahl(c, 'follower') * 0.004 * posts : -zahl(c, 'follower') * 0.002)
-  if (k.twitch) {
-    wachse('twitch', streams > 0
-      ? streams * reichweite * 0.5 * INHALT_WACHSTUM[inhalt] * TON_WACHSTUM[ton] * zufall() + zahl(c, 'twitch') * 0.003 * streams
-      : -zahl(c, 'twitch') * 0.004)
+  // Wachstum auf die Obergrenze zu; ohne Aktivität schrumpft die Reichweite langsam
+  const fuer = (key: 'follower' | 'twitch' | 'abos', aktivitaet: number, mult: number) => {
+    const alt = zahl(c, key)
+    const lucke = REICHWEITE_MAX[key](ruhm) - alt
+    const ueber = lucke < 0 ? lucke * 0.03 : 0 // Ereignisse können über die Grenze hinausschießen, dann pendelt es sich wieder ein
+    wachse(key, (aktivitaet > 0 ? lucke * WACHSTUMSRATE[key] * aktivitaet * mult * zufall() + aktivitaet * 0.2 : -alt * 0.003) + ueber)
   }
-  if (k.youtube) wachse('abos', posts > 0 ? posts * reichweite * 0.3 * TON_WACHSTUM[ton] * zufall() + zahl(c, 'abos') * 0.003 * posts : -zahl(c, 'abos') * 0.002)
+  if (k.insta) fuer('follower', posts, TON_WACHSTUM[ton])
+  if (k.twitch) fuer('twitch', streams, INHALT_WACHSTUM[inhalt] * TON_WACHSTUM[ton])
+  if (k.youtube) fuer('abos', posts, TON_WACHSTUM[ton])
 
   const r = socialRechnung(c)
   const delta: Partial<Traits> = { fitness: r.fitness, privatglueck: r.privat, fanbeliebtheit: r.fans }

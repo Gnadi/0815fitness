@@ -11,6 +11,7 @@ import { Grundriss, hatObergeschoss } from '../ui/immo/Grundriss'
 import { Lagekarte } from '../ui/immo/Lagekarte'
 import { Szene } from '../ui/immo/Szene'
 import { ExposeDetail } from '../screens/game/Expose'
+import { DREI_D_TYPEN, hat3D } from '../ui/immo/villa3d/typen'
 import type { ImmoLage, ImmoTyp } from './types'
 
 const LAGEN: ImmoLage[] = ['einfach', 'mittel', 'top']
@@ -130,8 +131,9 @@ describe('3D-Ansicht im Exposé', () => {
     const q = quelle(typ, 'top', 1)
     return renderToStaticMarkup(<ExposeDetail q={q} e={exposeVon(q)} finanz={[]} aktionen={null} zurueck={() => undefined} />)
   }
-  it('nur Villa und Eigenheim bieten den 3D-Knopf an', () => {
-    for (const t of ['villa', 'eigenheim'] as const) expect(detail(t)).toContain('3D-Ansicht')
-    for (const t of IMMO_TYP_IDS.filter((x) => x !== 'villa' && x !== 'eigenheim')) expect(detail(t)).not.toContain('3D-Ansicht')
+  it('Villa, Eigenheim, Mehrfamilienhaus und Ferienhaus bieten den 3D-Knopf an, die anderen nicht', () => {
+    for (const t of DREI_D_TYPEN) expect(detail(t)).toContain('3D-Ansicht')
+    for (const t of IMMO_TYP_IDS.filter((x) => !hat3D(x))) expect(detail(t)).not.toContain('3D-Ansicht')
+    expect(DREI_D_TYPEN).toHaveLength(4)
   })
 })

@@ -2,14 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import type { ImmoLage } from '../../../engine/types'
-import { baueEigenheim } from './eigenheim'
-import { HIMMEL, STIMMUNGEN, baueVilla, standardStimmung, type Stimmung, type VillaSzene } from './szene'
+import { baueHaus } from './modelle'
+import { HIMMEL, STIMMUNGEN, standardStimmung, type Stimmung, type VillaSzene } from './szene'
+import type { DreiDTyp } from './typen'
 
 interface Props {
-  typ: 'villa' | 'eigenheim'
+  typ: DreiDTyp
   seed: number
   lage: ImmoLage
   flaeche: number
+  /** Geschosse und Einheiten (Mehrfamilienhaus). */
+  etagen?: number
+  zimmer?: number
   titel: string
   onClose: () => void
 }
@@ -53,7 +57,7 @@ export function webglVerfuegbar(): boolean {
 }
 
 /** Drehbare 3D-Ansicht einer Villa oder eines Eigenheims im Vollbild, mit Tageszeit-Schalter. */
-export default function Haus3DViewer({ typ, seed, lage, flaeche, titel, onClose }: Props) {
+export default function Haus3DViewer({ typ, seed, lage, flaeche, etagen, zimmer, titel, onClose }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const [stimmung, setStimmung] = useState<Stimmung>(standardStimmung(lage))
   const [fehler, setFehler] = useState(false)
@@ -82,7 +86,7 @@ export default function Haus3DViewer({ typ, seed, lage, flaeche, titel, onClose 
 
     const scene = new THREE.Scene()
     const kamera = new THREE.PerspectiveCamera(38, 1, 0.5, 700)
-    const szene: VillaSzene = typ === 'villa' ? baueVilla({ seed, lage, flaeche }) : baueEigenheim({ seed, lage, flaeche })
+    const szene: VillaSzene = baueHaus(typ, { seed, lage, flaeche, etagen, zimmer })
     scene.add(szene.gruppe)
 
     const kuppel = himmelKuppel()
@@ -229,7 +233,7 @@ export default function Haus3DViewer({ typ, seed, lage, flaeche, titel, onClose 
       renderer.domElement.remove()
       wende.current = null
     }
-  }, [typ, seed, lage, flaeche])
+  }, [typ, seed, lage, flaeche, etagen, zimmer])
 
   useEffect(() => {
     wende.current?.(stimmung)

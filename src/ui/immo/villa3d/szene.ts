@@ -47,6 +47,10 @@ export interface VillaParameter {
   lage: ImmoLage
   /** Wohnfläche in m²; bestimmt die Länge des Hauses. */
   flaeche: number
+  /** Geschosse (Mehrfamilienhaus); ohne Angabe aus Seed und Fläche. */
+  etagen?: number
+  /** Zimmer bzw. Wohneinheiten (nur Mehrfamilienhaus). */
+  zimmer?: number
 }
 
 export interface VillaSzene {

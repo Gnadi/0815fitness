@@ -6,8 +6,9 @@ import { Energieskala } from '../../ui/immo/Energieskala'
 import { Grundriss, hatObergeschoss } from '../../ui/immo/Grundriss'
 import { KARTEN_LEGENDE, Lagekarte } from '../../ui/immo/Lagekarte'
 import { Szene } from '../../ui/immo/Szene'
+import { hat3D } from '../../ui/immo/villa3d/typen'
 
-/** Der 3D-Viewer (Three.js) für Villa und Eigenheim wird erst beim ersten Öffnen nachgeladen. */
+/** Der 3D-Viewer (Three.js) für Villa, Eigenheim, Mehrfamilienhaus und Ferienhaus wird erst beim ersten Öffnen nachgeladen. */
 const Haus3D = lazy(() => import('../../ui/immo/villa3d/Haus3DViewer'))
 
 const fl = (n: number): string => `${n.toLocaleString('de-DE')} m²`
@@ -114,7 +115,7 @@ export function ExposeDetail({ q, e, finanz, aktionen, hinweis, zurueck }: {
           <span className="muted small">Exposé · {q.stadt}</span>
         </header>
 
-        <Galerie q={q} e={e} drei={q.typ === 'villa' || q.typ === 'eigenheim' ? () => setDreiD(true) : undefined} />
+        <Galerie q={q} e={e} drei={hat3D(q.typ) ? () => setDreiD(true) : undefined} />
 
         <section className="expose-titel">
           <p className="kategorie">{t.icon} {t.name} · {q.stadt}</p>
@@ -179,7 +180,7 @@ export function ExposeDetail({ q, e, finanz, aktionen, hinweis, zurueck }: {
       </div>
       {dreiD && (
         <Suspense fallback={<div className="viewer3d"><p className="viewer3d-fehler">3D wird geladen …</p></div>}>
-          <Haus3D typ={q.typ === 'villa' ? 'villa' : 'eigenheim'} seed={e.seed} lage={q.lage} flaeche={e.flaeche} titel={e.titel} onClose={() => setDreiD(false)} />
+          {hat3D(q.typ) && <Haus3D typ={q.typ} seed={e.seed} lage={q.lage} flaeche={e.flaeche} etagen={e.etagen} zimmer={e.zimmer} titel={e.titel} onClose={() => setDreiD(false)} />}
         </Suspense>
       )}
       <div className="expose-aktionen"><div className="expose-aktionen-inner">{aktionen}</div></div>

@@ -241,3 +241,182 @@ export function dachTextur(farbe: string, fuge: string): THREE.Texture | null {
   t.anisotropy = 4
   return t
 }
+
+/** Satteldach-Baukasten: Prisma, Ziegelflächen mit Textur, Firstkappe und verputzte Giebelseiten. Ursprung: Mitte der Traufe, Firstrichtung x. */
+export function dachBauer(w: Werkzeug, o: { putz: THREE.Material; dachHex: string; fuge: string }): (breite: number, hoehe: number, laenge: number) => THREE.Group {
+  const farbe = Number.parseInt(o.dachHex.slice(1), 16)
+  const dachFarbe = w.std(farbe, 0.8)
+  return (breite, hoehe, laenge) => {
+    const g = new THREE.Group()
+    const form = new THREE.Shape()
+    form.moveTo(-breite / 2, 0)
+    form.lineTo(breite / 2, 0)
+    form.lineTo(0, hoehe)
+    form.lineTo(-breite / 2, 0)
+    const prisma = new THREE.Mesh(new THREE.ExtrudeGeometry(form, { depth: laenge, bevelEnabled: false }), dachFarbe)
+    prisma.rotation.y = Math.PI / 2
+    prisma.position.x = -laenge / 2
+    prisma.castShadow = true
+    prisma.receiveShadow = true
+    g.add(prisma)
+    const schraeg = Math.hypot(breite / 2, hoehe)
+    const winkel = Math.atan2(hoehe, breite / 2)
+    const tex = dachTextur(o.dachHex, o.fuge)
+    if (tex) tex.repeat.set(laenge / 1.1, schraeg / 0.55)
+    const flaeche = new THREE.MeshStandardMaterial({ color: tex ? 0xffffff : farbe, map: tex, roughness: 0.85 })
+    const seite = new THREE.Group()
+    const platte = new THREE.Mesh(new THREE.PlaneGeometry(laenge, schraeg), flaeche)
+    platte.rotation.x = -(Math.PI / 2 - winkel)
+    const n = new THREE.Vector3(0, breite / 2, hoehe).normalize()
+    platte.position.set(0, hoehe / 2, breite / 4).addScaledVector(n, 0.012)
+    platte.castShadow = true
+    platte.receiveShadow = true
+    seite.add(platte)
+    g.add(seite)
+    const hinten = seite.clone()
+    hinten.rotation.y = Math.PI
+    g.add(hinten)
+    const first = new THREE.Mesh(new THREE.BoxGeometry(laenge + 0.1, 0.14, 0.4), dachFarbe)
+    first.position.y = hoehe + 0.03
+    first.castShadow = true
+    g.add(first)
+    for (const sx of [-1, 1]) {
+      const s2 = new THREE.Shape()
+      s2.moveTo(-breite / 2 + 0.16, 0.0)
+      s2.lineTo(breite / 2 - 0.16, 0.0)
+      s2.lineTo(0, hoehe - 0.22)
+      s2.lineTo(-breite / 2 + 0.16, 0.0)
+      const dreieck = new THREE.Mesh(new THREE.ExtrudeGeometry(s2, { depth: 0.05, bevelEnabled: false }), o.putz)
+      dreieck.rotation.y = Math.PI / 2
+      dreieck.position.x = sx * (laenge / 2 + 0.005) - (sx === 1 ? 0 : 0.05)
+      dreieck.position.y = 0.01
+      dreieck.receiveShadow = true
+      g.add(dreieck)
+    }
+    return g
+  }
+}
+
+/** Fenster-Baukasten: Rahmen, Sprosse, Scheibe, Innenraum (leuchtet oder bleibt dunkel), Fensterbank und optionale Läden. `richtung` dreht um die y-Achse (0 = Vorderseite). */
+export function fensterBauer(w: Werkzeug, o: { rahmen: THREE.Material; bank: THREE.Material; ladenHex?: number; licht?: () => boolean }): (x: number, y: number, z: number, breite: number, hoehe: number, richtung: number, laeden?: boolean) => void {
+  const dunkel = w.std(0x1b1d22, 0.9)
+  return (x, y, z, breite, hoehe, richtung, laeden = false) => {
+    const f = new THREE.Group()
+    f.position.set(x, y, z)
+    f.rotation.y = richtung
+    const r = 0.07
+    const k = w.kiste
+    k(breite, r, 0.12, o.rahmen, 0, hoehe / 2 - r / 2, 0.06, f, false)
+    k(breite, r, 0.12, o.rahmen, 0, -hoehe / 2 + r / 2, 0.06, f, false)
+    k(r, hoehe, 0.12, o.rahmen, -breite / 2 + r / 2, 0, 0.06, f, false)
+    k(r, hoehe, 0.12, o.rahmen, breite / 2 - r / 2, 0, 0.06, f, false)
+    k(0.05, hoehe, 0.1, o.rahmen, 0, 0, 0.06, f, false)
+    k(breite - 0.1, hoehe - 0.1, 0.03, w.glas, 0, 0, 0.09, f, false)
+    k(breite - 0.14, hoehe - 0.14, 0.02, !o.licht || o.licht() ? w.innenWarm(0.8) : dunkel, 0, 0, 0.025, f, false)
+    k(breite + 0.3, 0.09, 0.3, o.bank, 0, -hoehe / 2 - 0.05, 0.15, f)
+    if (laeden && o.ladenHex !== undefined) {
+      const m = w.std(o.ladenHex, 0.8)
+      k(breite * 0.46, hoehe, 0.05, m, -breite * 0.73, 0, 0.05, f)
+      k(breite * 0.46, hoehe, 0.05, m, breite * 0.73, 0, 0.05, f)
+    }
+    w.gruppe.add(f)
+  }
+}
+
+/** Walmdach (vier Flächen, kurzer First) als eigene Geometrie; x ist die Längsrichtung. */
+export function walmdach(breite: number, laenge: number, hoehe: number, mat: THREE.Material): THREE.Mesh {
+  const bx = laenge / 2
+  const bz = breite / 2
+  const r = Math.max(0.2, bx - bz)
+  const v = [
+    [-bx, 0, bz], [bx, 0, bz], [bx, 0, -bz], [-bx, 0, -bz],
+    [-r, hoehe, 0], [r, hoehe, 0],
+  ]
+  const flaechen = [[0, 1, 5, 4], [2, 3, 4, 5], [3, 0, 4], [1, 2, 5]]
+  const pos: number[] = []
+  const uv: number[] = []
+  for (const f of flaechen) {
+    const tris = f.length === 4 ? [[f[0], f[1], f[2]], [f[0], f[2], f[3]]] : [f]
+    for (const t of tris) {
+      for (const i of t) {
+        pos.push(...v[i])
+        uv.push(v[i][0] * 0.35, v[i][2] * 0.35 + v[i][1] * 0.45)
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2))
+  g.computeVertexNormals()
+  const m = new THREE.Mesh(g, mat)
+  m.castShadow = true
+  m.receiveShadow = true
+  return m
+}
+
+/** Wandtextur (nur im Browser): Ziegel, Holzplanken oder Reet. */
+export function wandTextur(art: 'ziegel' | 'planken' | 'reet', farbe: string, linie: string, rng: Rng): THREE.Texture | null {
+  if (typeof document === 'undefined') return null
+  const c = document.createElement('canvas')
+  c.width = 128
+  c.height = 128
+  const ctx = c.getContext('2d')
+  if (!ctx) return null
+  ctx.fillStyle = farbe
+  ctx.fillRect(0, 0, 128, 128)
+  ctx.strokeStyle = linie
+  if (art === 'ziegel') {
+    ctx.lineWidth = 2
+    for (let r = 0; r < 16; r++) {
+      const y = r * 8
+      ctx.beginPath()
+      ctx.moveTo(0, y)
+      ctx.lineTo(128, y)
+      ctx.stroke()
+      for (let x = (r % 2) * 16; x < 128; x += 32) {
+        ctx.beginPath()
+        ctx.moveTo(x, y)
+        ctx.lineTo(x, y + 8)
+        ctx.stroke()
+      }
+    }
+  } else if (art === 'planken') {
+    ctx.lineWidth = 2
+    for (let r = 0; r < 8; r++) {
+      ctx.beginPath()
+      ctx.moveTo(0, r * 16)
+      ctx.lineTo(128, r * 16)
+      ctx.stroke()
+    }
+    ctx.globalAlpha = 0.25
+    ctx.lineWidth = 1
+    for (let i = 0; i < 40; i++) {
+      const y = rng.next() * 128
+      ctx.beginPath()
+      ctx.moveTo(rng.next() * 100, y)
+      ctx.lineTo(rng.next() * 128, y + 1)
+      ctx.stroke()
+    }
+  } else {
+    ctx.lineWidth = 1.4
+    for (let x = 0; x < 128; x += 4) {
+      ctx.beginPath()
+      ctx.moveTo(x, 0)
+      ctx.lineTo(x + (rng.next() - 0.5) * 3, 128)
+      ctx.stroke()
+    }
+    ctx.lineWidth = 3
+    for (let r = 1; r < 6; r++) {
+      ctx.beginPath()
+      ctx.moveTo(0, r * 22)
+      ctx.lineTo(128, r * 22)
+      ctx.stroke()
+    }
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.wrapS = THREE.RepeatWrapping
+  t.wrapT = THREE.RepeatWrapping
+  t.colorSpace = THREE.SRGBColorSpace
+  t.anisotropy = 4
+  return t
+}

@@ -14,6 +14,7 @@ Läuft nur im Browser (mobile-first, PWA), alle Daten liegen lokal.
 | Spiele | Ergebnis + Schlüsselszenen, keine Minuten-Simulation |
 | Moral/Risiko | Doping, Wetten, Manipulation, Steuertricks – mit Konsequenzen, aber man kann damit durchkommen |
 | Sprache/Plattform | Nur Deutsch, nur mobil, als PWA |
+| Installation | Button „App installieren“ auf dem Startbildschirm (`ui/pwaInstall.ts`): Chrome/Edge/Android über `beforeinstallprompt`, iOS mit Anleitung „Teilen → Zum Home-Bildschirm“; ausgeblendet, sobald die App installiert ist |
 | Länder | Alle 55 UEFA-Verbände (937 Vereine in 68 Ligen) |
 | Speicherung | Nur Browser (localStorage), Export/Import als JSON |
 

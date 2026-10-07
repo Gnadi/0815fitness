@@ -10,6 +10,7 @@ import { Energieskala } from '../ui/immo/Energieskala'
 import { Grundriss, hatObergeschoss } from '../ui/immo/Grundriss'
 import { Lagekarte } from '../ui/immo/Lagekarte'
 import { Szene } from '../ui/immo/Szene'
+import { ExposeDetail } from '../screens/game/Expose'
 import type { ImmoLage, ImmoTyp } from './types'
 
 const LAGEN: ImmoLage[] = ['einfach', 'mittel', 'top']
@@ -121,5 +122,16 @@ describe('Immobilien-Ansicht mit Exposé', () => {
     expect(html).toContain('Dein Portfolio')
     expect(html).not.toMatch(/NaN|undefined/)
     expect((html.match(/expose-hero/g) ?? []).length).toBeGreaterThanOrEqual(c.immoAngebote!.length + 1)
+  })
+})
+
+describe('3D-Ansicht im Exposé', () => {
+  const detail = (typ: ImmoTyp) => {
+    const q = quelle(typ, 'top', 1)
+    return renderToStaticMarkup(<ExposeDetail q={q} e={exposeVon(q)} finanz={[]} aktionen={null} zurueck={() => undefined} />)
+  }
+  it('nur Villen bieten den 3D-Knopf an', () => {
+    expect(detail('villa')).toContain('3D-Ansicht')
+    for (const t of IMMO_TYP_IDS.filter((x) => x !== 'villa')) expect(detail(t)).not.toContain('3D-Ansicht')
   })
 })

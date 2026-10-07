@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useRef, useState, type ReactNode } from 'react'
 import { IMMO_LAGEN, IMMO_TYPEN } from '../../data/immobilien'
 import type { Expose, ExposeQuelle } from '../../engine/expose'
 import { fmtEuro, fmtKonto } from '../../ui/format'
@@ -6,6 +6,9 @@ import { Energieskala } from '../../ui/immo/Energieskala'
 import { Grundriss, hatObergeschoss } from '../../ui/immo/Grundriss'
 import { KARTEN_LEGENDE, Lagekarte } from '../../ui/immo/Lagekarte'
 import { Szene } from '../../ui/immo/Szene'
+
+/** Der 3D-Viewer (Three.js) wird erst beim ersten Öffnen nachgeladen. */
+const Villa3D = lazy(() => import('../../ui/immo/villa3d/Villa3DViewer'))
 
 const fl = (n: number): string => `${n.toLocaleString('de-DE')} m²`
 
@@ -47,7 +50,7 @@ export function ExposeHero({ q, e, onOpen, klein = false }: { q: ExposeQuelle; e
 }
 
 /** Wischbare Galerie mit Zähler und Beschriftung. */
-function Galerie({ q, e }: { q: ExposeQuelle; e: Expose }) {
+function Galerie({ q, e, drei }: { q: ExposeQuelle; e: Expose; drei?: () => void }) {
   const ref = useRef<HTMLDivElement>(null)
   const [idx, setIdx] = useState(0)
   const liste = bilder(q, e)
@@ -63,6 +66,7 @@ function Galerie({ q, e }: { q: ExposeQuelle; e: Expose }) {
       >
         {liste.map((b) => <div key={b.label} className="gal-slide">{b.node}</div>)}
       </div>
+      {drei && idx === 0 && <button type="button" className="gal-3d" onClick={drei}>🧊 3D-Ansicht</button>}
       <span className="gal-label">{liste[Math.min(idx, liste.length - 1)].label}</span>
       <span className="gal-zaehler">{Math.min(idx, liste.length - 1) + 1} / {liste.length}</span>
       <span className="expose-badges">{e.badges.slice(0, 3).map((b) => <span key={b} className={`badge${b === 'Exklusiv' ? ' gold' : ''}`}>{b}</span>)}</span>
@@ -90,6 +94,7 @@ export function ExposeDetail({ q, e, finanz, aktionen, hinweis, zurueck }: {
 }) {
   const t = IMMO_TYPEN[q.typ]
   const l = IMMO_LAGEN[q.lage]
+  const [dreiD, setDreiD] = useState(false)
   const nutz = q.typ === 'gewerbe' ? 'Nutzfläche' : q.typ === 'bauland' ? 'Grundstücksfläche' : 'Wohnfläche'
   const zeilen: [string, string][] = [
     ['Objektart', t.name],
@@ -109,7 +114,7 @@ export function ExposeDetail({ q, e, finanz, aktionen, hinweis, zurueck }: {
           <span className="muted small">Exposé · {q.stadt}</span>
         </header>
 
-        <Galerie q={q} e={e} />
+        <Galerie q={q} e={e} drei={q.typ === 'villa' ? () => setDreiD(true) : undefined} />
 
         <section className="expose-titel">
           <p className="kategorie">{t.icon} {t.name} · {q.stadt}</p>
@@ -172,6 +177,11 @@ export function ExposeDetail({ q, e, finanz, aktionen, hinweis, zurueck }: {
         </section>
         <p className="muted small expose-fuss">Alle Angaben ohne Gewähr. Objekt-ID {q.id.toUpperCase()}.</p>
       </div>
+      {dreiD && (
+        <Suspense fallback={<div className="viewer3d"><p className="viewer3d-fehler">3D wird geladen …</p></div>}>
+          <Villa3D seed={e.seed} lage={q.lage} flaeche={e.flaeche} titel={e.titel} onClose={() => setDreiD(false)} />
+        </Suspense>
+      )}
       <div className="expose-aktionen"><div className="expose-aktionen-inner">{aktionen}</div></div>
     </div>
   )

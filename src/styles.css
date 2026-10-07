@@ -288,3 +288,17 @@ legend { color: var(--muted); font-size: 0.9rem; padding: 0 0 6px; }
 .card.makler { display: flex; align-items: center; gap: 12px; }
 .avatar { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; background: var(--accent); color: var(--on-accent); flex: 0 0 48px; }
 .card.makler p { margin: 0; }
+
+/* 3D-Ansicht (Villa) */
+.gal-3d { position: absolute; right: 8px; top: 8px; z-index: 1; padding: 6px 12px; border: 0; border-radius: 16px; font: inherit; font-size: 0.8rem; font-weight: 700; color: #fff; background: rgba(15, 25, 20, 0.72); backdrop-filter: blur(4px); cursor: pointer; }
+.viewer3d { position: fixed; inset: 0; z-index: 90; background: #0a0f14; }
+.viewer3d-leinwand { position: absolute; inset: 0; }
+.viewer3d-kopf { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 10px; padding: max(10px, env(safe-area-inset-top)) 12px 10px; background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0)); }
+.viewer3d-kopf .btn { flex: 0 0 auto; width: auto; min-height: 40px; padding: 6px 14px; background: rgba(15, 25, 20, 0.72); color: #fff; border-color: rgba(255, 255, 255, 0.25); }
+.viewer3d-titel { color: #fff; font-weight: 600; font-size: 0.9rem; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.viewer3d-fuss { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 12px max(14px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 8px; background: linear-gradient(to top, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0)); }
+.viewer3d-chips { display: flex; gap: 6px; padding: 4px; border-radius: 22px; background: rgba(15, 25, 20, 0.72); backdrop-filter: blur(4px); }
+.viewer3d-chip { min-height: 36px; padding: 4px 14px; border: 0; border-radius: 18px; font: inherit; font-size: 0.85rem; color: #dfe8e2; background: none; cursor: pointer; }
+.viewer3d-chip.on { background: #fff; color: #11201a; font-weight: 700; }
+.viewer3d-hinweis { margin: 0; font-size: 0.75rem; color: rgba(255, 255, 255, 0.8); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7); }
+.viewer3d-fehler { position: absolute; left: 24px; right: 24px; top: 45%; margin: 0; text-align: center; color: #fff; font-size: 0.95rem; }

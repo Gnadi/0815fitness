@@ -86,6 +86,11 @@ Tab „Finanzen“ mit vier Bereichen: **Übersicht** (Kontostand, Gesamtvermög
   (Typ, Lage, Stadt). Illustrationen sind reine SVG ohne Zusatzpakete: eine Außenansicht je Objektart (Stimmung nach Lage: bedeckt, sonnig, goldene Stunde), ein Grundriss (Treemap-Aufteilung, Erd- und
   Obergeschoss, Regelgeschoss bei Mehrfamilienhaus und Gewerbe, Lageplan bei Bauland), eine stilisierte Lagekarte und die Energieskala A+ bis H. Die Karte in der Liste zeigt Titelbild, Preis, Kurzfakten und
   Rendite, das Detail-Exposé öffnet als Vollbild mit wischbarer Galerie, Preis und Finanzierung, Eckdaten, Energieeffizienz, Ausstattung, Beschreibung, Lage und Makler sowie Kauf- bzw. Verkaufsbuttons.
+- **3D-Ansicht für Villen (`ui/immo/villa3d/`):** Im Exposé einer Villa öffnet der Knopf „🧊 3D-Ansicht“ einen Vollbild-Viewer mit Three.js. Der Viewer ist ein eigener Chunk (rund 610 KB, 155 KB gzip), wird erst beim
+  Öffnen nachgeladen und liegt nicht im Offline-Paket der PWA, sondern im Laufzeit-Cache (`vite.config.ts`). `szene.ts` baut die Villa prozedural aus Objekt-Seed, Lage und Wohnfläche
+  (Geschosse mit Glasfronten und Holzblenden, Pool mit animiertem Wasser, Terrasse, Liegen, Schirm, Auto, Palmen, Zypressen, Hecken, Gartenleuchten, eingerichtetes Wohnzimmer).
+  Der Viewer bietet vier Stimmungen (Bedeckt, Tag, Abend, Nacht) mit Himmelsverlauf, Sonne bzw. Mond, Nebel, Schatten, Umgebungsreflexion, leuchtenden Fenstern und Poolbeleuchtung; die Anfangsstimmung folgt der Lage.
+  Steuerung per Ziehen und Zoomen (OrbitControls, Auto-Rotation bis zur ersten Berührung, aus bei „Bewegung reduzieren“). Ohne WebGL erscheint ein Hinweis, die SVG-Illustration bleibt. Beim Schließen werden Geometrien, Texturen und der WebGL-Kontext freigegeben.
 - Dazu eine Sportinvaliditätsversicherung und rund 24 Finanz-Ereignisse (Börsencrash/-boom, Krypto, Start-up, Anlagebetrug, Casino, Immobilienboom/-crash,
   Mietnomaden, Goldrausch, Zinswende, Dividenden, Tech-Hype …), die ins Depot und ins Immobilienportfolio eingreifen.
 

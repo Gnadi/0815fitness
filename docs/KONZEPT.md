@@ -80,6 +80,12 @@ Tab „Finanzen“ mit vier Bereichen: **Übersicht** (Kontostand, Gesamtvermög
 - **Venture Capital:** Alle 13 Wochen gibt es Start-up-Deals (ab 5.000 € auf dem Konto). Der Einsatz ist bis zum Exit gebunden;
   wöchentlich gibt es Finanzierungsrunden, Down-Rounds, Pleiten (etwa jedes zweite Start-up) oder Exits/Börsengänge (Ø ca. 2× Einsatz bei hoher Streuung).
   Vorzeitiger Verkauf am Zweitmarkt mit 40 % Abschlag.
+- **Exposé:** Jedes Immobilienangebot und jedes gekaufte Objekt hat ein Exposé wie in einem Immobilienportal (`engine/expose.ts`, `screens/game/Expose.tsx`, `ui/immo/`).
+  Die Daten (Wohnfläche, Zimmer, Baujahr, Energieklasse und -bedarf, Geschoss, Grundstück, Ausstattung, Abzeichen wie „Provisionsfrei“, Makler, Titel, Beschreibung, Lagetexte und Entfernungen)
+  werden aus der Objekt-ID abgeleitet, nicht aus dem Spielzufall. Der Spielstand bleibt unverändert und alte Spielstände funktionieren. Die Fläche ergibt sich aus dem Preis und einem ortsüblichen Quadratmeterpreis
+  (Typ, Lage, Stadt). Illustrationen sind reine SVG ohne Zusatzpakete: eine Außenansicht je Objektart (Stimmung nach Lage: bedeckt, sonnig, goldene Stunde), ein Grundriss (Treemap-Aufteilung, Erd- und
+  Obergeschoss, Regelgeschoss bei Mehrfamilienhaus und Gewerbe, Lageplan bei Bauland), eine stilisierte Lagekarte und die Energieskala A+ bis H. Die Karte in der Liste zeigt Titelbild, Preis, Kurzfakten und
+  Rendite, das Detail-Exposé öffnet als Vollbild mit wischbarer Galerie, Preis und Finanzierung, Eckdaten, Energieeffizienz, Ausstattung, Beschreibung, Lage und Makler sowie Kauf- bzw. Verkaufsbuttons.
 - Dazu eine Sportinvaliditätsversicherung und rund 24 Finanz-Ereignisse (Börsencrash/-boom, Krypto, Start-up, Anlagebetrug, Casino, Immobilienboom/-crash,
   Mietnomaden, Goldrausch, Zinswende, Dividenden, Tech-Hype …), die ins Depot und ins Immobilienportfolio eingreifen.
 

@@ -1,5 +1,6 @@
 import * as THREE from 'three'
-import { createRng, type Rng } from '../../../engine/rng'
+import { createRng } from '../../../engine/rng'
+import { kausticTextur, werkzeug } from './bausteine'
 import type { ImmoLage } from '../../../engine/types'
 
 /** Tageszeit bzw. Wetter der 3D-Ansicht. */
@@ -63,6 +64,10 @@ export interface VillaSzene {
   schwankend: { obj: THREE.Object3D; phase: number; amp: number }[]
   /** Ungefähre Ausdehnung des Grundstücks für die Kamera. */
   groesse: { breite: number; tiefe: number; hoehe: number }
+  /** Blickpunkt der Kamera. */
+  ziel: [number, number, number]
+  /** Startposition der Kamera (nur wenn vom Standard abweichend). */
+  kamera?: [number, number, number]
   entsorgen: () => void
 }
 
@@ -72,13 +77,8 @@ const AUTOS = [0x1a1c20, 0xd8dbe0, 0x8a1f1f, 0x2d4a73]
 
 export function baueVilla(p: VillaParameter): VillaSzene {
   const rng = createRng(p.seed)
-  const gruppe = new THREE.Group()
-  const wasser: THREE.Mesh[] = []
-  const innenMaterial: THREE.MeshStandardMaterial[] = []
-  const innenLichter: THREE.PointLight[] = []
-  const aussenLichter: THREE.PointLight[] = []
-  const aussenMaterial: THREE.MeshStandardMaterial[] = []
-  const schwankend: VillaSzene['schwankend'] = []
+  const w = werkzeug(rng)
+  const { gruppe, wasser, innenMaterial, innenLichter, aussenLichter, aussenMaterial, schwankend, std, kiste, innenWarm } = w
 
   const skala = Math.max(0.85, Math.min(1.3, p.flaeche / 420))
   const L = 15 * skala
@@ -90,38 +90,18 @@ export function baueVilla(p: VillaParameter): VillaSzene {
   const luxus = p.lage === 'top' ? 1 : p.lage === 'mittel' ? 0.6 : 0.3
 
   // ---------------------------------------------------------------- Material
-  const std = (farbe: number, rauheit = 0.85, metall = 0): THREE.MeshStandardMaterial => new THREE.MeshStandardMaterial({ color: farbe, roughness: rauheit, metalness: metall })
   const putz = std(PLASTER[rng.int(0, PLASTER.length - 1)], 0.92)
   const holz = std(HOLZ[rng.int(0, HOLZ.length - 1)], 0.75)
   const platte = std(0x2b2d31, 0.6, 0.15)
   const stein = std(0xc2b9a6, 0.85)
   const dunkel = std(0x33363b, 0.5, 0.3)
-  const glas = new THREE.MeshPhysicalMaterial({ color: 0x9ec7e0, roughness: 0.04, metalness: 0.0, transparent: true, opacity: 0.34, envMapIntensity: 1.6, depthWrite: false, clearcoat: 1, clearcoatRoughness: 0.05 })
-  const rahmen = std(0x1f2124, 0.5, 0.5)
-  const rasen = std(0x4f8c45, 1)
+  const glas = w.glas
+  const rahmen = w.rahmen
   const kies = std(0xb8b2a4, 1)
   const hecke = std(0x3f7a40, 1)
-  const innenWarm = (staerke = 1): THREE.MeshStandardMaterial => {
-    const m = new THREE.MeshStandardMaterial({ color: 0xf3e2c0, emissive: 0xffc770, emissiveIntensity: 0, roughness: 0.8 })
-    m.userData.staerke = staerke
-    innenMaterial.push(m)
-    return m
-  }
-
-  const kiste = (b: number, h: number, t: number, mat: THREE.Material, x: number, y: number, z: number, eltern: THREE.Object3D = gruppe, schatten = true): THREE.Mesh => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(b, h, t), mat)
-    m.position.set(x, y, z)
-    m.castShadow = schatten
-    m.receiveShadow = true
-    eltern.add(m)
-    return m
-  }
 
   // ---------------------------------------------------------------- Boden
-  const wiese = new THREE.Mesh(new THREE.CircleGeometry(230, 64), rasen)
-  wiese.rotation.x = -Math.PI / 2
-  wiese.receiveShadow = true
-  gruppe.add(wiese)
+  w.wiese(0x4f8c45)
 
   // Zufahrt und Hof
   kiste(4.6, 0.06, 26, kies, L / 2 - 0.12 * L, 0.03, W / 2 + 12, gruppe, false)
@@ -273,91 +253,10 @@ export function baueVilla(p: VillaParameter): VillaSzene {
   gruppe.add(schirm)
 
   // ---------------------------------------------------------------- Auto
-  const autoFarbe = AUTOS[rng.int(0, AUTOS.length - 1)]
-  const auto = new THREE.Group()
-  const lack = new THREE.MeshStandardMaterial({ color: autoFarbe, roughness: 0.25, metalness: 0.6 })
-  kiste(4.4, 0.55, 1.85, lack, 0, 0.55, 0, auto)
-  kiste(2.3, 0.5, 1.6, lack, -0.2, 1.05, 0, auto)
-  kiste(2.15, 0.34, 1.62, glas, -0.2, 1.08, 0, auto, false)
-  for (const sx of [-1.4, 1.4]) for (const sz of [-0.9, 0.9]) {
-    const rad = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.28, 14), std(0x15171a, 0.9))
-    rad.rotation.x = Math.PI / 2
-    rad.position.set(sx, 0.36, sz)
-    rad.castShadow = true
-    auto.add(rad)
-  }
-  auto.position.set(L / 2 - 0.12 * L, 0.06, W / 2 + 9.5)
-  auto.rotation.y = Math.PI / 2 + (rng.next() - 0.5) * 0.1
-  gruppe.add(auto)
+  w.auto(L / 2 - 0.12 * L, W / 2 + 9.5, Math.PI / 2 + (rng.next() - 0.5) * 0.1, AUTOS[rng.int(0, AUTOS.length - 1)])
 
   // ---------------------------------------------------------------- Garten
-  const laub = (farbe: number): THREE.MeshStandardMaterial => new THREE.MeshStandardMaterial({ color: farbe, roughness: 1, flatShading: true })
-  const blob = (radius: number, mat: THREE.Material, rng2: Rng): THREE.Mesh => {
-    const g = new THREE.IcosahedronGeometry(radius, 1)
-    const pos = g.attributes.position
-    for (let i = 0; i < pos.count; i++) {
-      const f = 1 + (rng2.next() - 0.5) * 0.28
-      pos.setXYZ(i, pos.getX(i) * f, pos.getY(i) * f, pos.getZ(i) * f)
-    }
-    g.computeVertexNormals()
-    const m = new THREE.Mesh(g, mat)
-    m.castShadow = true
-    m.receiveShadow = true
-    return m
-  }
-  const rundbaum = (x: number, z: number, s: number): void => {
-    const baum = new THREE.Group()
-    const stamm = new THREE.Mesh(new THREE.CylinderGeometry(0.16 * s, 0.24 * s, 2.4 * s, 8), std(0x6b4a33, 1))
-    stamm.position.y = 1.2 * s
-    stamm.castShadow = true
-    baum.add(stamm)
-    const krone = new THREE.Group()
-    const farbe = [0x4e8f4a, 0x5aa04e, 0x3f7d46][rng.int(0, 2)]
-    for (const [dx, dy, dz, r] of [[0, 3.4, 0, 1.7], [-1.1, 2.9, 0.4, 1.2], [1.0, 3.0, -0.3, 1.3]] as const) {
-      const b = blob(r * s, laub(farbe), rng)
-      b.position.set(dx * s, dy * s, dz * s)
-      krone.add(b)
-    }
-    baum.add(krone)
-    baum.position.set(x, 0, z)
-    gruppe.add(baum)
-    schwankend.push({ obj: krone, phase: rng.next() * 6, amp: 0.012 })
-  }
-  const zypresse = (x: number, z: number, s: number): void => {
-    const m = blob(1, laub(0x2f6b3a), rng)
-    m.scale.set(0.8 * s, 3.4 * s, 0.8 * s)
-    m.position.set(x, 3.2 * s, z)
-    gruppe.add(m)
-    schwankend.push({ obj: m, phase: rng.next() * 6, amp: 0.006 })
-  }
-  const palme = (x: number, z: number, s: number): void => {
-    const palme = new THREE.Group()
-    const hoehe = 6.5 * s
-    // Gebogener, nach oben dünner werdender Stamm aus einem Röhrenkörper
-    const punkte = [0, 1, 2, 3, 4, 5, 6].map((i) => new THREE.Vector3(Math.sin(i * 0.5) * 0.35 * s - i * 0.04 * s, (hoehe / 6) * i, 0))
-    const stamm = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(punkte), 14, 0.2 * s, 8), std(0x8a6a4a, 1))
-    stamm.castShadow = true
-    palme.add(stamm)
-    const krone = new THREE.Group()
-    krone.position.copy(punkte[6])
-    const wedel = new THREE.MeshStandardMaterial({ color: 0x3f8f4a, roughness: 0.9, side: THREE.DoubleSide, flatShading: true })
-    for (let i = 0; i < 10; i++) {
-      const g = new THREE.ConeGeometry(0.34 * s, 3.4 * s, 3)
-      g.translate(0, 1.7 * s, 0)
-      const w = new THREE.Mesh(g, wedel)
-      w.scale.set(1, 1, 0.25)
-      w.castShadow = true
-      const halter = new THREE.Group()
-      halter.rotation.y = (i / 10) * Math.PI * 2
-      w.rotation.z = -(1.15 + (i % 2) * 0.3)
-      halter.add(w)
-      krone.add(halter)
-    }
-    palme.add(krone)
-    palme.position.set(x, 0, z)
-    gruppe.add(palme)
-    schwankend.push({ obj: krone, phase: rng.next() * 6, amp: 0.02 })
-  }
+  const { rundbaum, zypresse, palme } = w
   const nachbar = L / 2 + 9
   const hinten = -W / 2 - 7
   zypresse(-nachbar, 2, 1.1)
@@ -412,46 +311,7 @@ export function baueVilla(p: VillaParameter): VillaSzene {
   return {
     gruppe, wasser, innenMaterial, innenLichter, aussenLichter, aussenMaterial, schwankend,
     groesse: { breite: L + 28, tiefe: 40, hoehe: H1 + H2 + 0.6 },
-    entsorgen: () => {
-      gruppe.traverse((o) => {
-        const m = o as THREE.Mesh
-        if (m.geometry) m.geometry.dispose()
-        const mat = m.material as THREE.Material | THREE.Material[] | undefined
-        for (const x of Array.isArray(mat) ? mat : mat ? [mat] : []) {
-          const tx = (x as THREE.MeshStandardMaterial).map
-          if (tx) tx.dispose()
-          x.dispose()
-        }
-      })
-    },
+    ziel: [-1, (H1 + H2 + 0.6) * 0.38, 3],
+    entsorgen: w.entsorgen,
   }
-}
-
-/** Wellenmuster für das Wasser (nur im Browser; ohne Canvas bleibt das Wasser einfarbig). */
-function kausticTextur(rng: Rng): THREE.Texture | null {
-  if (typeof document === 'undefined') return null
-  const c = document.createElement('canvas')
-  c.width = 256
-  c.height = 256
-  const ctx = c.getContext('2d')
-  if (!ctx) return null
-  ctx.fillStyle = '#35b6d6'
-  ctx.fillRect(0, 0, 256, 256)
-  ctx.lineCap = 'round'
-  for (let i = 0; i < 70; i++) {
-    const x = rng.next() * 256
-    const y = rng.next() * 256
-    ctx.strokeStyle = `rgba(255,255,255,${0.1 + rng.next() * 0.16})`
-    ctx.lineWidth = 1 + rng.next() * 2.2
-    ctx.beginPath()
-    ctx.moveTo(x, y)
-    ctx.bezierCurveTo(x + 30, y - 20, x + 50, y + 30, x + 90, y + rng.next() * 20 - 10)
-    ctx.stroke()
-  }
-  const t = new THREE.CanvasTexture(c)
-  t.wrapS = THREE.RepeatWrapping
-  t.wrapT = THREE.RepeatWrapping
-  t.repeat.set(3, 2)
-  t.colorSpace = THREE.SRGBColorSpace
-  return t
 }

@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
+import { baueEigenheim } from './eigenheim'
 import { HIMMEL, STIMMUNGEN, baueVilla, standardStimmung } from './szene'
 
 const zaehle = (g: THREE.Object3D): { meshes: number; lichter: number; dreiecke: number } => {
@@ -74,5 +75,48 @@ describe('3D-Villa', () => {
     expect(standardStimmung('einfach')).toBe('bedeckt')
     expect(standardStimmung('mittel')).toBe('tag')
     expect(standardStimmung('top')).toBe('abend')
+  })
+})
+
+describe('3D-Eigenheim', () => {
+  it('baut Haus, Garage, Garten und Spielgeräte mit endlichen Koordinaten', () => {
+    const v = baueEigenheim({ seed: 99, lage: 'mittel', flaeche: 160 })
+    const z = zaehle(v.gruppe)
+    expect(z.meshes).toBeGreaterThan(150)
+    expect(z.lichter).toBeLessThanOrEqual(10)
+    expect(z.dreiecke).toBeLessThan(80_000)
+    v.gruppe.traverse((o) => {
+      const m = o as THREE.Mesh
+      if (!m.isMesh) return
+      const pos = m.geometry.attributes.position
+      for (let i = 0; i < pos.count; i++) expect(Number.isFinite(pos.getX(i) + pos.getY(i) + pos.getZ(i))).toBe(true)
+    })
+    expect(v.innenMaterial.length).toBeGreaterThan(5)
+    expect(v.innenLichter.length).toBeGreaterThanOrEqual(2)
+    expect(v.aussenLichter.length).toBeGreaterThanOrEqual(3)
+    expect(v.schwankend.length).toBeGreaterThan(5)
+    expect(v.kamera).toBeDefined()
+    expect(v.ziel.every(Number.isFinite)).toBe(true)
+    expect(() => v.entsorgen()).not.toThrow()
+  })
+
+  it('ist pro Seed reproduzierbar, verändert sich zwischen Objekten und wächst mit der Fläche', () => {
+    const farben = (v: ReturnType<typeof baueEigenheim>) => {
+      const s: string[] = []
+      v.gruppe.traverse((o) => {
+        const m = o as THREE.Mesh
+        if (m.isMesh && (m.material as THREE.MeshStandardMaterial).color) s.push((m.material as THREE.MeshStandardMaterial).color.getHexString() + m.position.x.toFixed(2) + m.position.z.toFixed(2))
+      })
+      return s.join('|')
+    }
+    const a = baueEigenheim({ seed: 5, lage: 'mittel', flaeche: 150 })
+    const b = baueEigenheim({ seed: 5, lage: 'mittel', flaeche: 150 })
+    const c = baueEigenheim({ seed: 6, lage: 'mittel', flaeche: 150 })
+    expect(farben(a)).toBe(farben(b))
+    expect(farben(a)).not.toBe(farben(c))
+    const klein = baueEigenheim({ seed: 5, lage: 'mittel', flaeche: 100 })
+    const gross = baueEigenheim({ seed: 5, lage: 'mittel', flaeche: 240 })
+    expect(gross.groesse.breite).toBeGreaterThan(klein.groesse.breite)
+    for (const v of [a, b, c, klein, gross]) v.entsorgen()
   })
 })

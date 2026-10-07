@@ -11,8 +11,8 @@ export default defineConfig({
       includeAssets: ['icon.svg'],
       workbox: {
         // Der 3D-Viewer (Three.js) ist groß und wird nur bei Bedarf geladen: nicht vorab cachen, sondern beim ersten Öffnen
-        globIgnores: ['**/Villa3DViewer-*.js'],
-        runtimeCaching: [{ urlPattern: /\/assets\/Villa3DViewer-.*\.js$/, handler: 'CacheFirst', options: { cacheName: 'viewer-3d', expiration: { maxEntries: 2 } } }],
+        globIgnores: ['**/Haus3DViewer-*.js'],
+        runtimeCaching: [{ urlPattern: /\/assets\/Haus3DViewer-.*\.js$/, handler: 'CacheFirst', options: { cacheName: 'viewer-3d', expiration: { maxEntries: 2 } } }],
       },
       manifest: {
         name: 'Karriere-Simulator',

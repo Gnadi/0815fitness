@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import type { ImmoLage } from '../../../engine/types'
+import { baueEigenheim } from './eigenheim'
 import { HIMMEL, STIMMUNGEN, baueVilla, standardStimmung, type Stimmung, type VillaSzene } from './szene'
 
 interface Props {
+  typ: 'villa' | 'eigenheim'
   seed: number
   lage: ImmoLage
   flaeche: number
@@ -50,8 +52,8 @@ export function webglVerfuegbar(): boolean {
   }
 }
 
-/** Drehbare 3D-Ansicht einer Villa im Vollbild, mit Tageszeit-Schalter. */
-export default function Villa3DViewer({ seed, lage, flaeche, titel, onClose }: Props) {
+/** Drehbare 3D-Ansicht einer Villa oder eines Eigenheims im Vollbild, mit Tageszeit-Schalter. */
+export default function Haus3DViewer({ typ, seed, lage, flaeche, titel, onClose }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const [stimmung, setStimmung] = useState<Stimmung>(standardStimmung(lage))
   const [fehler, setFehler] = useState(false)
@@ -80,7 +82,7 @@ export default function Villa3DViewer({ seed, lage, flaeche, titel, onClose }: P
 
     const scene = new THREE.Scene()
     const kamera = new THREE.PerspectiveCamera(38, 1, 0.5, 700)
-    const szene: VillaSzene = baueVilla({ seed, lage, flaeche })
+    const szene: VillaSzene = typ === 'villa' ? baueVilla({ seed, lage, flaeche }) : baueEigenheim({ seed, lage, flaeche })
     scene.add(szene.gruppe)
 
     const kuppel = himmelKuppel()
@@ -150,9 +152,10 @@ export default function Villa3DViewer({ seed, lage, flaeche, titel, onClose }: P
 
     // Kamera und Steuerung
     const b = szene.groesse
-    kamera.position.set(b.breite * 0.55, b.hoehe * 1.7, b.tiefe * 0.62)
+    if (szene.kamera) kamera.position.set(...szene.kamera)
+    else kamera.position.set(b.breite * 0.55, b.hoehe * 1.7, b.tiefe * 0.62)
     const steuerung = new OrbitControls(kamera, renderer.domElement)
-    steuerung.target.set(-1, b.hoehe * 0.38, 3)
+    steuerung.target.set(...szene.ziel)
     steuerung.enableDamping = true
     steuerung.dampingFactor = 0.08
     steuerung.enablePan = false
@@ -226,7 +229,7 @@ export default function Villa3DViewer({ seed, lage, flaeche, titel, onClose }: P
       renderer.domElement.remove()
       wende.current = null
     }
-  }, [seed, lage, flaeche])
+  }, [typ, seed, lage, flaeche])
 
   useEffect(() => {
     wende.current?.(stimmung)

@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { createRng } from '../../../engine/rng'
-import { dachTextur, werkzeug } from './bausteine'
+import { dachBauer, fensterBauer, werkzeug } from './bausteine'
 import type { VillaParameter, VillaSzene } from './szene'
 
 const PUTZ = [0xf2efe8, 0xede0c6, 0xd9d9d6, 0xf1e3b5, 0xcfd8dc]
@@ -37,57 +37,7 @@ export function baueEigenheim(p: VillaParameter): VillaSzene {
   const tuerFarbe = TUEREN[rng.int(0, TUEREN.length - 1)]
 
   // Dach: Prisma plus Ziegelflächen, Firstkappe und verputzte Giebelseiten
-  const dachFarbe = std(Number.parseInt(dachWahl.f.slice(1), 16), 0.8)
-  const giebeldach = (breite: number, hoehe: number, laenge: number): THREE.Group => {
-    const g = new THREE.Group()
-    const form = new THREE.Shape()
-    form.moveTo(-breite / 2, 0)
-    form.lineTo(breite / 2, 0)
-    form.lineTo(0, hoehe)
-    form.lineTo(-breite / 2, 0)
-    const prisma = new THREE.Mesh(new THREE.ExtrudeGeometry(form, { depth: laenge, bevelEnabled: false }), dachFarbe)
-    prisma.rotation.y = Math.PI / 2
-    prisma.position.x = -laenge / 2
-    prisma.castShadow = true
-    prisma.receiveShadow = true
-    g.add(prisma)
-    const schraeg = Math.hypot(breite / 2, hoehe)
-    const winkel = Math.atan2(hoehe, breite / 2)
-    const tex = dachTextur(dachWahl.f, dachWahl.fuge)
-    if (tex) tex.repeat.set(laenge / 1.1, schraeg / 0.55)
-    const flaeche = new THREE.MeshStandardMaterial({ color: tex ? 0xffffff : Number.parseInt(dachWahl.f.slice(1), 16), map: tex, roughness: 0.85 })
-    const seite = new THREE.Group()
-    const platte = new THREE.Mesh(new THREE.PlaneGeometry(laenge, schraeg), flaeche)
-    platte.rotation.x = -(Math.PI / 2 - winkel)
-    const n = new THREE.Vector3(0, breite / 2, hoehe).normalize()
-    platte.position.set(0, hoehe / 2, breite / 4).addScaledVector(n, 0.012)
-    platte.castShadow = true
-    platte.receiveShadow = true
-    seite.add(platte)
-    g.add(seite)
-    const hinten = seite.clone()
-    hinten.rotation.y = Math.PI
-    g.add(hinten)
-    const first = new THREE.Mesh(new THREE.BoxGeometry(laenge + 0.1, 0.14, 0.4), dachFarbe)
-    first.position.y = hoehe + 0.03
-    first.castShadow = true
-    g.add(first)
-    // Giebelseiten aus Putz, etwas kleiner als das Dach (Ortgang bleibt in Dachfarbe sichtbar)
-    for (const sx of [-1, 1]) {
-      const s2 = new THREE.Shape()
-      s2.moveTo(-breite / 2 + 0.16, 0.0)
-      s2.lineTo(breite / 2 - 0.16, 0.0)
-      s2.lineTo(0, hoehe - 0.22)
-      s2.lineTo(-breite / 2 + 0.16, 0.0)
-      const dreieck = new THREE.Mesh(new THREE.ExtrudeGeometry(s2, { depth: 0.05, bevelEnabled: false }), putz)
-      dreieck.rotation.y = Math.PI / 2
-      dreieck.position.x = sx * (laenge / 2 + 0.005) - (sx === 1 ? 0 : 0.05)
-      dreieck.position.y = 0.01
-      dreieck.receiveShadow = true
-      g.add(dreieck)
-    }
-    return g
-  }
+  const giebeldach = dachBauer(w, { putz, dachHex: dachWahl.f, fuge: dachWahl.fuge })
 
   // ---------------------------------------------------------------- Boden
   w.wiese(0x55904a)
@@ -120,26 +70,7 @@ export function baueEigenheim(p: VillaParameter): VillaSzene {
   kiste(1.05, 0.14, 1.05, std(0x55575b, 0.7), kamin.position.x, kamin.position.y + 1.15, kamin.position.z)
 
   // Fenster (Rahmen, Scheibe, warmer Innenraum, optional Läden)
-  const fenster = (x: number, y: number, z: number, breite: number, hoehe: number, richtung: number, laeden: boolean): void => {
-    const f = new THREE.Group()
-    f.position.set(x, y, z)
-    f.rotation.y = richtung
-    const r = 0.07
-    kiste(breite, r, 0.12, weiss, 0, hoehe / 2 - r / 2, 0.06, f, false)
-    kiste(breite, r, 0.12, weiss, 0, -hoehe / 2 + r / 2, 0.06, f, false)
-    kiste(r, hoehe, 0.12, weiss, -breite / 2 + r / 2, 0, 0.06, f, false)
-    kiste(r, hoehe, 0.12, weiss, breite / 2 - r / 2, 0, 0.06, f, false)
-    kiste(0.05, hoehe, 0.1, weiss, 0, 0, 0.06, f, false)
-    kiste(breite - 0.1, hoehe - 0.1, 0.03, glas, 0, 0, 0.09, f, false)
-    kiste(breite - 0.14, hoehe - 0.14, 0.02, innenWarm(0.8), 0, 0, 0.025, f, false)
-    kiste(breite + 0.3, 0.09, 0.3, stein, 0, -hoehe / 2 - 0.05, 0.15, f)
-    if (laeden) {
-      const m = std(ladenFarbe, 0.8)
-      kiste(breite * 0.46, hoehe, 0.05, m, -breite * 0.73, 0, 0.05, f)
-      kiste(breite * 0.46, hoehe, 0.05, m, breite * 0.73, 0, 0.05, f)
-    }
-    gruppe.add(f)
-  }
+  const fenster = fensterBauer(w, { rahmen: weiss, bank: stein, ladenHex: ladenFarbe })
   const spalten = Math.max(3, Math.round(L / 3.3))
   const tuerSpalte = rng.int(0, spalten - 1)
   let eingangX = 0

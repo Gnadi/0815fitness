@@ -83,6 +83,8 @@ export const inLand = (c: Career, ...land: string[]): boolean => profi(c) && lan
 /** Social-Media-Reichweite in Tausend Followern (0 = noch kein Kanal). */
 export const follower = (c: Career): number => Number(c.flags.follower ?? 0)
 export const FOLLOWER = (d: number): Effekt => ({ t: 'zaehle', k: 'follower', d })
+/** Der Spieler verbringt gerade ein Jahr ohne Verein. */
+export const imPausenjahr = (c: Career): boolean => c.vereinId === '' && c.vertrag === null && !c.saison.jugend && zahl(c, 'pausenjahre') > 0
 /** Verkürzt die laufende Verletzung um `wochen`. */
 export const REHA = (wochen: number): Effekt => ({ t: 'reha', wochen })
 /** Art des aktuellen Transferfensters (null außerhalb). */

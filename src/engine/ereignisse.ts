@@ -3,14 +3,14 @@ import type { Ausgang, Effekt, EreignisDef, EreignisOption, Txt, Wurf } from '..
 import { VEREINE } from '../data/clubs'
 import { zufallsName } from '../data/names'
 import { applyTraits } from './match'
-import { clamp } from './rating'
+import { clamp, overall } from './rating'
 import { SKILL_KEYS } from './rating'
 import type { Rng } from './rng'
 import { ANLAGE_INFO, ANLAGEN, auszahlen, depotVon, einzahlen, neuerDeal, skaliere, vcAktiv, vcAufstocken, vcEinsteigen } from './finanzen'
 import { immoAktiv, immoSkalieren, immoWert } from './immobilien'
 import { PRIVAT_BY_ID } from '../data/privat'
 import { erzeugeAngebote, vereinsAngebot } from './wirtschaft'
-import { neueMitarbeiter } from './transfers'
+import { fuehreWechselAus, neueMitarbeiter } from './transfers'
 import type { AktionName } from '../data/events/types'
 import type { Angebot, Career, Skills, Traits } from './types'
 
@@ -294,6 +294,19 @@ function fuehreAktionAus(c: Career, name: AktionName, rng: Rng): { c: Career; wi
       })
       if (!neu.length) return { c, wirkung: ['Kein Verein meldet sich: Die Leistung überzeugt (noch) nicht genug.'] }
       return { c: { ...c, angebote: [...c.angebote, ...neu] }, wirkung: [`${neu.length === 1 ? 'Ein Angebot' : `${neu.length} Angebote`} im Menü „Vertrag“`] }
+    }
+    case 'probetraining-vertrag':
+    case 'showcase-vertrag': {
+      if (c.vereinId !== '' || c.vertrag !== null || c.saison.jugend) return { c, wirkung: [] }
+      const ov = overall(c.spieler)
+      const amateur = name === 'probetraining-vertrag'
+      const [a] = erzeugeAngebote(c, rng, {
+        art: 'vereinslos', anzahl: 1, ausser: [],
+        maxStaerke: amateur ? ov : ov + 4, minStaerke: amateur ? ov - 25 : ov - 12,
+      })
+      if (!a) return { c, wirkung: ['Kein Verein hat Verwendung für dich.'] }
+      const mitVertrag = fuehreWechselAus({ ...c, angebote: [] }, rng, { ...a, gehalt: Math.round((a.gehalt * (amateur ? 0.6 : 0.9)) / 1000) * 1000, rolle: amateur ? 'Rotation' : a.rolle, jahre: Math.min(a.jahre, amateur ? 1 : 2) })
+      return { c: { ...mitVertrag, flags: { ...mitVertrag.flags, pausenjahrWunsch: false } }, wirkung: [`Vertrag bei ${VEREINE[a.vereinId].name}: Das Pausenjahr ist vorbei`] }
     }
     case 'sponsor-neu':
       return { c: { ...c, flags: { ...c.flags, sponsor: true } }, wirkung: ['Neuer Sponsor'] }

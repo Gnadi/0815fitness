@@ -131,6 +131,7 @@ function pausenjahrStarten(c: Career, gewollt: boolean): Career {
     ...c,
     spieler: { ...c.spieler, traits: applyTraits(c.spieler.traits, { moral: gewollt ? -2 : -6, ruf: gewollt ? -1 : -3, fanbeliebtheit: -4 }) },
     flags: { ...c.flags, pausenjahre: Number(c.flags.pausenjahre ?? 0) + 1, pausenjahrWunsch: false },
+    geplant: [...c.geplant, { id: 'pj-start', ab: c.wochenGesamt + 1 }],
     log: [...c.log, fmtLog(c, text)],
   }
 }
@@ -147,7 +148,8 @@ export function pausenjahrUmschalten(c: Career): Career {
 export function fuehreWechselAus(c: Career, rng: Rng, a: Angebot): Career {
   const neu = VEREINE[a.vereinId]
   const alt = c.vereinId ? VEREINE[c.vereinId].name : 'vereinslos'
-  const winter = c.fenster === 'winter'
+  // Wer im Pausenjahr mitten in der Saison unterschreibt, wird wie ein Winterwechsel behandelt
+  const winter = c.fenster === 'winter' || (c.vereinId === '' && c.fenster !== 'sommer' && c.vertrag === null && !c.saison.jugend)
   const endeSaison = winter ? c.uhr.saison + a.jahre - 1 : c.uhr.saison + a.jahre
 
   let next: Career = {

@@ -16,6 +16,9 @@ export type AktionName =
   /** Holt Transferangebote ins Vertrags-Menü (nur im Transferfenster): von Spitzenklubs bzw. vom freien Markt. */
   | 'angebote-spitze'
   | 'angebote-markt'
+  /** Pausenjahr: Probetraining bzw. Showcase-Camp führt zu einem Vertrag (nur ohne Verein, auch mitten in der Saison). */
+  | 'probetraining-vertrag'
+  | 'showcase-vertrag'
   | 'sponsor-neu'
   | 'sponsor-ende'
   | 'skandal'

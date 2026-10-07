@@ -13,12 +13,12 @@ const input: NewCareerInput = {
   fuss: 'rechts', hintergrund: 'arbeiterfamilie', archetyp: 'strassenfussballer', seed: 7,
 }
 
-const NEU = ['s-', 'l-', 'so-', 'vd-', 'la-', 'tr-', 'vl-', 'nt-', 'rv-', 'sk-']
+const NEU = ['s-', 'l-', 'so-', 'vd-', 'la-', 'tr-', 'vl-', 'nt-', 'rv-', 'sk-', 'pj-']
 const neueEreignisse = ALLE_EREIGNISSE.filter((e) => NEU.some((p) => e.id.startsWith(p)))
 
 describe('Ereignis-Pakete (Saison, Lebensphasen, Social, Vereinsleben)', () => {
-  it('bringt mindestens 110 neue Ereignisse mit', () => {
-    expect(neueEreignisse.length).toBeGreaterThanOrEqual(110)
+  it('bringt mindestens 120 neue Ereignisse mit', () => {
+    expect(neueEreignisse.length).toBeGreaterThanOrEqual(120)
   })
 
   it('Texte, Titel und Bedingungen laufen in jeder Lage ohne Fehler', () => {
@@ -131,5 +131,42 @@ describe('Ereignis-Pakete (Saison, Lebensphasen, Social, Vereinsleben)', () => {
   it('Pausenjahr lässt sich nur im Sommerfenster ohne Vertrag planen', () => {
     const profi = spieleSaisons(createCareer({ ...input, vereinId: 'DE.hannover-96' }), 2)
     expect(Aktionen.pausenjahr(profi).flags.pausenjahrWunsch).not.toBe(true)
+  })
+
+  function pausenCareer(): Career {
+    let c = spieleSaisons(createCareer({ ...input, vereinId: 'DE.hannover-96' }), 2)
+    c = { ...c, vertrag: { ...c.vertrag!, endeSaison: c.uhr.saison } }
+    let guard = 0
+    while (!(c.fenster === 'sommer' && c.vertrag === null) && guard++ < 5000) c = bot(c)
+    c = Aktionen.pausenjahr({ ...c, angebote: [] })
+    while (c.phase !== 'saisonende' && guard++ < 20_000) c = bot(c)
+    return Aktionen.naechsteSaison(c)
+  }
+
+  it('Pausenjahr-Ereignisse: Auftakt ist geplant, mehrere Ereignisse sind verfügbar', () => {
+    const c = pausenCareer()
+    expect(c.vereinId).toBe('')
+    expect(c.ereignis?.id === 'pj-start' || c.ereignisZeiten['pj-start'] !== undefined || c.geplant.some((g) => g.id === 'pj-start')).toBe(true)
+    const frei = ALLE_EREIGNISSE.filter((e) => e.id.startsWith('pj-') && e.gewicht > 0 && ereignisVerfuegbar(c, e))
+    expect(frei.length).toBeGreaterThanOrEqual(5)
+    // Ereignisse außerhalb des Pausenjahres dürfen nicht auftreten
+    const profi = spieleSaisons(createCareer({ ...input, vereinId: 'DE.hannover-96' }), 3)
+    expect(ALLE_EREIGNISSE.filter((e) => e.id.startsWith('pj-') && ereignisVerfuegbar(profi, e))).toHaveLength(0)
+  })
+
+  it('Probetraining im Pausenjahr führt mitten in der Saison zu einem Vertrag in einer passenden Liga', () => {
+    const c = pausenCareer()
+    const r = wendeEffekteAn(c, [{ t: 'aktion', name: 'showcase-vertrag' }], createRng(11))
+    if (r.c.vereinId === '') {
+      expect(r.wirkung.join()).toContain('Kein Verein')
+      return
+    }
+    expect(r.c.vertrag).not.toBeNull()
+    expect(r.c.saison.teams).toContain(r.c.vereinId)
+    expect(r.c.saison.jugend).toBe(false)
+    expect(r.c.historie.some((h) => h.verein === 'Vereinslos')).toBe(true)
+    // Weiterspielen funktioniert
+    const weiter = spieleSaisons(r.c, 1)
+    expect(weiter.phase === 'karriereende' || weiter.vereinId !== '').toBe(true)
   })
 })

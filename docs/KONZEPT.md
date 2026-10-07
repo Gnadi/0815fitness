@@ -96,7 +96,7 @@ Eigener Tab „Privat“ (🏡) mit vier Bereichen:
 - Fünf neue Privat-Ereignisse (Hund vor der Tür, Dach der Eltern, Jahrestag, Reise mit den Jungs, neues Hobby).
 
 ## Ereignissystem
-Ereignisse sind datengetriebene Karten (`src/data/events/*`, rund 270 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
+Ereignisse sind datengetriebene Karten (`src/data/events/*`, rund 285 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
 Würfen (Skills/Traits/feste Chance), Effekten und **Folgeereignissen** (verzögerte Ketten):
 
 - **Jugend, Kabine, Trainer, Privat, Familie, Medien, Karriere, Verein, Gesundheit**
@@ -124,6 +124,10 @@ Vier thematische Pakete erweitern die Grundkategorien (je eine Datei in `src/dat
 - **Nationalteam (`nationalteam.ts`):** Streit mit dem Nationaltrainer, Verein gegen Verband, Hymne, Kapitänsbinde, Turnierkader, Teamhotel, Elfmeterschießen, Fans im Turnierland, Rücktritt aus der Nationalmannschaft.
 - **Rivale (`rivale.ts`):** Kette über `flags.rivalitaet` (Duell → Fehde → Showdown → Versöhnung oder Eiszeit) plus Trainingswette, Foul und Wiedersehen als Mitspieler.
 - **Skandale (`skandale.ts`):** Berater-Betrug mit Prozess, Stalker, Einbruch, Clan-Erpressung, falsche Schlagzeile, Autounfall, Zoll, Klage des Ex-Vereins, Doping-Gerücht.
+- **Pausenjahr (`pausenjahr.ts`):** 14 Ereignisse nur für Spieler ohne Verein (`imPausenjahr`): Auftakt mit Planwahl, Probetraining beim Amateurklub, Showcase-Camp, Individualtraining,
+  Geldsorgen, Nebenjob, TV-Experte, vergessene Fans, Weltreise, letztes Angebot des Beraters, Familienzeit, Sinnkrise (inkl. freiwilligem Karriereende), Spielergewerkschaft, Jahresbilanz.
+  Die Aktionen `probetraining-vertrag` (Amateurklub) und `showcase-vertrag` (passender Verein) schließen mitten in der Saison einen Vertrag ab und beenden damit das Pausenjahr;
+  der Wechsel wird dabei wie ein Winterwechsel behandelt (neue Liga wird nachsimuliert).
 - Neuer Effekt `vereinsstaerke`: verändert die Stärke des aktuellen Vereins (Investor, Insolvenz, Krisenbewältigung).
 
 ## Erfolge & Ruhm

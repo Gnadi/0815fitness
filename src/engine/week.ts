@@ -97,14 +97,21 @@ export function startWeek(c: Career, focus: TrainingFocus): Career {
     const einkommen = wochenEinkommen(c)
 
     let verletzung = c.verletzung
+    let flags = c.flags
+    let geplant = c.geplant
     let trainingText = `Training: ${FOCUS[focus].name}`
     if (verletzung) {
       const rest = verletzung.wochen - 1
       trainingText = `Reha: ${verletzung.name}`
+      const rehaWochen = Number(c.flags.rehaWochen ?? 0) + 1
       if (rest <= 0) {
         hinweise.push(`${verletzung.name} ist ausgeheilt. Du bist wieder fit!`)
         verletzung = null
+        // Nach langer Pause wartet ein Comeback-Ereignis
+        flags = { ...flags, rehaWochen: 0 }
+        if (rehaWochen >= 4 && c.vereinId !== '') geplant = [...geplant, { id: 'vl-comeback', ab: c.wochenGesamt + 1 }]
       } else {
+        flags = { ...flags, rehaWochen }
         hinweise.push(`Noch ${rest} Woche${rest === 1 ? '' : 'n'} Pause wegen ${verletzung.name}.`)
         verletzung = { ...verletzung, wochen: rest }
       }
@@ -147,6 +154,8 @@ export function startWeek(c: Career, focus: TrainingFocus): Career {
       ...c,
       training: focus,
       saison,
+      flags,
+      geplant,
       spieler: { ...c.spieler, geld: c.spieler.geld + einkommen, skills, traits: { ...c.spieler.traits, fitness, privatglueck } },
       verletzung,
       sperre,

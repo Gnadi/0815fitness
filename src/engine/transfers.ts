@@ -2,10 +2,11 @@ import { VEREINE } from '../data/clubs'
 import { zufallsName } from '../data/names'
 import { applyTraits } from './match'
 import { alter, overall } from './rating'
+import { ligaVonVerein } from './welt'
 import type { Rng } from './rng'
 import { aktuelleLiga, baueSaison } from './saisonAufbau'
-import { jugendGehalt, erzeugeAngebote, marktwert, notAngebot, vereinsAngebot, verhandle } from './wirtschaft'
 import { simuliereSpieltag } from './welt'
+import { jugendGehalt, erzeugeAngebote, marktwert, notAngebot, vereinsAngebot, verhandle } from './wirtschaft'
 import type { Angebot, Career, Personen, SeasonStats } from './types'
 
 const fmtLog = (c: Career, text: string) => `${c.uhr.saison}/${String(c.uhr.saison + 1).slice(2)}: ${text}`
@@ -40,6 +41,10 @@ export function oeffneFenster(c: Career, rng: Rng, fenster: 'sommer' | 'winter')
   if (fenster === 'winter') {
     if (!c.saison.jugend && !c.leihe && c.vertrag) {
       next.angebote = erzeugeAngebote(next, rng, { art: 'transfer', anzahl: rng.int(0, 2) + wunsch, ausser })
+    } else if (!c.saison.jugend && !c.vertrag && !c.vereinId) {
+      // Pausenjahr: Wer ohne Verein dasteht, bekommt im Winter vielleicht doch noch Angebote
+      next.angebote = erzeugeAngebote(next, rng, { art: 'vereinslos', anzahl: rng.int(0, 2), ausser: [] })
+      if (next.angebote.length) next.log = [...next.log, fmtLog(c, 'Im Winter melden sich Vereine beim vereinslosen Spieler.')]
     }
     return next
   }
@@ -70,7 +75,7 @@ export function oeffneFenster(c: Career, rng: Rng, fenster: 'sommer' | 'winter')
     hinweise.push('Die Jugendzeit endet: Zeit für den ersten Profivertrag.')
   } else if (next.vertrag && next.vertrag.endeSaison <= c.uhr.saison) {
     const alt = next.vereinId
-    next = { ...next, vertrag: null, vereinId: '' }
+    next = { ...next, vertrag: null, vereinId: '', flags: { ...next.flags, pausenLiga: ligaVonVerein(next.welt, alt) ?? VEREINE[alt].ligaStart } }
     next.angebote = [
       ...erzeugeAngebote(next, rng, { art: 'vereinslos', anzahl: rng.int(2, 4) + wunsch, ausser: [alt] }),
     ]
@@ -78,6 +83,10 @@ export function oeffneFenster(c: Career, rng: Rng, fenster: 'sommer' | 'winter')
     hinweise.push(`Dein Vertrag bei ${VEREINE[alt].name} ist ausgelaufen. Du bist vereinslos.`)
   } else if (next.vertrag && !c.saison.jugend) {
     next.angebote = erzeugeAngebote(next, rng, { art: 'transfer', anzahl: rng.int(0, 3) + wunsch, ausser: [next.vereinId] })
+  } else if (!next.vertrag && !next.vereinId && !c.saison.jugend) {
+    // Ende des Pausenjahres: ein neuer Anlauf auf dem Markt
+    next.angebote = erzeugeAngebote(next, rng, { art: 'vereinslos', anzahl: rng.int(0, 3), ausser: [] })
+    hinweise.push('Nach einem Jahr ohne Verein sondiert dein Berater den Markt.')
   }
   if (c.flags.leiheWunsch === true && next.vertrag && !next.leihe && !c.saison.jugend) {
     const ov = overall(next.spieler)
@@ -94,7 +103,9 @@ export function schliesseFenster(c: Career, rng: Rng): Career {
   let next = c
   if (c.fenster === 'sommer') {
     const beliebig = c.angebote.filter((a) => a.art === 'vereinslos' || a.art === 'profivertrag' || a.art === 'transfer')
-    if (brauchtVertrag(c)) {
+    if (brauchtVertrag(c) && c.vertrag === null && !c.saison.jugend && (c.flags.pausenjahrWunsch === true || (beliebig.length === 0 && keinInteresse(c)))) {
+      next = pausenjahrStarten(c, c.flags.pausenjahrWunsch === true)
+    } else if (brauchtVertrag(c)) {
       const bestes = [...beliebig].sort((a, b) => b.gehalt * (b.rolle === 'Stammspieler' ? 1.3 : 1) - a.gehalt * (a.rolle === 'Stammspieler' ? 1.3 : 1))[0]
       const a = bestes ?? notAngebot(c, rng, c.vertrag ? 'profivertrag' : 'vereinslos')
       next = fuehreWechselAus(c, rng, a)
@@ -104,13 +115,41 @@ export function schliesseFenster(c: Career, rng: Rng): Career {
   return { ...next, fenster: null, angebote: [], wechselwunsch: false }
 }
 
+// ---------------------------------------------------------------- Pausenjahr
+
+/** Kein Verein will den Spieler: er ist zu schwach für den Markt oder zu alt. Nur beim ersten Mal automatisch. */
+function keinInteresse(c: Career): boolean {
+  if (Number(c.flags.pausenjahre ?? 0) >= 1) return false
+  const schwaechster = Math.min(...Object.values(VEREINE).filter((v) => v.land === c.spieler.nationalitaet).map((v) => c.welt.staerke[v.id]))
+  return alter(c.spieler.geburtsdatum, c.uhr.saison + 1) >= 32 || overall(c.spieler) < schwaechster - 6
+}
+
+/** Der Spieler bleibt ein Jahr ohne Verein (Training, Privatleben, keine Spiele). */
+function pausenjahrStarten(c: Career, gewollt: boolean): Career {
+  const text = gewollt ? 'Du bleibst ein Jahr ohne Verein.' : 'Kein Verein will dich unter Vertrag nehmen. Dir bleibt ein Jahr ohne Verein.'
+  return {
+    ...c,
+    spieler: { ...c.spieler, traits: applyTraits(c.spieler.traits, { moral: gewollt ? -2 : -6, ruf: gewollt ? -1 : -3, fanbeliebtheit: -4 }) },
+    flags: { ...c.flags, pausenjahre: Number(c.flags.pausenjahre ?? 0) + 1, pausenjahrWunsch: false },
+    geplant: [...c.geplant, { id: 'pj-start', ab: c.wochenGesamt + 1 }],
+    log: [...c.log, fmtLog(c, text)],
+  }
+}
+
+/** Schaltet um, ob der Spieler im Sommer ein Jahr ohne Verein bleiben will. Nur ohne Vertrag im Sommerfenster. */
+export function pausenjahrUmschalten(c: Career): Career {
+  if (c.fenster !== 'sommer' || c.vertrag !== null || c.saison.jugend) return c
+  return { ...c, flags: { ...c.flags, pausenjahrWunsch: c.flags.pausenjahrWunsch !== true } }
+}
+
 // ---------------------------------------------------------------- Wechsel
 
 /** Wickelt einen Vereinswechsel ab (Transfer, Profivertrag, Vereinslos). */
 export function fuehreWechselAus(c: Career, rng: Rng, a: Angebot): Career {
   const neu = VEREINE[a.vereinId]
   const alt = c.vereinId ? VEREINE[c.vereinId].name : 'vereinslos'
-  const winter = c.fenster === 'winter'
+  // Wer im Pausenjahr mitten in der Saison unterschreibt, wird wie ein Winterwechsel behandelt
+  const winter = c.fenster === 'winter' || (c.vereinId === '' && c.fenster !== 'sommer' && c.vertrag === null && !c.saison.jugend)
   const endeSaison = winter ? c.uhr.saison + a.jahre - 1 : c.uhr.saison + a.jahre
 
   let next: Career = {
@@ -212,8 +251,9 @@ export function nimmAn(c: Career, rng: Rng, angebotId: string): Career {
     }
   } else {
     next = fuehreWechselAus(c, rng, a)
+    if (a.art === 'transfer' && rng.chance(0.25)) next = { ...next, geplant: [...next.geplant, { id: 'tr-medizincheck', ab: next.wochenGesamt + 1 }] }
   }
-  return { ...next, angebote: [], wechselwunsch: false }
+  return { ...next, angebote: [], wechselwunsch: false, flags: { ...next.flags, pausenjahrWunsch: false } }
 }
 
 export function lehneAb(c: Career, angebotId: string): Career {

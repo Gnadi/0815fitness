@@ -57,6 +57,7 @@ function AngebotKarte({ a, c }: { a: Angebot; c: Career }) {
 export function VertragTab({ c }: { c: Career }) {
   const leiheAnfragen = useCareer((s) => s.leiheAnfragen)
   const wechselwunsch = useCareer((s) => s.wechselwunsch)
+  const pausenjahr = useCareer((s) => s.pausenjahr)
   const v = c.vertrag
   const verein = c.vereinId ? VEREINE[c.vereinId] : null
   return (
@@ -73,7 +74,7 @@ export function VertragTab({ c }: { c: Career }) {
             <div><span className="muted">Marktwert</span><strong>{fmtGeld(marktwert(c.spieler, c.uhr.saison))}</strong></div>
             {c.leihe && <div><span className="muted">Stammverein</span><strong>{VEREINE[c.leihe.vonVerein].name}</strong></div>}
           </div>
-        ) : <p className="alert">Du bist vereinslos. Im Sommerfenster findest du Angebote.</p>}
+        ) : <p className="alert">Du bist vereinslos. {c.fenster ? 'Im Transferfenster findest du Angebote.' : 'Im nächsten Transferfenster melden sich vielleicht wieder Vereine.'}</p>}
       </section>
 
       {!c.fenster && c.angebote.some((a) => a.art === 'verlaengerung') && (
@@ -94,6 +95,19 @@ export function VertragTab({ c }: { c: Career }) {
         </>
       ) : (
         <p className="muted">Außerhalb der Transferfenster (Winter- und Sommerpause) kannst du nicht wechseln.</p>
+      )}
+
+      {!v && c.fenster === 'sommer' && !c.saison.jugend && (
+        <section className="card">
+          <h2>Ein Jahr ohne Verein</h2>
+          <p className="muted">
+            Wenn kein Angebot passt (oder niemand dich will), kannst du ein Jahr ohne Verein verbringen: Du trainierst weiter und lebst von deinem Geld,
+            spielst aber nicht. Im Winter und im nächsten Sommer melden sich vielleicht neue Vereine. Nimmst du vorher ein Angebot an, entfällt das Pausenjahr.
+          </p>
+          <button className={`btn${c.flags.pausenjahrWunsch === true ? ' primary' : ''}`} onClick={pausenjahr}>
+            {c.flags.pausenjahrWunsch === true ? 'Pausenjahr geplant (zurücknehmen)' : 'Ein Jahr vereinslos bleiben'}
+          </button>
+        </section>
       )}
 
       {v && !c.saison.jugend && (

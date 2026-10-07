@@ -3,7 +3,7 @@ import type { Ausgang, Effekt, EreignisDef, EreignisOption, Txt, Wurf } from '..
 import { VEREINE } from '../data/clubs'
 import { zufallsName } from '../data/names'
 import { applyTraits } from './match'
-import { clamp } from './rating'
+import { clamp, overall } from './rating'
 import { SKILL_KEYS } from './rating'
 import type { Rng } from './rng'
 import { ANLAGE_INFO, ANLAGEN, auszahlen, depotVon, einzahlen, neuerDeal, skaliere, vcAktiv, vcAufstocken, vcEinsteigen } from './finanzen'
@@ -13,6 +13,9 @@ import { erzeugeAngebote, vereinsAngebot } from './wirtschaft'
 import { fuehreWechselAus, neueMitarbeiter } from './transfers'
 import type { AktionName } from '../data/events/types'
 import type { Angebot, Career, Skills, Traits } from './types'
+
+/** Charaktere neuer Trainer; steuert die Trainer-Ereignisse in `saison.ts`. */
+const TRAINER_TYPEN = ['motivator', 'taktiker', 'diktator', 'altmeister', 'jugendfoerderer']
 
 const TRAIT_LABEL: Record<keyof Traits, string> = {
   moral: 'Moral', selbstvertrauen: 'Selbstvertrauen', disziplin: 'Disziplin', professionalitaet: 'Professionalität',
@@ -193,6 +196,14 @@ export function wendeEffekteAn(c: Career, effekte: readonly Effekt[], rng: Rng):
         }
         break
       }
+      case 'vereinsstaerke': {
+        if (!next.vereinId) break
+        const alt = next.welt.staerke[next.vereinId] ?? 0
+        const neu = clamp(alt + e.d, 20, 100)
+        next = { ...next, welt: { ...next.welt, staerke: { ...next.welt.staerke, [next.vereinId]: neu } } }
+        if (neu !== alt) wirkung.push(`Vereinsstärke ${vz(neu - alt)}`)
+        break
+      }
       case 'flag':
         next = { ...next, flags: { ...next.flags, [e.k]: e.v ?? true } }
         break
@@ -263,7 +274,7 @@ function fuehreAktionAus(c: Career, name: AktionName, rng: Rng): { c: Career; wi
     }
     case 'trainer-wechsel':
       return {
-        c: { ...c, personen: neueMitarbeiter(land, rng, c.personen), spieler: { ...c.spieler, traits: applyTraits(c.spieler.traits, { trainerBeziehung: 50 - c.spieler.traits.trainerBeziehung }) } },
+        c: { ...c, flags: { ...c.flags, trainerTyp: rng.pick(TRAINER_TYPEN) }, personen: neueMitarbeiter(land, rng, c.personen), spieler: { ...c.spieler, traits: applyTraits(c.spieler.traits, { trainerBeziehung: 50 - c.spieler.traits.trainerBeziehung }) } },
         wirkung: ['Neuer Trainer'],
       }
     case 'partner-neu':
@@ -272,10 +283,30 @@ function fuehreAktionAus(c: Career, name: AktionName, rng: Rng): { c: Career; wi
       return { c: { ...c, personen: { ...c.personen, partner: null } }, wirkung: ['Beziehung vorbei'] }
     case 'wechselwunsch':
       return { c: { ...c, wechselwunsch: true }, wirkung: ['Wechselwunsch hinterlegt'] }
-    case 'verein-wechseln-erzwingen': {
-      const angebote = erzeugeAngebote(c, rng, { art: 'transfer', anzahl: 1, ausser: [c.vereinId] })
-      if (!angebote.length) return { c, wirkung: [] }
-      return { c: fuehreWechselAus({ ...c, fenster: null }, rng, angebote[0]), wirkung: [`Wechsel zu ${VEREINE[angebote[0].vereinId].name}`] }
+    case 'angebote-spitze':
+    case 'angebote-markt': {
+      if (!c.fenster || !c.vertrag) return { c, wirkung: ['Das Transferfenster ist gerade nicht offen.'] }
+      const spitze = name === 'angebote-spitze'
+      const ausser = [c.vereinId, ...(c.leihe ? [c.leihe.vonVerein] : []), ...c.angebote.map((a) => a.vereinId)]
+      const neu = erzeugeAngebote(c, rng, {
+        art: 'transfer', anzahl: spitze ? 2 : rng.int(1, 3), ausser,
+        minStaerke: spitze ? (c.welt.staerke[c.vereinId] ?? 0) - 2 : undefined,
+      })
+      if (!neu.length) return { c, wirkung: ['Kein Verein meldet sich: Die Leistung überzeugt (noch) nicht genug.'] }
+      return { c: { ...c, angebote: [...c.angebote, ...neu] }, wirkung: [`${neu.length === 1 ? 'Ein Angebot' : `${neu.length} Angebote`} im Menü „Vertrag“`] }
+    }
+    case 'probetraining-vertrag':
+    case 'showcase-vertrag': {
+      if (c.vereinId !== '' || c.vertrag !== null || c.saison.jugend) return { c, wirkung: [] }
+      const ov = overall(c.spieler)
+      const amateur = name === 'probetraining-vertrag'
+      const [a] = erzeugeAngebote(c, rng, {
+        art: 'vereinslos', anzahl: 1, ausser: [],
+        maxStaerke: amateur ? ov : ov + 4, minStaerke: amateur ? ov - 25 : ov - 12,
+      })
+      if (!a) return { c, wirkung: ['Kein Verein hat Verwendung für dich.'] }
+      const mitVertrag = fuehreWechselAus({ ...c, angebote: [] }, rng, { ...a, gehalt: Math.round((a.gehalt * (amateur ? 0.6 : 0.9)) / 1000) * 1000, rolle: amateur ? 'Rotation' : a.rolle, jahre: Math.min(a.jahre, amateur ? 1 : 2) })
+      return { c: { ...mitVertrag, flags: { ...mitVertrag.flags, pausenjahrWunsch: false } }, wirkung: [`Vertrag bei ${VEREINE[a.vereinId].name}: Das Pausenjahr ist vorbei`] }
     }
     case 'sponsor-neu':
       return { c: { ...c, flags: { ...c.flags, sponsor: true } }, wirkung: ['Neuer Sponsor'] }

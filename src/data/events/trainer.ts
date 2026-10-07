@@ -1,4 +1,4 @@
-import { AKT, FLAG, G, NEWS, S, T, anteil, flag, ov, profi, staerkeVerein, tabellenplatz, trait } from './helpers'
+import { AKT, FLAG, FOLGE, G, NEWS, S, T, anteil, flag, ov, profi, staerkeVerein, tabellenplatz, trait } from './helpers'
 import type { EreignisDef } from './types'
 
 export const TRAINER: EreignisDef[] = [
@@ -31,8 +31,8 @@ export const TRAINER: EreignisDef[] = [
     id: 't-trainerwechsel', kategorie: 'Trainer', gewicht: 1, abstand: 160, bedingung: (c) => profi(c) && tabellenplatz(c) > 0 && c.saison.tabelle[c.vereinId] !== undefined && c.saison.tabelle[c.vereinId][0] > 8,
     titel: 'Trainer entlassen', text: 'Nach der jüngsten Serie entlässt der Verein {trainer}. Die Zeitung nennt es „Trainerbeben“, der Sportdirektor sagt „Neustart“. In der Kabine herrscht Unsicherheit.',
     optionen: [
-      { label: 'Abwarten, wer kommt', erfolg: { text: 'Ein neuer Trainer übernimmt. Alle Karten werden neu gemischt, auch für dich.', effekte: [AKT('trainer-wechsel'), T({ moral: 2 })] } },
-      { label: 'Altem Trainer eine SMS schicken', erfolg: { text: '{trainer} bedankt sich in einer langen Nachricht. Menschlichkeit zählt.', effekte: [AKT('trainer-wechsel'), T({ professionalitaet: 2 })] } },
+      { label: 'Abwarten, wer kommt', erfolg: { text: 'Ein neuer Trainer übernimmt. Alle Karten werden neu gemischt, auch für dich.', effekte: [AKT('trainer-wechsel'), T({ moral: 2 }), FOLGE('s-neuer-trainer', 1)] } },
+      { label: 'Altem Trainer eine SMS schicken', erfolg: { text: '{trainer} bedankt sich in einer langen Nachricht. Menschlichkeit zählt.', effekte: [AKT('trainer-wechsel'), T({ professionalitaet: 2 }), FOLGE('s-neuer-trainer', 1)] } },
     ],
   },
   {

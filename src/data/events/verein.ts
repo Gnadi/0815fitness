@@ -1,4 +1,4 @@
-import { FLAG, G, NEWS, S, T, VERL, alterVon, flag, jugend, ov, profi, staerkeVerein, trait, verletzt } from './helpers'
+import { FLAG, FOLGE, G, NEWS, S, T, VERL, alterVon, flag, jugend, ov, profi, staerkeVerein, trait, verletzt } from './helpers'
 import type { EreignisDef } from './types'
 
 export const VEREIN: EreignisDef[] = [
@@ -23,8 +23,8 @@ export const VEREIN: EreignisDef[] = [
     id: 'v-finanzkrise', kategorie: 'Verein', gewicht: 1, abstand: 400, bedingung: (c) => profi(c) && staerkeVerein(c) < 62 && c.vertrag !== null && c.vertrag.gehalt > 30_000,
     titel: 'Der Verein ist klamm', text: 'Der Präsident hält eine ernste Rede: „Wir sind in finanziellen Schwierigkeiten. Wenn niemand verzichtet, droht uns die Insolvenz.“ Er bittet alle um zehn Prozent Gehaltsverzicht.',
     optionen: [
-      { label: 'Verzichten', erfolg: { text: 'Du zeigst Größe, und der Verein überlebt. Die Fans feiern dich.', effekte: [T({ fanbeliebtheit: 6, kabine: 4, ruf: 1, moral: 2 }), G(({ vertrag }) => -Math.round((vertrag?.gehalt ?? 0) * 0.05)), NEWS('{name} verzichtet auf Gehalt')] } },
-      { label: 'Nur vom Berater prüfen lassen', erfolg: { text: 'Dein Berater schüttelt den Kopf: „Das ist vertraglich nicht vorgesehen.“ Du verzichtest nicht, und es wird bekannt.', effekte: [T({ fanbeliebtheit: -4, kabine: -4 })] } },
+      { label: 'Verzichten', erfolg: { text: 'Du zeigst Größe, und der Verein überlebt. Die Fans feiern dich.', effekte: [T({ fanbeliebtheit: 6, kabine: 4, ruf: 1, moral: 2 }), G(({ vertrag }) => -Math.round((vertrag?.gehalt ?? 0) * 0.05)), NEWS('{name} verzichtet auf Gehalt'), FOLGE('vd-insolvenz', 14, 0.3)] } },
+      { label: 'Nur vom Berater prüfen lassen', erfolg: { text: 'Dein Berater schüttelt den Kopf: „Das ist vertraglich nicht vorgesehen.“ Du verzichtest nicht, und es wird bekannt.', effekte: [T({ fanbeliebtheit: -4, kabine: -4 }), FOLGE('vd-insolvenz', 14, 0.3)] } },
     ],
   },
   {

@@ -23,8 +23,8 @@ export const PRIVAT: EreignisDef[] = [
     id: 'p-heiratsantrag', kategorie: 'Privat', gewicht: 1.5, abstand: 400, bedingung: (c) => hatPartner(c) && alterVon(c) >= 22 && trait(c, 'privatglueck') > 60 && !flag(c, 'verheiratet'),
     titel: 'Der große Schritt', text: 'Du und {partner} seid seit Jahren zusammen. Die Familie fragt schon, wann es endlich so weit ist. Dein Berater rät: „Mach es wie Ronaldo, groß und teuer.“',
     optionen: [
-      { label: 'Antrag mit Riesenspektakel', kosten: anteil(0.08, 3000), hinweis: 'kostet viel Geld', erfolg: { text: 'Auf dem Mittelkreis, nach dem Spiel, vor 30.000 Zuschauern. {partner} sagt Ja. Die Zeitungen drucken das Foto.', effekte: [FLAG('verheiratet'), T({ privatglueck: 15, fanbeliebtheit: 5, moral: 8 }), LEBEN(4000), NEWS('Mittelkreis-Antrag: {name} heiratet')] } },
-      { label: 'Intim und ruhig', erfolg: { text: 'Beim Abendessen, nur zu zweit. Sie sagt Ja. Es ist perfekt.', effekte: [FLAG('verheiratet'), T({ privatglueck: 12, moral: 6 }), LEBEN(2000)] } },
+      { label: 'Antrag mit Riesenspektakel', kosten: anteil(0.08, 3000), hinweis: 'kostet viel Geld', erfolg: { text: 'Auf dem Mittelkreis, nach dem Spiel, vor 30.000 Zuschauern. {partner} sagt Ja. Die Zeitungen drucken das Foto.', effekte: [FLAG('verheiratet'), T({ privatglueck: 15, fanbeliebtheit: 5, moral: 8 }), LEBEN(4000), NEWS('Mittelkreis-Antrag: {name} heiratet'), FOLGE('l-hochzeit', 10)] } },
+      { label: 'Intim und ruhig', erfolg: { text: 'Beim Abendessen, nur zu zweit. Sie sagt Ja. Es ist perfekt.', effekte: [FLAG('verheiratet'), T({ privatglueck: 12, moral: 6 }), LEBEN(2000), FOLGE('l-hochzeit', 10)] } },
       { label: 'Noch nicht, die Karriere geht vor', erfolg: { text: '{partner} nickt enttäuscht. Sie wartet, aber wie lange?', effekte: [T({ privatglueck: -6 }), FOLGE('p-beziehung-krise', 25, 0.7)] } },
     ],
   },
@@ -32,8 +32,8 @@ export const PRIVAT: EreignisDef[] = [
     id: 'p-baby', kategorie: 'Familie', gewicht: 1.5, abstand: 300, bedingung: (c) => hatPartner(c) && alterVon(c) >= 21 && trait(c, 'privatglueck') > 55 && zahl(c, 'kinder') < 3,
     titel: 'Wir werden Eltern!', text: '{partner} hält dir einen Schwangerschaftstest unter die Nase. Dein Herz setzt aus, dann lachst du laut. Ein Baby!',
     optionen: [
-      { label: 'Riesig freuen und Elternzeit nehmen', erfolg: { text: 'Du verbringst Wochen zwischen Windeln und Schlafmangel, aber du strahlst.', effekte: [T({ privatglueck: 14, moral: 6, fitness: -3, professionalitaet: 1 }), LEBEN(2500), ZAEHLE('kinder', 1)] } },
-      { label: 'Freude zeigen, aber Training nicht schleifen lassen', erfolg: { text: 'Du organisierst alles clever. Das Training leidet kaum, das Familienglück schon ein wenig.', effekte: [T({ privatglueck: 10, ehrgeiz: 2 }), LEBEN(2500), ZAEHLE('kinder', 1)] } },
+      { label: 'Riesig freuen und Elternzeit nehmen', erfolg: { text: 'Du verbringst Wochen zwischen Windeln und Schlafmangel, aber du strahlst.', effekte: [T({ privatglueck: 14, moral: 6, fitness: -3, professionalitaet: 1 }), LEBEN(2500), ZAEHLE('kinder', 1), FOLGE('l-neugeborenes', 3)] } },
+      { label: 'Freude zeigen, aber Training nicht schleifen lassen', erfolg: { text: 'Du organisierst alles clever. Das Training leidet kaum, das Familienglück schon ein wenig.', effekte: [T({ privatglueck: 10, ehrgeiz: 2 }), LEBEN(2500), ZAEHLE('kinder', 1), FOLGE('l-neugeborenes', 3)] } },
     ],
   },
   {
@@ -123,8 +123,8 @@ export const PRIVAT: EreignisDef[] = [
     id: 'p-influencer', kategorie: 'Privat', gewicht: 2, abstand: 300, bedingung: (c) => !jugend(c) && !flag(c, 'insta'),
     titel: 'Eigener Social-Media-Account', text: 'Ein Agenturmitarbeiter schlägt vor, deine Social-Media-Kanäle professionell zu betreuen. „Follower sind die neue Währung“, sagt er, „und Sponsoren zahlen dafür.“',
     optionen: [
-      { label: 'Zusagen', erfolg: { text: 'Die Agentur postet Trainingsvideos und Selfies. Deine Reichweite steigt, aber dein Privatleben schrumpft.', effekte: [FLAG('insta'), T({ ruf: 2, fanbeliebtheit: 4, privatglueck: -2 }), G(500)] } },
-      { label: 'Selbst machen, nur ab und zu', erfolg: { text: 'Du postest ab und zu ein Foto vom Training. Echt, aber wenig Reichweite.', effekte: [FLAG('insta'), T({ fanbeliebtheit: 1 })] } },
+      { label: 'Zusagen', erfolg: { text: 'Die Agentur postet Trainingsvideos und Selfies. Deine Reichweite steigt, aber dein Privatleben schrumpft.', effekte: [FLAG('insta'), ZAEHLE('follower', 30), T({ ruf: 2, fanbeliebtheit: 4, privatglueck: -2 }), G(500)] } },
+      { label: 'Selbst machen, nur ab und zu', erfolg: { text: 'Du postest ab und zu ein Foto vom Training. Echt, aber wenig Reichweite.', effekte: [FLAG('insta'), ZAEHLE('follower', 8), T({ fanbeliebtheit: 1 })] } },
       { label: 'Nein, ist nichts für mich', erfolg: { text: 'Keine Likes, keine Shitstorms. Dein Stolz ist geschützt.', effekte: [T({ professionalitaet: 1 })] } },
     ],
   },

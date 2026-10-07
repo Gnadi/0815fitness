@@ -13,7 +13,12 @@ export type AktionName =
   | 'partner-neu'
   | 'partner-ende'
   | 'wechselwunsch'
-  | 'verein-wechseln-erzwingen'
+  /** Holt Transferangebote ins Vertrags-Menü (nur im Transferfenster): von Spitzenklubs bzw. vom freien Markt. */
+  | 'angebote-spitze'
+  | 'angebote-markt'
+  /** Pausenjahr: Probetraining bzw. Showcase-Camp führt zu einem Vertrag (nur ohne Verein, auch mitten in der Saison). */
+  | 'probetraining-vertrag'
+  | 'showcase-vertrag'
   | 'sponsor-neu'
   | 'sponsor-ende'
   | 'skandal'
@@ -40,6 +45,8 @@ export type Effekt =
   | { t: 'immo'; faktor: number }
   /** Schenkt dem Spieler Privatbesitz aus dem Katalog (z. B. einen Hund). */
   | { t: 'besitz'; id: string }
+  /** Verändert die Stärke des aktuellen Vereins (Investor, Insolvenz, Trainerbeben …). */
+  | { t: 'vereinsstaerke'; d: number }
   | { t: 'flag'; k: string; v?: boolean | number | string }
   | { t: 'zaehle'; k: string; d: number }
   | { t: 'folge'; id: string; wochen: number; p?: number }

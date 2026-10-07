@@ -58,6 +58,12 @@ und **Spielertyp** (Straßenfußballer / Akademie-Talent / Spätzünder). Das Po
 - Transferfenster im Winter und Sommer erzeugen Angebote (Transfer, Leihe, Profivertrag, vereinslos).
 - Angebote lassen sich annehmen, ablehnen oder nachverhandeln (Gehalt/Rolle/Laufzeit, Absage-Risiko). Wechselwunsch erhöht die Angebotszahl, belastet aber Trainer und Kabine.
 - Vertragsende → vereinslos; zum Fensterende wird automatisch das beste Angebot gewählt.
+- **Pausenjahr (ein Jahr ohne Verein):** Im Sommerfenster ohne Vertrag kann der Spieler im Menü „Vertrag“ ein Jahr vereinslos bleiben (`flags.pausenjahrWunsch`).
+  Meldet sich außerdem kein Verein und ist der Spieler zu schwach (unter dem schwächsten Verein des Heimatlandes minus 6) oder mindestens 32, passiert das einmalig automatisch.
+  Die Saison läuft dann in der Liga des letzten Vereins ohne eigenes Team (kein Spiel, kein Pokal, kein Europapokal, Lebenshaltung ohne Gehalt, Historie „Vereinslos“).
+  Im Winter und im nächsten Sommer gibt es neue Angebote. Ein Angebot vorher anzunehmen beendet das Pausenjahr.
+- Ereignisse (Ausstiegsklausel, Deadline Day) erzwingen keinen Wechsel mehr: Die Aktionen `angebote-spitze` und `angebote-markt` legen Angebote ins Menü „Vertrag“.
+  Melden sich keine Vereine, steht das im Ereignis-Ergebnis. Nach einem angenommenen Transfer folgt mit 25 % das Ereignis „Medizincheck“.
 - Winterwechsel in andere Ligen: die neue Liga wird bis zum aktuellen Spieltag nachsimuliert.
 
 ## Finanzen
@@ -90,7 +96,7 @@ Eigener Tab „Privat“ (🏡) mit vier Bereichen:
 - Fünf neue Privat-Ereignisse (Hund vor der Tür, Dach der Eltern, Jahrestag, Reise mit den Jungs, neues Hobby).
 
 ## Ereignissystem
-Ereignisse sind datengetriebene Karten (`src/data/events/*`, rund 145 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
+Ereignisse sind datengetriebene Karten (`src/data/events/*`, rund 285 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
 Würfen (Skills/Traits/feste Chance), Effekten und **Folgeereignissen** (verzögerte Ketten):
 
 - **Jugend, Kabine, Trainer, Privat, Familie, Medien, Karriere, Verein, Gesundheit**
@@ -98,8 +104,34 @@ Würfen (Skills/Traits/feste Chance), Effekten und **Folgeereignissen** (verzög
   Steuertrick → Razzia; Fremdgehen → Erpressung; Bestechung. Jede Ketten-Stufe hat einen Erwischt-Wurf – man kann damit durchkommen.
 - Folgen: Sperren, Ruf-/Fan-Verlust, Sponsor weg, Geldstrafen bis hin zum erzwungenen Karriereende.
 
+### Ereignis-Pakete
+Vier thematische Pakete erweitern die Grundkategorien (je eine Datei in `src/data/events/`):
+
+- **Saison (`saison.ts`):** Trainerwechsel mit Trainer-Typ (Motivator, Taktiker, Diktator, Altmeister, Jugendförderer; Flag `trainerTyp`, gesetzt von der Aktion `trainer-wechsel`),
+  Interimstrainer, Abstiegskampf (Krisensitzung, Kasernierung, Sechs-Punkte-Spiel, Fanforderung), Titelrennen (Endspurt, Meisterschaft in Reichweite) und Pokalblamage.
+  Am Saisonende plant `beendeSaison` je nach Ergebnis Meisterkorso, verspielten Titel oder Rettung als Folgeereignis für die erste Woche der neuen Saison.
+- **Lebensphasen (`lebensphasen.ts`):** Hochzeitsplanung und Flitterwochen (Folge des Heiratsantrags), Ehekrise, Scheidung samt Rosenkrieg und Unterhalt,
+  Schlafentzug nach der Geburt, Kind kickt im Verein, Todesfall mit Trauerphase, Burnout, Lebensmitte-Krise und „Was kommt nach der Karriere?“.
+- **Social Media (`social.ts`):** Follower in Tausend als Zähler (`flags.follower`, sichtbar im Privat-Tab). Viraler Clip, Werbedeals mit Schleichwerbung,
+  Krypto-Werbung mit Sammelklage als Folge, alter Post, gekaufte Follower, Livestream-Patzer, Streaming-Kanal, Podcast, Autobiografie, Hackerangriff, Meme, Haltung, Hass-Nachrichten.
+- **Vereinsleben (`vereinsleben.ts`):** Investor, Insolvenz (mögliche Folge der Finanzkrise), Präsidentenrücktritt, Stadion-Neubau, Fanproteste, Pyro-Strafe, Derby-Woche,
+  Rückennummer 10, Elfmeterschütze mit Serie, neuer Sportdirektor, Asien-Tour und Dubai-Trainingslager sowie **länderspezifische Ereignisse** (`la-*`) für Türkei, England, Italien,
+  warme und nordische Länder, Osteuropa, Deutschland, Frankreich, Alpenländer, Steueroasen und Niederlande/Dänemark/Belgien. Für Spieler im Ausland kommen Sprachbarriere,
+  Heimweh, Behördengang und die zweite Staatsbürgerschaft dazu.
+- **Transfer (`transfer.ts`):** Ausstiegsklausel, Kaufoption bei Leihe, Berater verhandelt hinter dem Rücken, Gerüchteküche, Deadline Day, Vertragspoker, Handgeld, Wiedersehen mit dem Ex-Klub, großer Abschied, Medizincheck.
+- **Verletzung (`verletzung.ts`):** Zweitmeinung, Reha-Motivation, Schmerzmittel-Kette (Spritze → Abhängigkeit → Kontrolle), früheres Comeback, Comeback-Ereignis nach mindestens vier Reha-Wochen
+  (`flags.rehaWochen`, geplant in `startWeek`), Angst im Zweikampf nach dem Kreuzbandriss, Liebe zur Physiotherapeutin.
+- **Nationalteam (`nationalteam.ts`):** Streit mit dem Nationaltrainer, Verein gegen Verband, Hymne, Kapitänsbinde, Turnierkader, Teamhotel, Elfmeterschießen, Fans im Turnierland, Rücktritt aus der Nationalmannschaft.
+- **Rivale (`rivale.ts`):** Kette über `flags.rivalitaet` (Duell → Fehde → Showdown → Versöhnung oder Eiszeit) plus Trainingswette, Foul und Wiedersehen als Mitspieler.
+- **Skandale (`skandale.ts`):** Berater-Betrug mit Prozess, Stalker, Einbruch, Clan-Erpressung, falsche Schlagzeile, Autounfall, Zoll, Klage des Ex-Vereins, Doping-Gerücht.
+- **Pausenjahr (`pausenjahr.ts`):** 14 Ereignisse nur für Spieler ohne Verein (`imPausenjahr`): Auftakt mit Planwahl, Probetraining beim Amateurklub, Showcase-Camp, Individualtraining,
+  Geldsorgen, Nebenjob, TV-Experte, vergessene Fans, Weltreise, letztes Angebot des Beraters, Familienzeit, Sinnkrise (inkl. freiwilligem Karriereende), Spielergewerkschaft, Jahresbilanz.
+  Die Aktionen `probetraining-vertrag` (Amateurklub) und `showcase-vertrag` (passender Verein) schließen mitten in der Saison einen Vertrag ab und beenden damit das Pausenjahr;
+  der Wechsel wird dabei wie ein Winterwechsel behandelt (neue Liga wird nachsimuliert).
+- Neuer Effekt `vereinsstaerke`: verändert die Stärke des aktuellen Vereins (Investor, Insolvenz, Krisenbewältigung).
+
 ## Erfolge & Ruhm
-44 Erfolge, Auszeichnungen (Weltfußballer, Spieler des Jahres), Ruhm-Punkte aus Titeln (gewichtet nach Einsatzzeit), Toren, Länderspielen,
+50 Erfolge, Auszeichnungen (Weltfußballer, Spieler des Jahres), Ruhm-Punkte aus Titeln (gewichtet nach Einsatzzeit), Toren, Länderspielen,
 Spitzenstärke, Erfolgen, abzüglich Skandalen.
 
 ## Technik
@@ -113,5 +145,5 @@ Spitzenstärke, Erfolgen, abzüglich Skandalen.
 - **Bot/Simulation:** `src/engine/sim.ts` spielt Karrieren automatisch (Tests, Balancing).
 
 ## Ideen für später
-Trainerkarriere nach dem Karriereende, mehr Ereignisse (je Land), Spielerrat-Streik als Kette, Transfers mit Kaufoption,
-zweite Nationalität, IndexedDB bei sehr großen Spielständen.
+Trainerkarriere nach dem Karriereende, weitere länderspezifische Ereignisse, Spielerrat-Streik als Kette, Transfers mit Kaufoption,
+echter Verbandswechsel nach der zweiten Staatsbürgerschaft, Saisonziele des Vereins, Dynastie (Kind wird Profi), IndexedDB bei sehr großen Spielständen.

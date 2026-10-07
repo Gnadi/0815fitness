@@ -70,6 +70,16 @@ export function beendeSaison(c: Career, rng: Rng): Career {
   const flags = { ...c.flags }
   if (hinweise.some((h) => h.startsWith('Aufstieg'))) flags.aufstieg = true
 
+  // Saisonabschluss-Ereignisse (Meisterfeier, Rettung, verspielter Titel) für die erste Woche der neuen Saison
+  const geplant = [...c.geplant]
+  if (!s.jugend && platz > 0 && c.vereinId) {
+    const n = rang.length
+    if (liga.ebene === 1 && platz === 1) geplant.push({ id: 's-meisterkorso', ab: c.wochenGesamt })
+    else if (flags.titelkampf === true && platz <= 3) geplant.push({ id: 's-titel-verspielt', ab: c.wochenGesamt })
+    else if (liga.ab > 0 && n >= 10 && platz > n - liga.ab - 3 && platz <= n - liga.ab) geplant.push({ id: 's-rettung', ab: c.wochenGesamt })
+  }
+  delete flags.titelkampf
+
   // Auszeichnungen für herausragende Saisons
   const auszeichnungen = [...c.laufbahn.auszeichnungen]
   const gesamtSpiele = [...c.historie.filter((h) => h.saison === c.uhr.saison), c.saisonStats].reduce((a, h) => a + h.spiele, 0)
@@ -99,6 +109,7 @@ export function beendeSaison(c: Career, rng: Rng): Career {
     saisonStats: geschlossen,
     historie: [...c.historie, geschlossen],
     flags,
+    geplant,
     laufbahn: { ...c.laufbahn, titel: laufbahnTitel, auszeichnungen },
     saisonBericht: {
       stats: dieseSaison,

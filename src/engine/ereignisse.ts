@@ -17,6 +17,9 @@ import type { Angebot, Career, Skills, Traits } from './types'
 /** Charaktere neuer Trainer; steuert die Trainer-Ereignisse in `saison.ts`. */
 const TRAINER_TYPEN = ['motivator', 'taktiker', 'diktator', 'altmeister', 'jugendfoerderer']
 
+/** Reichweiten-Zähler (in Tausend) dürfen nicht unter 0 fallen. */
+const ZAEHLER_OHNE_MINUS = new Set(['follower', 'twitch', 'abos'])
+
 const TRAIT_LABEL: Record<keyof Traits, string> = {
   moral: 'Moral', selbstvertrauen: 'Selbstvertrauen', disziplin: 'Disziplin', professionalitaet: 'Professionalität',
   ehrgeiz: 'Ehrgeiz', ruf: 'Ruf', fanbeliebtheit: 'Fans', trainerBeziehung: 'Trainer', kabine: 'Kabine',
@@ -208,7 +211,7 @@ export function wendeEffekteAn(c: Career, effekte: readonly Effekt[], rng: Rng):
         next = { ...next, flags: { ...next.flags, [e.k]: e.v ?? true } }
         break
       case 'zaehle':
-        next = { ...next, flags: { ...next.flags, [e.k]: Number(next.flags[e.k] ?? 0) + e.d } }
+        next = { ...next, flags: { ...next.flags, [e.k]: ZAEHLER_OHNE_MINUS.has(e.k) ? Math.max(0, Number(next.flags[e.k] ?? 0) + e.d) : Number(next.flags[e.k] ?? 0) + e.d } }
         break
       case 'folge':
         if (e.p === undefined || rng.chance(e.p)) {

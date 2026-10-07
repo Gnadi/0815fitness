@@ -96,7 +96,7 @@ Eigener Tab „Privat“ (🏡) mit vier Bereichen:
 - Fünf neue Privat-Ereignisse (Hund vor der Tür, Dach der Eltern, Jahrestag, Reise mit den Jungs, neues Hobby).
 
 ## Ereignissystem
-Ereignisse sind datengetriebene Karten (`src/data/events/*`, rund 285 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
+Ereignisse sind datengetriebene Karten (`src/data/events/*`, rund 310 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
 Würfen (Skills/Traits/feste Chance), Effekten und **Folgeereignissen** (verzögerte Ketten):
 
 - **Jugend, Kabine, Trainer, Privat, Familie, Medien, Karriere, Verein, Gesundheit**
@@ -112,8 +112,13 @@ Vier thematische Pakete erweitern die Grundkategorien (je eine Datei in `src/dat
   Am Saisonende plant `beendeSaison` je nach Ergebnis Meisterkorso, verspielten Titel oder Rettung als Folgeereignis für die erste Woche der neuen Saison.
 - **Lebensphasen (`lebensphasen.ts`):** Hochzeitsplanung und Flitterwochen (Folge des Heiratsantrags), Ehekrise, Scheidung samt Rosenkrieg und Unterhalt,
   Schlafentzug nach der Geburt, Kind kickt im Verein, Todesfall mit Trauerphase, Burnout, Lebensmitte-Krise und „Was kommt nach der Karriere?“.
-- **Social Media (`social.ts`):** Follower in Tausend als Zähler (`flags.follower`, sichtbar im Privat-Tab). Viraler Clip, Werbedeals mit Schleichwerbung,
-  Krypto-Werbung mit Sammelklage als Folge, alter Post, gekaufte Follower, Livestream-Patzer, Streaming-Kanal, Podcast, Autobiografie, Hackerangriff, Meme, Haltung, Hass-Nachrichten.
+- **Social Media (`social.ts`, `social2.ts`, `engine/social.ts`):** Drei Kanäle mit eigenen Zählern in Tausend: Instagram (`flags.follower`), Twitch (`flags.twitch`, Kanal per `twitchKanal`)
+  und YouTube (`flags.abos`, Kanal per `youtube`). Sie werden über Ereignisse freigeschaltet (Account, Streaming-Kanal, Vlog-Kanal). Rund 40 Ereignisse: viraler Clip, Werbedeals mit Schleichwerbung,
+  Krypto-Werbung mit Sammelklage, alter Post, gekaufte Follower, Raid, Donation, toxischer Chat, Ausraster im Stream, Kanalsperre, Verein verbietet Streams, Kollab, Charity-Marathon, Partnerprogramm,
+  Streamer-Burnout, Clickbait, Monetarisierung, Shorts, Agentur, Beef, Ausrüster-Konflikt, TikTok-Challenge, Podcast, Autobiografie, Hackerangriff, Meme, Haltung, Hass-Nachrichten.
+  Im Privat-Tab gibt es den Bereich **Social** mit Einstellungen (Flags `postRate`, `streamRate`, `streamInhalt`, `socialTon`, `socialWerbung`): Posting-Häufigkeit, Stream-Häufigkeit (Pause bis täglich),
+  Inhalt (Gaming, Talk, Fußball, Alltag), Tonfall (brav bis provokant) und Werbung (keine bis viel). `socialWoche` wirkt jede Woche: Reichweite wächst oder schrumpft, Einnahmen fließen aufs Konto,
+  Fitness und Privatglück sinken bei viel Aktivität, ein provokanter Ton löst gelegentlich Aufregung aus. Reichweiten-Zähler fallen nie unter 0.
 - **Vereinsleben (`vereinsleben.ts`):** Investor, Insolvenz (mögliche Folge der Finanzkrise), Präsidentenrücktritt, Stadion-Neubau, Fanproteste, Pyro-Strafe, Derby-Woche,
   Rückennummer 10, Elfmeterschütze mit Serie, neuer Sportdirektor, Asien-Tour und Dubai-Trainingslager sowie **länderspezifische Ereignisse** (`la-*`) für Türkei, England, Italien,
   warme und nordische Länder, Osteuropa, Deutschland, Frankreich, Alpenländer, Steueroasen und Niederlande/Dänemark/Belgien. Für Spieler im Ausland kommen Sprachbarriere,

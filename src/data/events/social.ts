@@ -1,4 +1,4 @@
-import { AKT, FLAG, FOLGE, FOLLOWER, G, NEWS, T, anteil, flag, follower, jugend, profi, trait } from './helpers'
+import { AKT, FLAG, FOLGE, FOLLOWER, G, NEWS, T, TWITCH, anteil, flag, follower, jugend, profi, trait } from './helpers'
 import type { EreignisDef } from './types'
 
 const kanal = (c: Parameters<typeof flag>[0]): boolean => !jugend(c) && flag(c, 'insta')
@@ -64,11 +64,11 @@ export const SOCIAL: EreignisDef[] = [
     ],
   },
   {
-    id: 'so-stream', kategorie: 'Medien', gewicht: 1.4, abstand: 400, bedingung: (c) => kanal(c) && !flag(c, 'stream'),
+    id: 'so-stream', kategorie: 'Medien', gewicht: 1.4, abstand: 400, bedingung: (c) => !jugend(c) && !flag(c, 'twitchKanal') && (flag(c, 'insta') || trait(c, 'ruf') > 20),
     titel: 'Eigener Streaming-Kanal', text: 'Ein Plattform-Manager schlägt vor, dass du wöchentlich zwei Stunden live gamest und quatschst. „Fußballer sind die neue Prominenz!“ Die Kamera läuft, wenn du willst, bei dir zu Hause.',
     optionen: [
-      { label: 'Loslegen', kosten: 2500, hinweis: 'kostet 2.500 € (Technik)', erfolg: { text: 'Nach vier Streams hast du eine kleine, treue Community. Dein Lebensgefühl ändert sich ein bisschen.', effekte: [FLAG('stream'), FOLLOWER(60), T({ fanbeliebtheit: 3, privatglueck: 1, fitness: -1 })] } },
-      { label: 'Nur gelegentlich mit Freunden', erfolg: { text: 'Mal zockst du mit {freund} vor der Kamera. Kleiner Spaß, kleine Reichweite.', effekte: [FLAG('stream'), FOLLOWER(15), T({ privatglueck: 3 })] } },
+      { label: 'Loslegen', kosten: 2500, hinweis: 'kostet 2.500 € (Technik)', erfolg: { text: 'Nach vier Streams hast du eine kleine, treue Community. Dein Lebensgefühl ändert sich ein bisschen.', effekte: [FLAG('stream'), FLAG('twitchKanal'), FLAG('streamRate', 'normal'), FLAG('streamInhalt', 'gaming'), TWITCH(12), T({ fanbeliebtheit: 3, privatglueck: 1, fitness: -1 })] } },
+      { label: 'Nur gelegentlich mit Freunden', erfolg: { text: 'Mal zockst du mit {freund} vor der Kamera. Kleiner Spaß, kleine Reichweite.', effekte: [FLAG('stream'), FLAG('twitchKanal'), FLAG('streamRate', 'wenig'), FLAG('streamInhalt', 'gaming'), TWITCH(3), T({ privatglueck: 3 })] } },
       { label: 'Nein, Privatsphäre geht vor', erfolg: { text: 'Du brauchst einen Rückzugsort ohne Kamera.', effekte: [T({ privatglueck: 1 })] } },
     ],
   },

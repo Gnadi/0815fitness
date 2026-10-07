@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { saves } from '../storage'
 import { Aktionen, simuliereWochen } from '../engine/aktionen'
 import { createCareer, type NewCareerInput } from '../engine/newCareer'
+import type { SocialKey } from '../engine/social'
 import type { Anlage, Career, TrainingFocus } from '../engine/types'
 
 interface CareerState {
@@ -28,6 +29,7 @@ interface CareerState {
   leiheAnfragen(): void
   wechselwunsch(): void
   pausenjahr(): void
+  social(key: SocialKey, wert: string): void
   autoSzenen(an: boolean): void
   einzahlen(anlage: Anlage, anteil: number): void
   auszahlen(anlage: Anlage, anteil: number): void
@@ -111,6 +113,7 @@ export const useCareer = create<CareerState>((set, get) => {
     leiheAnfragen: () => apply(Aktionen.leiheAnfragen),
     wechselwunsch: () => apply(Aktionen.wechselwunsch),
     pausenjahr: () => apply(Aktionen.pausenjahr),
+    social: (key, wert) => apply((c) => Aktionen.social(c, key, wert)),
     autoSzenen: (an) => apply((c) => Aktionen.einstellung(c, an)),
     einzahlen: (a, p) => apply((c) => Aktionen.einzahlen(c, a, p)),
     auszahlen: (a, p) => apply((c) => Aktionen.auszahlen(c, a, p)),

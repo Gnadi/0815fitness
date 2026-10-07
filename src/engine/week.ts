@@ -11,6 +11,7 @@ import { paarungFuerWoche, verbucheErgebnis } from './wettbewerbe'
 import { dealsAktualisieren, marktWoche, sparplan, vcWoche } from './finanzen'
 import { immoAngeboteAktualisieren, immoWoche } from './immobilien'
 import { privatPassiv } from './privat'
+import { socialWoche } from './social'
 import { wochenEinkommen } from './wirtschaft'
 import { simuliereSpieltag } from './welt'
 import { pruefeErfolge } from './erfolge'
@@ -169,6 +170,7 @@ export function startWeek(c: Career, focus: TrainingFocus): Career {
     c2 = immoAngeboteAktualisieren(im.c, rng)
     hinweise.push(...im.meldungen)
     c2 = { ...c2, spieler: { ...c2.spieler, traits: applyTraits(c2.spieler.traits, privatPassiv(c2)) } }
+    c2 = socialWoche(c2, rng)
 
     if (!paarung) return beendeWoche(c2, rng, null, 'nicht-eingesetzt', verletzt)
     const m = neuesSpiel(c2, rng, einsatz === 'startelf' ? 'startelf' : 'einwechslung', paarung)

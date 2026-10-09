@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createCareer } from '../engine/newCareer'
+import { createHofStorage } from './hof'
 import { createSaveStorage, type KeyValueStore } from './saves'
 
 function memoryStore(): KeyValueStore {
@@ -48,5 +49,18 @@ describe('saves', () => {
     const store = memoryStore()
     store.setItem = () => { throw new Error('quota') }
     expect(createSaveStorage(store).save(createCareer(input))).toBe(false)
+  })
+})
+
+describe('hall of fame', () => {
+  it('archiviert Karrieren und sortiert nach Ruhm-Punkten', () => {
+    const h = createHofStorage(memoryStore())
+    const c = createCareer(input)
+    expect(h.has(c.id)).toBe(false)
+    expect(h.archive(c)).toBe(true)
+    expect(h.has(c.id)).toBe(true)
+    expect(h.list()[0].name).toBe('Max Muster')
+    h.remove(c.id)
+    expect(h.list()).toHaveLength(0)
   })
 })

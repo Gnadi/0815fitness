@@ -1,4 +1,4 @@
-import type { Career } from '../engine/types'
+import type { KarriereRueckblick } from '../engine/types'
 import { legende } from '../engine/legende'
 import { gesamtStats, alleStats } from '../engine/statistik'
 import type { KeyValueStore } from './saves'
@@ -24,9 +24,11 @@ export interface HofEintrag {
   hoechsterMarktwert: number
   vermoegen: number
   archiviert: number
+  /** Voller Rückblick für den Karriereende-Screen; fehlt bei Einträgen aus der ersten Version. */
+  karriere?: KarriereRueckblick
 }
 
-export function hofEintrag(c: Career): HofEintrag {
+export function hofEintrag(c: KarriereRueckblick): HofEintrag {
   const g = gesamtStats(c)
   const l = legende(c)
   const stats = alleStats(c)
@@ -48,18 +50,29 @@ export function hofEintrag(c: Career): HofEintrag {
     hoechsterMarktwert: c.laufbahn.hoechsterMarktwert,
     vermoegen: c.spieler.geld,
     archiviert: Date.now(),
+    karriere: {
+      id: c.id, spieler: c.spieler, uhr: c.uhr, flags: c.flags, laufbahn: c.laufbahn,
+      erfolge: c.erfolge, historie: c.historie, saisonStats: c.saisonStats,
+    },
   }
 }
 
 export function createHofStorage(store: KeyValueStore) {
   return {
     /** Gibt `false` zurück, wenn der Speicher voll ist. */
-    archive(c: Career): boolean {
+    archive(c: KarriereRueckblick): boolean {
       try {
         store.setItem(PREFIX + c.id, JSON.stringify(hofEintrag(c)))
         return true
       } catch {
         return false
+      }
+    },
+    get(id: string): HofEintrag | null {
+      try {
+        return JSON.parse(store.getItem(PREFIX + id) ?? 'null') as HofEintrag | null
+      } catch {
+        return null
       }
     },
     has(id: string): boolean {

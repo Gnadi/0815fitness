@@ -1,7 +1,7 @@
 import { overall } from './rating'
 import { alleStats, gesamtStats } from './statistik'
 import { LAENDER } from '../data/clubs'
-import type { Career } from './types'
+import type { KarriereRueckblick } from './types'
 
 const TITEL_PUNKTE = (name: string): number => {
   if (name === 'Champions League') return 30
@@ -31,7 +31,7 @@ const KLASSEN: [number, string, string][] = [
   [900, 'Jahrhundertspieler', 'Eine Generation wurde nach dir benannt.'],
 ]
 
-export function legende(c: Career): Legende {
+export function legende(c: KarriereRueckblick): Legende {
   const g = gesamtStats(c)
   const peak = Math.max(overall(c.spieler), ...alleStats(c).map((s) => s.overallEnde))
   let p = 0

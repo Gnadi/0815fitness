@@ -1,4 +1,4 @@
-import type { Career, SeasonStats } from './types'
+import type { KarriereRueckblick, SeasonStats } from './types'
 
 export interface Gesamt {
   spiele: number
@@ -17,11 +17,11 @@ export interface Gesamt {
 }
 
 /** Alle abgeschlossenen Saison-Abschnitte plus die laufende Saison. */
-export function alleStats(c: Career): SeasonStats[] {
+export function alleStats(c: KarriereRueckblick): SeasonStats[] {
   return [...c.historie, c.saisonStats]
 }
 
-export function gesamtStats(c: Career): Gesamt {
+export function gesamtStats(c: KarriereRueckblick): Gesamt {
   const alle = alleStats(c)
   const sum = (f: (s: SeasonStats) => number) => alle.reduce((a, s) => a + f(s), 0)
   const spiele = sum((s) => s.spiele)

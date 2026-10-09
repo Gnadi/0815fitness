@@ -434,3 +434,6 @@ export interface Career {
   /** Schlagzeilen und Meldungen, neueste zuletzt. */
   log: string[]
 }
+
+/** Der Teil einer Karriere, den Karriereende-Screen und Hall of Fame brauchen. */
+export type KarriereRueckblick = Pick<Career, 'id' | 'spieler' | 'uhr' | 'flags' | 'laufbahn' | 'erfolge' | 'historie' | 'saisonStats'>

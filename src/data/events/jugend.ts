@@ -134,8 +134,12 @@ export const JUGEND: EreignisDef[] = [
     ],
   },
   {
-    id: 'j-ehrung', kategorie: 'Jugend', gewicht: 1.5, abstand: 200, bedingung: (c) => jugend(c) && c.saisonStats.tore + c.saisonStats.vorlagen >= 6,
-    titel: 'Jugendspieler des Monats', text: 'Die Lokalzeitung wählt dich zum Jugendspieler des Monats. Beim Foto sollst du die Trophäe küssen. Mit Pickeln im Gesicht.',
+    id: 'j-ehrung', kategorie: 'Jugend', gewicht: 1.5, abstand: 200, bedingung: (c) => jugend(c) && (c.spieler.position === 'TW'
+      ? c.saisonStats.spiele >= 6 && c.saisonStats.notenSumme / c.saisonStats.spiele >= 6.8
+      : c.saisonStats.tore + c.saisonStats.vorlagen >= 6),
+    titel: 'Jugendspieler des Monats', text: (c) => c.spieler.position === 'TW'
+      ? 'Die Lokalzeitung wählt dich zum Jugendspieler des Monats, weil du zuletzt gefühlt jeden Ball gehalten hast. Beim Foto sollst du die Trophäe küssen. Mit Pickeln im Gesicht.'
+      : 'Die Lokalzeitung wählt dich zum Jugendspieler des Monats. Beim Foto sollst du die Trophäe küssen. Mit Pickeln im Gesicht.',
     optionen: [
       { label: 'Stolz in die Kamera grinsen', erfolg: { text: 'Das Foto hängt noch Jahre im Vereinsheim. Dein Ruhm ist lokal, aber echt.', effekte: [T({ ruf: 3, fanbeliebtheit: 3, selbstvertrauen: 3 })] } },
       { label: 'Die Trophäe an die ganze Mannschaft weiterreichen', erfolg: { text: 'Du verteilst den Ruhm. Das kommt in der Kabine gut an.', effekte: [T({ kabine: 4, ruf: 1, selbstvertrauen: 1 })] } },

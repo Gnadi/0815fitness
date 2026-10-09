@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ERFOLGE } from '../../engine/erfolge'
 import { legende } from '../../engine/legende'
 import { alleStats, gesamtStats } from '../../engine/statistik'
 import type { Career } from '../../engine/types'
+import { hof, saves } from '../../storage'
 import { useCareer } from '../../store/careerStore'
 import { fmtGeld, saisonLabel } from '../../ui/format'
 
@@ -14,6 +16,8 @@ export function CareerEnd({ c }: { c: Career }) {
   const stats = alleStats(c)
   const erste = stats[0]?.saison ?? c.uhr.saison
   const letzte = stats[stats.length - 1]?.saison ?? c.uhr.saison
+  const [archiviert, setArchiviert] = useState(() => hof.has(c.id))
+  const [fehler, setFehler] = useState(false)
   const gebrochen = c.flags.ende === true
 
   return (
@@ -56,6 +60,25 @@ export function CareerEnd({ c }: { c: Career }) {
         <p className="muted">{ERFOLGE.filter((e) => c.erfolge.includes(e.id)).map((e) => e.name).join(' · ') || 'Keine'}</p>
       </section>
 
+      {archiviert ? (
+        <p className="muted">🏛️ Diese Karriere steht in der Hall of Fame.</p>
+      ) : (
+        <button
+          className="btn"
+          onClick={() => {
+            if (!confirm('Karriere in die Hall of Fame archivieren? Der Spielstand wird danach gelöscht, nur die Zusammenfassung bleibt erhalten.')) return
+            if (!hof.archive(c)) return setFehler(true)
+            saves.remove(c.id)
+            setArchiviert(true)
+            setFehler(false)
+            close()
+            navigate('/')
+          }}
+        >
+          🏛️ In die Hall of Fame archivieren
+        </button>
+      )}
+      {fehler && <p className="alert">Archivieren fehlgeschlagen: Der Browser-Speicher ist voll.</p>}
       <button className="btn primary" onClick={() => { close(); navigate('/neu') }}>Neue Karriere starten</button>
       <button className="btn" onClick={() => { close(); navigate('/') }}>Zum Hauptmenü</button>
     </>

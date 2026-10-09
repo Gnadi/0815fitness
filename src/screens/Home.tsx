@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { saves } from '../storage'
+import { hof, saves } from '../storage'
 import { useCareer } from '../store/careerStore'
-import { saisonLabel } from '../ui/format'
+import { fmtGeld, saisonLabel } from '../ui/format'
 import { InstallButton } from '../ui/InstallButton'
 import { ThemeAuswahl } from '../ui/ThemeAuswahl'
 
@@ -10,6 +10,7 @@ export default function Home() {
   const navigate = useNavigate()
   const open = useCareer((s) => s.open)
   const [list, setList] = useState(() => saves.list())
+  const [ruhmeshalle, setRuhmeshalle] = useState(() => hof.list())
   const [fehler, setFehler] = useState<string | null>(null)
   const datei = useRef<HTMLInputElement>(null)
 
@@ -62,6 +63,32 @@ export default function Home() {
                 if (confirm(`Spielstand „${s.name}“ wirklich löschen?`)) {
                   saves.remove(s.id)
                   setList(saves.list())
+                }
+              }}
+            >
+              ✕
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {ruhmeshalle.length > 0 && <h2>🏛️ Hall of Fame</h2>}
+      <ul className="list">
+        {ruhmeshalle.map((e, i) => (
+          <li key={e.id} className="card row">
+            <div className="grow">
+              <strong>{i + 1}. {e.name}</strong> <span className="muted">· {e.klasse} · {e.punkte} Ruhm-Punkte</span>
+              <div className="muted small">
+                {saisonLabel(e.vonSaison)} – {saisonLabel(e.bisSaison)} · {e.spiele} Spiele, {e.tore} Tore, {e.vorlagen} Vorlagen · {e.titel} Titel &amp; Ehrungen · {e.laenderspiele} Länderspiele · max. Marktwert {fmtGeld(e.hoechsterMarktwert)}
+              </div>
+            </div>
+            <button
+              className="btn small danger"
+              aria-label={`${e.name} aus der Hall of Fame entfernen`}
+              onClick={() => {
+                if (confirm(`„${e.name}“ aus der Hall of Fame entfernen?`)) {
+                  hof.remove(e.id)
+                  setRuhmeshalle(hof.list())
                 }
               }}
             >

@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router-dom'
 import Home from './screens/Home'
 import NewCareer from './screens/NewCareer'
 import Game from './screens/Game'
+import HofAnsicht from './screens/HofAnsicht'
 import { useCareer } from './store/careerStore'
 import { gespeichertesTheme, wendeThemeAn } from './ui/theme'
 
@@ -21,6 +22,7 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/neu" element={<NewCareer />} />
       <Route path="/spiel" element={<Game />} />
+      <Route path="/hof/:id" element={<HofAnsicht />} />
     </Routes>
   )
 }

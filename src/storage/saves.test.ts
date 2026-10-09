@@ -60,6 +60,8 @@ describe('hall of fame', () => {
     expect(h.archive(c)).toBe(true)
     expect(h.has(c.id)).toBe(true)
     expect(h.list()[0].name).toBe('Max Muster')
+    expect(h.get(c.id)?.karriere?.spieler.nachname).toBe('Muster')
+    expect(h.get(c.id)?.karriere).not.toHaveProperty('welt')
     h.remove(c.id)
     expect(h.list()).toHaveLength(0)
   })

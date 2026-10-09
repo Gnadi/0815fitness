@@ -76,12 +76,12 @@ export default function Home() {
       <ul className="list">
         {ruhmeshalle.map((e, i) => (
           <li key={e.id} className="card row">
-            <div className="grow">
+            <button className="grow link" disabled={!e.karriere} onClick={() => navigate(`/hof/${e.id}`)}>
               <strong>{i + 1}. {e.name}</strong> <span className="muted">· {e.klasse} · {e.punkte} Ruhm-Punkte</span>
-              <div className="muted small">
+              <span className="muted small" style={{ display: 'block' }}>
                 {saisonLabel(e.vonSaison)} – {saisonLabel(e.bisSaison)} · {e.spiele} Spiele, {e.tore} Tore, {e.vorlagen} Vorlagen · {e.titel} Titel &amp; Ehrungen · {e.laenderspiele} Länderspiele · max. Marktwert {fmtGeld(e.hoechsterMarktwert)}
-              </div>
-            </div>
+              </span>
+            </button>
             <button
               className="btn small danger"
               aria-label={`${e.name} aus der Hall of Fame entfernen`}

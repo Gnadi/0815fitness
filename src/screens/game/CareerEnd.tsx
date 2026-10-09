@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { ERFOLGE } from '../../engine/erfolge'
 import { legende } from '../../engine/legende'
 import { alleStats, gesamtStats } from '../../engine/statistik'
-import type { Career } from '../../engine/types'
+import type { KarriereRueckblick } from '../../engine/types'
 import { hof, saves } from '../../storage'
 import { useCareer } from '../../store/careerStore'
 import { fmtGeld, saisonLabel } from '../../ui/format'
 
-export function CareerEnd({ c }: { c: Career }) {
+/** `archiv`: reine Ansicht einer Hall-of-Fame-Karriere (ohne Archivieren/Neustart). */
+export function CareerEnd({ c, archiv = false }: { c: KarriereRueckblick; archiv?: boolean }) {
   const navigate = useNavigate()
   const close = useCareer((s) => s.close)
   const g = gesamtStats(c)
@@ -60,27 +61,33 @@ export function CareerEnd({ c }: { c: Career }) {
         <p className="muted">{ERFOLGE.filter((e) => c.erfolge.includes(e.id)).map((e) => e.name).join(' · ') || 'Keine'}</p>
       </section>
 
-      {archiviert ? (
-        <p className="muted">🏛️ Diese Karriere steht in der Hall of Fame.</p>
+      {archiv ? (
+        <button className="btn primary" onClick={() => navigate('/')}>Zurück zur Hall of Fame</button>
       ) : (
-        <button
-          className="btn"
-          onClick={() => {
-            if (!confirm('Karriere in die Hall of Fame archivieren? Der Spielstand wird danach gelöscht, nur die Zusammenfassung bleibt erhalten.')) return
-            if (!hof.archive(c)) return setFehler(true)
-            saves.remove(c.id)
-            setArchiviert(true)
-            setFehler(false)
-            close()
-            navigate('/')
-          }}
-        >
-          🏛️ In die Hall of Fame archivieren
-        </button>
+        <>
+        {archiviert ? (
+          <p className="muted">🏛️ Diese Karriere steht in der Hall of Fame.</p>
+        ) : (
+          <button
+            className="btn"
+            onClick={() => {
+              if (!confirm('Karriere in die Hall of Fame archivieren? Der Spielstand wird danach gelöscht, der Rückblick bleibt in der Hall of Fame abrufbar.')) return
+              if (!hof.archive(c)) return setFehler(true)
+              saves.remove(c.id)
+              setArchiviert(true)
+              setFehler(false)
+              close()
+              navigate('/')
+            }}
+          >
+            🏛️ In die Hall of Fame archivieren
+          </button>
+        )}
+        {fehler && <p className="alert">Archivieren fehlgeschlagen: Der Browser-Speicher ist voll.</p>}
+        <button className="btn primary" onClick={() => { close(); navigate('/neu') }}>Neue Karriere starten</button>
+        <button className="btn" onClick={() => { close(); navigate('/') }}>Zum Hauptmenü</button>
+        </>
       )}
-      {fehler && <p className="alert">Archivieren fehlgeschlagen: Der Browser-Speicher ist voll.</p>}
-      <button className="btn primary" onClick={() => { close(); navigate('/neu') }}>Neue Karriere starten</button>
-      <button className="btn" onClick={() => { close(); navigate('/') }}>Zum Hauptmenü</button>
     </>
   )
 }

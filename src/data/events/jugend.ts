@@ -1,4 +1,4 @@
-import { AKT, FLAG, FOLGE, G, NEWS, S, T, VERL, alterVon, flag, jugend, ov } from './helpers'
+import { AKT, FLAG, FOLGE, G, NEWS, S, T, VERL, alterVon, flag, jugend, ov, spielSkills } from './helpers'
 import type { EreignisDef } from './types'
 
 export const JUGEND: EreignisDef[] = [
@@ -17,7 +17,7 @@ export const JUGEND: EreignisDef[] = [
     id: 'j-sichtung', kategorie: 'Jugend', gewicht: 2.5, abstand: 70, bedingung: (c) => jugend(c) && ov(c) > 45,
     titel: 'Scouts auf der Tribüne', text: 'Vor dem Spiel raunt dir {freund} zu: „Siehst du den Typen im Mantel? Das ist ein Scout. Von einem ganz großen Verein!“ Plötzlich sind deine Knie weich.',
     optionen: [
-      { label: 'Alles geben, jetzt oder nie', hinweis: 'riskant', wurf: { basis: 0.45, skills: ['technik', 'dribbling'], traits: ['selbstvertrauen'] },
+      { label: 'Alles geben, jetzt oder nie', hinweis: 'riskant', wurf: { basis: 0.45, skills: spielSkills(['technik', 'dribbling'], ['positionsspiel', 'defensive']), traits: ['selbstvertrauen'] },
         erfolg: { text: 'Du spielst wie im Rausch. Nach dem Spiel gibt der Scout dir seine Karte. Dein Name macht die Runde.', effekte: [T({ ruf: 4, selbstvertrauen: 5, moral: 4 }), FLAG('scoutGesehen')] },
         misserfolg: { text: 'Du willst zu viel und gehst im Zweikampf unter. Der Scout schreibt kaum etwas auf.', effekte: [T({ selbstvertrauen: -4, moral: -3 })] } },
       { label: 'Normal spielen, nicht verrückt machen', erfolg: { text: 'Du spielst solide wie immer. Ob der Scout etwas gesehen hat? Du wirst es nie erfahren.', effekte: [T({ ruf: 1, selbstvertrauen: 1 })] } },

@@ -84,7 +84,7 @@ export const VEREINSLEBEN: EreignisDef[] = [
     ],
   },
   {
-    id: 'vd-nummer', kategorie: 'Verein', gewicht: 1.1, abstand: 500, bedingung: (c) => profi(c) && trait(c, 'ruf') > 30 && !flag(c, 'zehner'),
+    id: 'vd-nummer', kategorie: 'Verein', positionen: FELDSPIELER, gewicht: 1.1, abstand: 500, bedingung: (c) => profi(c) && trait(c, 'ruf') > 30 && !flag(c, 'zehner'),
     titel: 'Die legendäre Nummer 10', text: 'Die Rückennummer 10 wird frei, getragen von einer Klublegende. Der Verein bietet sie dir an, aber der Druck wäre groß. Die Fans haben bereits „Wer wird der neue Zehner?“-Umfragen.',
     optionen: [
       { label: 'Die 10 übernehmen', hinweis: 'riskant', wurf: { basis: 0.5, traits: ['selbstvertrauen', 'ruf'] }, erfolg: { text: 'Du wächst an der Verantwortung. Die Trikotverkäufe explodieren, das Stadion singt.', effekte: [FLAG('zehner'), G(anteil(0.1, 3000)), T({ fanbeliebtheit: 5, selbstvertrauen: 4, ruf: 2 })] }, misserfolg: { text: 'Die Last der Nummer zerdrückt dich. Jeder Fehlpass wird mit „Zehner unwürdig“ kommentiert.', effekte: [FLAG('zehner'), T({ selbstvertrauen: -5, fanbeliebtheit: -2 })] } },
@@ -120,7 +120,8 @@ export const VEREINSLEBEN: EreignisDef[] = [
     id: 'vd-legende-co', kategorie: 'Verein', gewicht: 1, abstand: 500, bedingung: (c) => profi(c) && alterVon(c) <= 27,
     titel: 'Klublegende als Co-Trainer', text: 'Die Klublegende, 20 Jahre lang Kapitän und Meistertorschütze, kehrt als Co-Trainer zurück. In seinem ersten Training schaut er sich vor allem die jungen Spieler an. Dich inklusive.',
     optionen: [
-      { label: 'Um Extraeinheiten bitten', kosten: 300, hinweis: 'kostet 300 €', erfolg: { text: (c) => c.spieler.position === 'TW' ? 'Er zeigt dir seine Tricks im Strafraum und beim Stellungsspiel. Eine unbezahlbare Lektion.' : 'Er zeigt dir seine Tricks vor dem Tor und im Zweikampf. Eine unbezahlbare Lektion.', effekte: [S({ positionsspiel: 2, schuss: 1 }), T({ trainerBeziehung: 3, professionalitaet: 2, fitness: -2 })] } },
+      { label: 'Um Extraeinheiten bitten', positionen: FELDSPIELER, kosten: 300, hinweis: 'kostet 300 €', erfolg: { text: 'Er zeigt dir seine Tricks vor dem Tor und im Zweikampf. Eine unbezahlbare Lektion.', effekte: [S({ positionsspiel: 2, schuss: 1 }), T({ trainerBeziehung: 3, professionalitaet: 2, fitness: -2 })] } },
+      { label: 'Um Extraeinheiten bitten', positionen: ['TW'], kosten: 300, hinweis: 'kostet 300 €', erfolg: { text: 'Er zeigt dir seine Tricks im Strafraum, beim Herauslaufen und beim Stellungsspiel. Eine unbezahlbare Lektion.', effekte: [S({ positionsspiel: 2, defensive: 1 }), T({ trainerBeziehung: 3, professionalitaet: 2, fitness: -2 })] } },
       { label: 'Respektvoll Abstand halten', erfolg: { text: 'Er nickt dir freundlich zu, aber mehr passiert nicht.', effekte: [T({ professionalitaet: 1 })] } },
     ],
   },

@@ -55,7 +55,8 @@ export function erfolgsChance(c: Career, w: Wurf): number {
   if (w.chance) return clamp(w.chance(c), 0.03, 0.97)
   const { skills, traits } = c.spieler
   const avg = (v: number[]) => v.reduce((a, b) => a + b, 0) / v.length
-  const sm = w.skills?.length ? (avg(w.skills.map((k) => skills[k])) - 50) / 100 : 0
+  const sk = typeof w.skills === 'function' ? w.skills(c) : w.skills
+  const sm = sk?.length ? (avg(sk.map((k) => skills[k])) - 50) / 100 : 0
   const tm = w.traits?.length ? (avg(w.traits.map((k) => traits[k])) - 50) / 100 : 0
   return clamp((w.basis ?? 0.5) + sm + tm, 0.05, 0.95)
 }

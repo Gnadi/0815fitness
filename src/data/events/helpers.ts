@@ -15,6 +15,8 @@ export const zahl = (c: Career, k: string): number => Number(c.flags[k] ?? 0)
 /** Positionsgruppen für positionsabhängige Ereignisse. */
 export const FELDSPIELER: Position[] = ['IV', 'AV', 'ZDM', 'ZM', 'ZOM', 'AF', 'ST']
 export const OFFENSIV: Position[] = ['ZOM', 'AF', 'ST']
+/** Skills fürs Spielgefühl: Torhüter nutzen Stellungsspiel/Defensive statt Dribbling/Schuss. */
+export const spielSkills = (feld: (keyof Skills)[], tor: (keyof Skills)[]) => (c: Career): (keyof Skills)[] => (c.spieler.position === 'TW' ? tor : feld)
 export const imTor = (c: Career): boolean => c.spieler.position === 'TW'
 export const jugend = (c: Career): boolean => c.saison.jugend
 export const profi = (c: Career): boolean => !c.saison.jugend && c.vereinId !== ''

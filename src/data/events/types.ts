@@ -63,7 +63,8 @@ export interface Ausgang {
 
 export interface Wurf {
   basis?: number
-  skills?: (keyof Skills)[]
+  /** Skills, die in den Wurf einfließen; per Funktion positionsabhängig. */
+  skills?: (keyof Skills)[] | ((c: Career) => (keyof Skills)[])
   traits?: (keyof Traits)[]
   /** Überschreibt die Berechnung komplett. */
   chance?: (c: Career) => number

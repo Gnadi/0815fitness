@@ -1,4 +1,4 @@
-import { AKT, FLAG, FOLGE, FOLLOWER, G, NEWS, S, T, TWITCH, ABOS, VERL, abos, anteil, flag, follower, hatInsta, hatTwitch, hatYoutube, profi, trait, twitch } from './helpers'
+import { AKT, FLAG, FOLGE, FOLLOWER, G, NEWS, S, T, TWITCH, ABOS, VERL, abos, anteil, flag, follower, hatInsta, hatTwitch, hatYoutube, profi, spielSkills, trait, twitch } from './helpers'
 import type { EreignisDef } from './types'
 
 const rate = (c: Parameters<typeof flag>[0]): string => String(c.flags.streamRate ?? 'wenig')
@@ -162,9 +162,9 @@ export const SOCIAL2: EreignisDef[] = [
   // ---------------------------------------------------------------- Instagram & TikTok
   {
     id: 'so-ig-tiktok', kategorie: 'Medien', gewicht: 1.5, abstand: 200, bedingung: (c) => hatInsta(c) && profi(c) && trait(c, 'ruf') > 20,
-    titel: 'Die TikTok-Challenge', text: 'Auf TikTok kursiert eine Challenge: „Lattenkreuz aus 30 Metern, rückwärts!“ Tausende Fußballer haben mitgemacht, einer ist schon gescheitert und musste ins Krankenhaus. Dein Berater sieht die Zahlen und schüttelt den Kopf.',
+    titel: 'Die TikTok-Challenge', text: (c) => (c.spieler.position === 'TW' ? 'Auf TikTok kursiert eine Challenge: „Ball aus dem Torwinkel fischen, rückwärts springend!“' : 'Auf TikTok kursiert eine Challenge: „Lattenkreuz aus 30 Metern, rückwärts!“') + ' Tausende Fußballer haben mitgemacht, einer ist schon gescheitert und musste ins Krankenhaus. Dein Berater sieht die Zahlen und schüttelt den Kopf.',
     optionen: [
-      { label: 'Mitmachen', hinweis: 'riskant', wurf: { basis: 0.5, skills: ['schuss', 'technik'] }, erfolg: { text: 'Beim dritten Versuch klappt es. Der Clip hat bald fünf Millionen Aufrufe.', effekte: [FOLLOWER(140), T({ fanbeliebtheit: 4, ruf: 1, selbstvertrauen: 3 })] }, misserfolg: { text: 'Beim siebten Versuch rutschst du weg, und es knackt im Sprunggelenk. Der Verein ist außer sich.', effekte: [VERL('Bänderdehnung im Sprunggelenk', 4), FOLLOWER(60), T({ trainerBeziehung: -5, moral: -3 })] } },
+      { label: 'Mitmachen', hinweis: 'riskant', wurf: { basis: 0.5, skills: spielSkills(['schuss', 'technik'], ['positionsspiel', 'technik']) }, erfolg: { text: 'Beim dritten Versuch klappt es. Der Clip hat bald fünf Millionen Aufrufe.', effekte: [FOLLOWER(140), T({ fanbeliebtheit: 4, ruf: 1, selbstvertrauen: 3 })] }, misserfolg: { text: 'Beim siebten Versuch rutschst du weg, und es knackt im Sprunggelenk. Der Verein ist außer sich.', effekte: [VERL('Bänderdehnung im Sprunggelenk', 4), FOLLOWER(60), T({ trainerBeziehung: -5, moral: -3 })] } },
       { label: 'Eine sichere Variante drehen', erfolg: { text: 'Du drehst eine vorsichtige Version. Weniger Aufmerksamkeit, aber auch kein Risiko.', effekte: [FOLLOWER(25), T({ professionalitaet: 2 })] } },
       { label: 'Nicht mitmachen', erfolg: { text: 'Du wartest die nächste Challenge ab. Dein Körper dankt es dir.', effekte: [T({ professionalitaet: 1 })] } },
     ],

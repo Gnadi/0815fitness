@@ -1,5 +1,5 @@
 import { VEREINE } from '../clubs'
-import { AKT, FLAG, FOLGE, G, NEWS, S, STAERKE, T, VERL, alterVon, anteil, flag, gehalt, imAusland, inLand, jugend, landVerein, ov, profi, spieltag, staerkeVerein, trait } from './helpers'
+import { AKT, FELDSPIELER, FLAG, FOLGE, G, NEWS, S, STAERKE, T, VERL, alterVon, anteil, flag, gehalt, imAusland, inLand, jugend, landVerein, ov, profi, spieltag, staerkeVerein, trait } from './helpers'
 import type { Career } from '../../engine/types'
 import type { EreignisDef } from './types'
 
@@ -92,7 +92,7 @@ export const VEREINSLEBEN: EreignisDef[] = [
     ],
   },
   {
-    id: 'vd-elfmeter', kategorie: 'Verein', gewicht: 1.4, abstand: 400, bedingung: (c) => liga(c) && ov(c) > 58 && trait(c, 'selbstvertrauen') > 50 && !flag(c, 'elferschuetze'),
+    id: 'vd-elfmeter', kategorie: 'Verein', positionen: FELDSPIELER, gewicht: 1.4, abstand: 400, bedingung: (c) => liga(c) && ov(c) > 58 && trait(c, 'selbstvertrauen') > 50 && !flag(c, 'elferschuetze'),
     titel: 'Wer schießt die Elfer?', text: 'Der Stammschütze ist verletzt, und {trainer} schaut in die Runde. „Wer übernimmt?“ Die Kabine schweigt. Dann deutet {kapitaen} auf dich: „Er hat Nerven.“',
     optionen: [
       { label: 'Ja, ich mach das', hinweis: 'riskant', wurf: { basis: 0.6, skills: ['schuss'], traits: ['selbstvertrauen'] }, erfolg: { text: 'Du verwandelst den ersten Strafstoß eiskalt. Ab sofort bist du der Mann für die Nerven.', effekte: [FLAG('elferschuetze'), T({ selbstvertrauen: 5, fanbeliebtheit: 3, trainerBeziehung: 2 }), FOLGE('vd-elfer-serie', 30, 0.8)] }, misserfolg: { text: 'Dein erster Elfer landet am Pfosten. Du schaust den Ball hinterher und spürst die Blicke im Rücken.', effekte: [FLAG('elferschuetze'), T({ selbstvertrauen: -4, fanbeliebtheit: -1 }), FOLGE('vd-elfer-serie', 30, 0.8)] } },
@@ -100,7 +100,7 @@ export const VEREINSLEBEN: EreignisDef[] = [
     ],
   },
   {
-    id: 'vd-elfer-serie', kategorie: 'Verein', gewicht: 0, abstand: 100,
+    id: 'vd-elfer-serie', kategorie: 'Verein', positionen: FELDSPIELER, gewicht: 0, abstand: 100,
     titel: 'Elfmeter-Serie', text: 'Du stehst wieder am Punkt. Zuletzt ging es hin und her, mal drin, mal halbhoch dem Torwart in die Arme. Die Fans singen, die Gegner pfeifen, der Torwart wedelt mit den Armen.',
     optionen: [
       { label: 'Flach in die Ecke', hinweis: 'riskant', wurf: { basis: 0.65, skills: ['schuss'], traits: ['selbstvertrauen'] }, erfolg: { text: 'Drin! Du jubelst vor der Kurve. Das war genau, was die Mannschaft brauchte.', effekte: [T({ selbstvertrauen: 4, fanbeliebtheit: 3, kabine: 2 }), S({ schuss: 1 })] }, misserfolg: { text: 'Der Torwart ahnt die Ecke. Gehalten! Der Frust lässt dich minutenlang nicht los.', effekte: [T({ selbstvertrauen: -4, fanbeliebtheit: -2 })] } },
@@ -120,7 +120,7 @@ export const VEREINSLEBEN: EreignisDef[] = [
     id: 'vd-legende-co', kategorie: 'Verein', gewicht: 1, abstand: 500, bedingung: (c) => profi(c) && alterVon(c) <= 27,
     titel: 'Klublegende als Co-Trainer', text: 'Die Klublegende, 20 Jahre lang Kapitän und Meistertorschütze, kehrt als Co-Trainer zurück. In seinem ersten Training schaut er sich vor allem die jungen Spieler an. Dich inklusive.',
     optionen: [
-      { label: 'Um Extraeinheiten bitten', kosten: 300, hinweis: 'kostet 300 €', erfolg: { text: 'Er zeigt dir seine Tricks vor dem Tor und im Zweikampf. Eine unbezahlbare Lektion.', effekte: [S({ positionsspiel: 2, schuss: 1 }), T({ trainerBeziehung: 3, professionalitaet: 2, fitness: -2 })] } },
+      { label: 'Um Extraeinheiten bitten', kosten: 300, hinweis: 'kostet 300 €', erfolg: { text: (c) => c.spieler.position === 'TW' ? 'Er zeigt dir seine Tricks im Strafraum und beim Stellungsspiel. Eine unbezahlbare Lektion.' : 'Er zeigt dir seine Tricks vor dem Tor und im Zweikampf. Eine unbezahlbare Lektion.', effekte: [S({ positionsspiel: 2, schuss: 1 }), T({ trainerBeziehung: 3, professionalitaet: 2, fitness: -2 })] } },
       { label: 'Respektvoll Abstand halten', erfolg: { text: 'Er nickt dir freundlich zu, aber mehr passiert nicht.', effekte: [T({ professionalitaet: 1 })] } },
     ],
   },

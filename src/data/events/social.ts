@@ -99,7 +99,7 @@ export const SOCIAL: EreignisDef[] = [
   },
   {
     id: 'so-meme', kategorie: 'Medien', gewicht: 1.4, abstand: 200, bedingung: (c) => profi(c) && c.form < 48 && trait(c, 'ruf') > 20,
-    titel: 'Du bist ein Meme', text: 'Dein verstolperter Torschuss hat es ins Internet geschafft. Es gibt bereits sieben Varianten, ein Musikvideo und einen Account, der nur noch deine Fehlpässe sammelt.',
+    titel: 'Du bist ein Meme', text: (c) => c.spieler.position === 'TW' ? 'Dein Patzer bei einer harmlosen Flanke hat es ins Internet geschafft. Es gibt bereits sieben Varianten, ein Musikvideo und einen Account, der nur noch deine Fehlgriffe sammelt.' : 'Dein verstolperter Torschuss hat es ins Internet geschafft. Es gibt bereits sieben Varianten, ein Musikvideo und einen Account, der nur noch deine Fehlpässe sammelt.',
     optionen: [
       { label: 'Selbst mitlachen und ein Meme posten', hinweis: 'riskant', wurf: { basis: 0.55, traits: ['selbstvertrauen'] }, erfolg: { text: 'Du gewinnst das Netz zurück. Selbstironie ist die beste Verteidigung.', effekte: [FOLLOWER(40), T({ fanbeliebtheit: 4, selbstvertrauen: 2 })] }, misserfolg: { text: 'Es wirkt gequält, und das Netz fährt noch eine Schippe drauf.', effekte: [T({ fanbeliebtheit: -2, selbstvertrauen: -3 })] } },
       { label: 'Auf dem Platz antworten', erfolg: { text: 'Du kämpfst dich zurück in Form. Die Memes verschwinden, wenn das nächste Tor fällt.', effekte: [T({ professionalitaet: 2, ehrgeiz: 2 })] } },

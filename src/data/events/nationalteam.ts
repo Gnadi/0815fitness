@@ -1,4 +1,4 @@
-import { FLAG, G, NEWS, T, VERL, alterVon, flag, imAusland, nationalspieler, ov, profi, trait, turnierAktiv, zahl } from './helpers'
+import { FELDSPIELER, FLAG, G, NEWS, T, VERL, alterVon, flag, imAusland, nationalspieler, ov, profi, trait, turnierAktiv, zahl } from './helpers'
 import type { EreignisDef } from './types'
 
 const national = (c: Parameters<typeof nationalspieler>[0]): boolean => profi(c) && nationalspieler(c)
@@ -55,7 +55,7 @@ export const NATIONALTEAM: EreignisDef[] = [
     ],
   },
   {
-    id: 'nt-turnier-elfer', kategorie: 'Karriere', gewicht: 1.5, abstand: 12, bedingung: (c) => national(c) && turnierAktiv(c) && ov(c) > 62,
+    id: 'nt-turnier-elfer', kategorie: 'Karriere', positionen: FELDSPIELER, gewicht: 1.5, abstand: 12, bedingung: (c) => national(c) && turnierAktiv(c) && ov(c) > 62,
     titel: 'Elfmeterschießen im Turnier', text: 'Es steht 0:0 im Viertelfinale, die Verlängerung ist vorbei. Der Nationaltrainer fragt die Mannschaft: „Wer schießt?“ Die Hälfte der Kollegen schaut zu Boden. Du spürst die Hitze im Gesicht.',
     optionen: [
       { label: 'Ich schieße', hinweis: 'riskant', wurf: { basis: 0.6, skills: ['schuss'], traits: ['selbstvertrauen', 'moral'] }, erfolg: { text: 'Du schaust dem Torwart in die Augen und versenkst den Ball im Winkel. Das ganze Land jubelt.', effekte: [T({ ruf: 4, fanbeliebtheit: 6, selbstvertrauen: 6 }), NEWS('{name} trifft im Elfmeterschießen')] }, misserfolg: { text: 'Der Ball landet am Pfosten. Du siehst, wie die Kollegen den Kopf senken. Es wird Wochen dauern, bis du das verdaust.', effekte: [T({ selbstvertrauen: -8, moral: -8, fanbeliebtheit: -3 }), NEWS('{name} verschießt entscheidenden Elfmeter')] } },

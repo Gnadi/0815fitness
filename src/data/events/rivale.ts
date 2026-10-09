@@ -1,4 +1,4 @@
-import { AKT, FLAG, FOLGE, G, NEWS, S, T, flag, jugend, ov, profi, zahl } from './helpers'
+import { AKT, FELDSPIELER, FLAG, FOLGE, G, NEWS, S, T, flag, jugend, ov, profi, zahl } from './helpers'
 import type { EreignisDef } from './types'
 
 const stufe = (c: Parameters<typeof zahl>[0]): number => zahl(c, 'rivalitaet')
@@ -52,7 +52,7 @@ export const RIVALE: EreignisDef[] = [
     ],
   },
   {
-    id: 'rv-training-wette', kategorie: 'Kabine', gewicht: 1.2, abstand: 200, bedingung: (c) => aktiv(c) && stufe(c) >= 1 && stufe(c) < 3,
+    id: 'rv-training-wette', kategorie: 'Kabine', positionen: FELDSPIELER, gewicht: 1.2, abstand: 200, bedingung: (c) => aktiv(c) && stufe(c) >= 1 && stufe(c) < 3,
     titel: 'Die Wette im Training', text: '{rivale} schlägt vor: „Wer von uns beiden bei der Freistoßübung öfter trifft, bekommt von dem anderen ein Essen.“ Die Kollegen bilden einen Kreis und fangen an zu johlen.',
     optionen: [
       { label: 'Annehmen', hinweis: 'riskant', wurf: { basis: 0.5, skills: ['schuss'], traits: ['selbstvertrauen'] }, erfolg: { text: 'Du triffst vier von fünf und lässt dir von {rivale} ein Menü spendieren. Die Kabine jubelt.', effekte: [T({ selbstvertrauen: 4, kabine: 3 }), S({ schuss: 1 })] }, misserfolg: { text: 'Du verziehst dreimal. {rivale} grinst, du zahlst die Rechnung.', effekte: [G(-250), T({ selbstvertrauen: -2, kabine: 1 })] } },

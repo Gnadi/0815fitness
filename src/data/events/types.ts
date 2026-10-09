@@ -1,4 +1,4 @@
-import type { Anlage, Career, Skills, Traits } from '../../engine/types'
+import type { Anlage, Career, Position, Skills, Traits } from '../../engine/types'
 
 /** Text oder Funktion, die den Text aus dem Spielstand berechnet. Platzhalter: {name} {vorname} {verein} {trainer} {kapitaen} {rivale} {freund} {berater} {partner} {reporter}. */
 export type Txt = string | ((c: Career) => string)
@@ -74,6 +74,8 @@ export interface EreignisOption {
   /** Kleiner Hinweis neben der Option (z. B. „riskant“, „kostet Geld“). */
   hinweis?: string
   bedingung?: (c: Career) => boolean
+  /** Nur für diese Positionen wählbar (ohne Angabe: alle). */
+  positionen?: Position[]
   /** Geld, das die Option kostet (Option gesperrt, wenn nicht genug da ist). */
   kosten?: number | ((c: Career) => number)
   wurf?: Wurf
@@ -93,6 +95,8 @@ export interface EreignisDef {
   /** Mindestabstand in Wochen bis zur Wiederholung; ohne Angabe ist das Ereignis einmalig. */
   abstand?: number
   bedingung?: (c: Career) => boolean
+  /** Nur für diese Positionen auslösbar (ohne Angabe: alle). */
+  positionen?: Position[]
   /** Pflichtereignisse werden vor Zufallsereignissen ausgelöst, sobald die Bedingung stimmt. */
   pflicht?: boolean
   optionen: EreignisOption[]

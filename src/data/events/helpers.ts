@@ -2,7 +2,7 @@ import { VEREINE } from '../clubs'
 import { depotGesamt, depotVon } from '../../engine/finanzen'
 import { alter, overall } from '../../engine/rating'
 import { rangliste } from '../../engine/welt'
-import type { Career, Skills, Traits } from '../../engine/types'
+import type { Career, Position, Skills, Traits } from '../../engine/types'
 import type { Anlage } from '../../engine/types'
 import { punkte } from '../../engine/welt'
 import type { AktionName, Effekt, Txt } from './types'
@@ -12,6 +12,10 @@ export const ov = (c: Career): number => overall(c.spieler)
 export const trait = (c: Career, k: keyof Traits): number => c.spieler.traits[k]
 export const flag = (c: Career, k: string): boolean => c.flags[k] === true
 export const zahl = (c: Career, k: string): number => Number(c.flags[k] ?? 0)
+/** Positionsgruppen für positionsabhängige Ereignisse. */
+export const FELDSPIELER: Position[] = ['IV', 'AV', 'ZDM', 'ZM', 'ZOM', 'AF', 'ST']
+export const OFFENSIV: Position[] = ['ZOM', 'AF', 'ST']
+export const imTor = (c: Career): boolean => c.spieler.position === 'TW'
 export const jugend = (c: Career): boolean => c.saison.jugend
 export const profi = (c: Career): boolean => !c.saison.jugend && c.vereinId !== ''
 export const gehalt = (c: Career): number => c.vertrag?.gehalt ?? 0

@@ -65,6 +65,7 @@ export function erfolgsChance(c: Career, w: Wurf): number {
 export function ereignisVerfuegbar(c: Career, def: EreignisDef): boolean {
   const zuletzt = c.ereignisZeiten[def.id]
   if (zuletzt !== undefined && (def.abstand === undefined || c.wochenGesamt - zuletzt < def.abstand)) return false
+  if (def.positionen && !def.positionen.includes(c.spieler.position)) return false
   return !def.bedingung || def.bedingung(c)
 }
 
@@ -108,6 +109,7 @@ export const kostenVon = (c: Career, o: EreignisOption): number => (typeof o.kos
 
 export function optionVerfuegbar(c: Career, o: EreignisOption): boolean {
   if (kostenVon(c, o) > c.spieler.geld) return false
+  if (o.positionen && !o.positionen.includes(c.spieler.position)) return false
   return !o.bedingung || o.bedingung(c)
 }
 

@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg'],
+      includeAssets: ['radl-icon.svg'],
       workbox: {
         // Nur die lateinischen Schnitte der Schriften vorab cachen, damit die App offline gleich aussieht
         globPatterns: ['**/*.{js,css,html,svg,png}', '**/newsreader-latin-opsz-*.woff2', '**/shantell-sans-latin-full-normal-*.woff2'],
@@ -24,9 +24,9 @@ export default defineConfig({
         orientation: 'portrait',
         start_url: './',
         icons: [
-          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'radl-icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'radl-icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'radl-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
     }),

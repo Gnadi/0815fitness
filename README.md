@@ -2,7 +2,7 @@
 
 Klick-Mockup einer Webseite, auf der man Gebäck für **Sonntag** vorbestellt, das dann
 per **Lastenrad** in Linz zugestellt wird. Kein Backend – Bestellungen werden nicht verschickt,
-der Warenkorb liegt nur im Browser (localStorage).
+der Warenkorb startet bei jedem Laden leer und wird nirgends gespeichert.
 
 ```bash
 npm install

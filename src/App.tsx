@@ -12,16 +12,6 @@ import { Zahl } from './components/Zahl'
 import { GRATIS_AB, KAPAZITAET, LIEFERGEBIET, LIEFERGEBUEHR } from './data/produkte'
 import { bestellnummer, euro, lieferSonntag, summen, vergebeneKoerbe, type Warenkorb } from './lib/logik'
 
-const SPEICHER = 'radlbaeckerin-korb'
-
-function ladeKorb(): Warenkorb {
-  try {
-    return JSON.parse(localStorage.getItem(SPEICHER) ?? '{}') as Warenkorb
-  } catch {
-    return {}
-  }
-}
-
 type Schritt = { art: 'shop' } | { art: 'kasse' } | { art: 'fertig'; nummer: string; daten: Lieferdaten; korb: Warenkorb }
 
 const ZEILEN: { t: string; cls?: string }[] = [
@@ -223,16 +213,17 @@ function Liefergebiet() {
 export default function App() {
   const jetzt = useJetzt()
   const sonntag = lieferSonntag(jetzt)
-  const [korb, setKorb] = useState<Warenkorb>(ladeKorb)
+  const [korb, setKorb] = useState<Warenkorb>({})
   const [schritt, setSchritt] = useState<Schritt>({ art: 'shop' })
   const [korbOffen, setKorbOffen] = useState(false)
   const [gescrollt, setGescrollt] = useState(false)
   const { scrollY, scrollYProgress } = useScroll()
   useMotionValueEvent(scrollY, 'change', (y) => setGescrollt(y > 24))
 
+  // Früher gespeicherte Körbe aus älteren Mockup-Versionen aufräumen
   useEffect(() => {
-    try { localStorage.setItem(SPEICHER, JSON.stringify(korb)) } catch { /* egal im Mockup */ }
-  }, [korb])
+    try { localStorage.removeItem('radlbaeckerin-korb') } catch { /* egal im Mockup */ }
+  }, [])
 
   useEffect(() => { window.scrollTo({ top: 0 }) }, [schritt.art])
 

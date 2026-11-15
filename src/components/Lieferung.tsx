@@ -6,13 +6,14 @@ export interface Lieferdaten {
   name: string
   strasse: string
   hausnummer: string
+  stock: string
   hinweis: string
   zeit: string
   zahlung: 'karte' | 'bar' | 'vorab'
   abo: boolean
 }
 
-export const LEERE_LIEFERDATEN: Lieferdaten = { name: '', strasse: '', hausnummer: '', hinweis: '', zeit: '8:00', zahlung: 'karte', abo: false }
+export const LEERE_LIEFERDATEN: Lieferdaten = { name: '', strasse: '', hausnummer: '', stock: '', hinweis: '', zeit: '8:00', zahlung: 'karte', abo: false }
 
 const ZAHLUNG: [Lieferdaten['zahlung'], string][] = [['karte', 'Karte an der Tür'], ['bar', 'bar an der Tür'], ['vorab', 'vorab überweisen']]
 
@@ -31,7 +32,7 @@ export function Lieferung({ d, setze }: { d: Lieferdaten; setze: <K extends keyo
           <input required autoComplete="name" value={d.name} onChange={(e) => setze('name', e.target.value)} />
         </label>
       </div>
-      <div className="feld-reihe">
+      <div className="feld-reihe adresse">
         <label className="feld">
           <span>Straße</span>
           <input required autoComplete="address-line1" list="runde-strassen" value={d.strasse} onChange={(e) => setze('strasse', e.target.value)} placeholder="z. B. Kirchengasse" />
@@ -39,9 +40,13 @@ export function Lieferung({ d, setze }: { d: Lieferdaten; setze: <K extends keyo
             {STRASSEN.map((s) => <option key={s} value={s} />)}
           </datalist>
         </label>
-        <label className="feld schmal">
-          <span>Nr. / Tür</span>
-          <input required value={d.hausnummer} onChange={(e) => setze('hausnummer', e.target.value)} inputMode="text" />
+        <label className="feld klein">
+          <span>Nr.</span>
+          <input required value={d.hausnummer} onChange={(e) => setze('hausnummer', e.target.value)} autoComplete="off" />
+        </label>
+        <label className="feld klein">
+          <span>Stock/Tür</span>
+          <input value={d.stock} onChange={(e) => setze('stock', e.target.value)} placeholder="2/7" autoComplete="off" />
         </label>
       </div>
       <AnimatePresence>

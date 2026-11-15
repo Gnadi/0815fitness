@@ -143,7 +143,8 @@ a { color: inherit; }
 .lieferung { padding-top: 12px; display: flex; flex-direction: column; gap: 18px; }
 .feld-reihe { display: flex; gap: 16px; }
 .feld { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.feld.schmal { flex: 0 0 120px; }
+.feld-reihe.adresse { gap: 12px; }
+.feld.klein { flex: 0 0 76px; }
 .feld > span { font-size: .78rem; text-transform: uppercase; letter-spacing: .1em; color: var(--grau); }
 .feld em, legend em, .ankreuzen em { font-style: italic; text-transform: none; letter-spacing: 0; color: var(--grau); font-weight: 400; }
 .feld input { border: 0; border-bottom: 1.5px solid var(--tusche); background: transparent; padding: 6px 2px 4px; font-family: var(--hand); font-variation-settings: 'INFM' 100; color: var(--kuli); font-size: 1.2rem; border-radius: 0; width: 100%; }
@@ -258,8 +259,10 @@ a { color: inherit; }
   .zeile-aus { width: auto; padding-right: 6px; }
   .durchgestrichen { left: 66px; right: 76px; top: 38%; }
   .sackerl-raster { grid-template-columns: repeat(9, 1fr); gap: 6px; }
-  .feld-reihe { flex-wrap: wrap; }
-  .feld.schmal { flex: 1 0 100px; }
+  .feld-reihe.adresse { gap: 10px; }
+  .feld.klein { flex-basis: 46px; }
+  .feld.klein:last-child { flex-basis: 78px; }
+  .feld.klein > span { letter-spacing: 0; white-space: nowrap; }
   .abschnitt-titel { font-size: .7rem; text-overflow: clip; }
   .abschnitt { padding-left: 4px; }
   .abschnitt-zeit { display: none; }

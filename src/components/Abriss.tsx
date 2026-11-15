@@ -44,7 +44,7 @@ export function Abriss({ nummer, korb, spende, daten, sonntag, neu }: Props) {
       <p className="hand gross-hand">Danke, {daten.name.split(' ')[0] || 'Nachbar:in'}! Sonntag läutet's.</p>
       <dl className="abriss-daten">
         <dt>Wann</dt><dd>{datumLang(sonntag)}, ab {daten.zeit} Uhr</dd>
-        <dt>Wohin</dt><dd>{daten.strasse} {daten.hausnummer}</dd>
+        <dt>Wohin</dt><dd>{daten.strasse} {daten.hausnummer}{daten.stock && `, ${daten.stock}`}</dd>
         <dt>Was</dt>
         <dd>
           {Object.entries(korb).map(([id, m]) => `${m}× ${PRODUKT_NACH_ID[id]?.name}`).join(', ')}

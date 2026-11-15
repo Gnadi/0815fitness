@@ -1,4 +1,4 @@
-import { animate, useMotionValue, useTransform, motion } from 'motion/react'
+import { animate, useMotionValue, useTransform, m } from 'motion/react'
 import { useEffect } from 'react'
 import { euro } from '../lib/logik'
 
@@ -10,5 +10,5 @@ export function Zahl({ wert }: { wert: number }) {
     const c = animate(mv, wert, { duration: 0.5, ease: 'easeOut' })
     return () => c.stop()
   }, [mv, wert])
-  return <motion.span>{text}</motion.span>
+  return <m.span>{text}</m.span>
 }

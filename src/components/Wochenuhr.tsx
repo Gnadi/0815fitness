@@ -1,4 +1,4 @@
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import type { Phase } from '../lib/woche'
 
 const ABSCHNITTE: { phase: Phase; breite: number; titel: string; zeit: string }[] = [
@@ -43,9 +43,9 @@ export function Wochenuhr({ jetzt, phase }: { jetzt: Date; phase: Phase }) {
             <span className="abschnitt-zeit">{a.zeit}</span>
           </div>
         ))}
-        <motion.div className={`wochenuhr-zeiger ${x > 75 ? "rechts" : ""}`} initial={false} animate={{ left: `${x}%` }} transition={{ type: 'spring', stiffness: 80, damping: 16 }}>
+        <m.div className={`wochenuhr-zeiger ${x > 75 ? "rechts" : ""}`} initial={false} animate={{ left: `${x}%` }} transition={{ type: 'spring', stiffness: 80, damping: 16 }}>
           <span className="zeiger-text">du bist hier</span>
-        </motion.div>
+        </m.div>
       </div>
     </div>
   )

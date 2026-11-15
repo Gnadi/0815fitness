@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
 import { STRASSEN, ZEITFENSTER } from '../data/produkte'
 import { Haken, Kreis } from './Kreis'
 
@@ -51,9 +51,9 @@ export function Lieferung({ d, setze }: { d: Lieferdaten; setze: <K extends keyo
       </div>
       <AnimatePresence>
         {d.strasse.trim().length > 3 && !aufDerRunde(d.strasse) && (
-          <motion.p className="hand kuli runde-hinweis" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+          <m.p className="hand kuli runde-hinweis" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
             Die liegt nicht auf unserer Runde – bestell trotzdem, wir melden uns, ob wir's schaffen.
-          </motion.p>
+          </m.p>
         )}
       </AnimatePresence>
       <label className="feld breit">

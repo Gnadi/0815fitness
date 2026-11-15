@@ -1,4 +1,4 @@
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 
 /** Die Plätze im Ofen als Sackerl: vergebene gefüllt, freie nur skizziert, das eigene in Kuli-Blau. */
 export function Ofen({ kapazitaet, vergeben, eigenes }: { kapazitaet: number; vergeben: number; eigenes: boolean }) {
@@ -9,7 +9,7 @@ export function Ofen({ kapazitaet, vergeben, eigenes }: { kapazitaet: number; ve
         {Array.from({ length: kapazitaet }, (_, i) => {
           const art = i < vergeben ? 'voll' : i === vergeben && eigenes ? 'deins' : 'frei'
           return (
-            <motion.svg
+            <m.svg
               key={i}
               viewBox="0 0 20 24"
               className={`sackerl ${art}`}
@@ -20,7 +20,7 @@ export function Ofen({ kapazitaet, vergeben, eigenes }: { kapazitaet: number; ve
             >
               <path d="M3 6h14l-1 16H4z" />
               <path d="M3 6l2-4h10l2 4" />
-            </motion.svg>
+            </m.svg>
           )
         })}
       </div>

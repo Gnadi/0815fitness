@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
 import { PRODUKTE } from '../data/produkte'
 import { euro, type Warenkorb } from '../lib/logik'
 import { Gebaeck } from './Gebaeck'
@@ -40,7 +40,7 @@ export function Bestellliste({ korb, setzeMenge, anteil = 1 }: Props) {
                 <span className="zaehler-feld">
                   <AnimatePresence mode="popLayout" initial={false}>
                     {menge > 0 && (
-                      <motion.span
+                      <m.span
                         key={menge}
                         className="hand kuli"
                         initial={{ opacity: 0, y: -8, rotate: -12, scale: 1.4 }}
@@ -49,14 +49,14 @@ export function Bestellliste({ korb, setzeMenge, anteil = 1 }: Props) {
                         transition={{ type: 'spring', stiffness: 500, damping: 22 }}
                       >
                         {menge}
-                      </motion.span>
+                      </m.span>
                     )}
                   </AnimatePresence>
                 </span>
                 <button type="button" onClick={() => setzeMenge(p.id, Math.min(menge + 1, rest))} disabled={menge >= rest} aria-label={`${p.name} mehr`}>+</button>
               </div>
             )}
-            {aus && <motion.span className="durchgestrichen" initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.3 }} aria-hidden />}
+            {aus && <m.span className="durchgestrichen" initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.3 }} aria-hidden />}
           </li>
         )
       })}

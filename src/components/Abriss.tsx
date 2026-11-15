@@ -1,4 +1,4 @@
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { PRODUKT_NACH_ID, SPENDE } from '../data/produkte'
 import { datumLang, euro, summen, type Warenkorb } from '../lib/logik'
 import type { Lieferdaten } from './Lieferung'
@@ -29,7 +29,7 @@ export function Abriss({ nummer, korb, spende, daten, sonntag, neu }: Props) {
   const s = summen(korb)
   const gesamt = s.gesamt + (spende ? SPENDE : 0)
   return (
-    <motion.section
+    <m.section
       className="abriss"
       initial={{ y: 80, opacity: 0, rotate: 3 }}
       animate={{ y: 0, opacity: 1, rotate: -1 }}
@@ -65,6 +65,6 @@ export function Abriss({ nummer, korb, spende, daten, sonntag, neu }: Props) {
       </div>
       <Radl className="abriss-radl" fahrend />
       <p className="kleingedruckt">Mockup – es wurde nichts bestellt und nichts verschickt.</p>
-    </motion.section>
+    </m.section>
   )
 }

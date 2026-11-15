@@ -1,4 +1,4 @@
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import type { ReactNode } from 'react'
 import type { GebaeckForm } from '../data/produkte'
 
@@ -24,7 +24,7 @@ const strich = {
 
 function Linie({ d, i = 0, ...rest }: { d: string; i?: number } & Record<string, unknown>) {
   return (
-    <motion.path
+    <m.path
       d={d}
       {...strich}
       {...rest}
@@ -36,9 +36,9 @@ function Linie({ d, i = 0, ...rest }: { d: string; i?: number } & Record<string,
 
 function Flaeche({ children }: { children: ReactNode }) {
   return (
-    <motion.g variants={{ aus: { opacity: 0 }, an: { opacity: 1 } }} transition={{ duration: 0.6, delay: 0.5 }}>
+    <m.g variants={{ aus: { opacity: 0 }, an: { opacity: 1 } }} transition={{ duration: 0.6, delay: 0.5 }}>
       {children}
-    </motion.g>
+    </m.g>
   )
 }
 
@@ -162,7 +162,7 @@ function Motiv({ form }: { form: GebaeckForm }) {
 /** Handgezeichnete Gebäck-Illustration, die sich beim Sichtbarwerden „zeichnet“. */
 export function Gebaeck({ form, className }: { form: GebaeckForm; className?: string }) {
   return (
-    <motion.svg
+    <m.svg
       viewBox="0 0 100 70"
       className={className}
       aria-hidden
@@ -172,6 +172,6 @@ export function Gebaeck({ form, className }: { form: GebaeckForm; className?: st
       style={{ filter: 'url(#krakel)' }}
     >
       <Motiv form={form} />
-    </motion.svg>
+    </m.svg>
   )
 }

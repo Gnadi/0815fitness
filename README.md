@@ -8,8 +8,19 @@ der Warenkorb startet bei jedem Laden leer und wird nirgends gespeichert.
 npm install
 npm run dev     # Entwicklungsserver
 npm test        # Tests der Datums-/Preislogik
-npm run build   # Typecheck + Produktions-Build inkl. PWA
+npm run build   # Typecheck, Build, PWA und Vorrendern des Zettels
 ```
+
+### Ladezeit & PWA
+
+- **Vorgerendert:** `npm run build` rendert den Zettel einmal zu HTML (`src/entry-server.tsx`, `scripts/prerender.mjs`,
+  Zeitzone Europe/Vienna). Er ist sofort sichtbar, React übernimmt danach mit der echten Uhrzeit.
+  CSS wird ins HTML eingebettet, die zwei wichtigsten Schriften werden vorgeladen.
+- **Schriften** liegen zugeschnitten in `src/fonts` (nur Latein + deutsche Zeichen, nur genutzte Gewichte):
+  152 KB statt 444 KB. Neu erzeugen mit `scripts/schriften-zuschneiden.sh` (braucht `pip install fonttools brotli`).
+- **Motion** wird schlank geladen (`LazyMotion`), die Animations-Features kommen als eigener Chunk nach.
+- **PWA:** installierbar (Manifest mit Screenshots, Verknüpfung, maskierbarem Icon, Apple-Icon), komplett offline
+  nutzbar, mit Install- und Offline-Hinweis. `vercel.json` setzt lange Cache-Zeiten für `assets/`.
 
 Die Seite ist der **Sonntagszettel** der Woche: ein Bestellzettel auf Papier, der sich mit der Woche verändert
 (Zettel offen → Teig ruht → Ofen läuft → Radl unterwegs → Danke). Oben gibt es eine Mockup-„Zeitmaschine“,

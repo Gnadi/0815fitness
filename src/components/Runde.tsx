@@ -1,4 +1,4 @@
-import { motion } from 'motion/react'
+import { m } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { STRASSEN } from '../data/produkte'
 
@@ -36,7 +36,7 @@ export function Runde({ fortschritt, unterwegs }: { fortschritt: number; unterwe
             <text x={s.x} y={s.y} className="strasse-name">{STRASSEN[i]}</text>
           </g>
         ))}
-        <motion.path
+        <m.path
           ref={pfad}
           d={ROUTE}
           className="route-linie"
@@ -49,13 +49,13 @@ export function Runde({ fortschritt, unterwegs }: { fortschritt: number; unterwe
           <path d="M0 18 L14 6 L28 18 V34 H0 Z" className="haus" />
           <text x="14" y="50" textAnchor="middle" className="strasse-name hand-svg">unser Ofen</text>
         </g>
-        <motion.g animate={{ x: punkt.x - 14, y: punkt.y - 22 }} transition={{ type: 'spring', stiffness: 60, damping: 14 }}>
+        <m.g animate={{ x: punkt.x - 14, y: punkt.y - 22 }} transition={{ type: 'spring', stiffness: 60, damping: 14 }}>
           <circle cx="14" cy="14" r="15" className="rad-punkt" />
           <g fill="none" stroke="var(--papier)" strokeWidth="1.8" strokeLinecap="round">
             <circle cx="8" cy="18" r="3.5" /><circle cx="21" cy="18" r="3.5" />
             <path d="M8 18h7l4-7M5 11h7v4" />
           </g>
-        </motion.g>
+        </m.g>
       </svg>
       <p className="runde-text">
         {unterwegs ? (

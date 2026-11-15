@@ -1,6 +1,7 @@
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Abriss } from './components/Abriss'
+import { AppHinweis, OfflineHinweis } from './components/AppHinweis'
 import { Bestellliste } from './components/Bestellliste'
 import { KrakelFilter } from './components/Gebaeck'
 import { Kalenderwochen } from './components/Kalenderwochen'
@@ -109,14 +110,15 @@ export default function App() {
   return (
     <>
       <KrakelFilter />
+      <OfflineHinweis />
 
       <main className="tisch">
         {stand.art === 'zettel' && (
           <Kalenderwochen ersterSonntag={stand0.bestellSonntag} gewaehlt={wochenIndex} waehle={(i) => { setWochenIndex(i); setHinweis(false) }} />
         )}
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" initial={false}>
           {stand.art === 'zettel' ? (
-            <motion.form
+            <m.form
               key="zettel"
               className="zettel"
               onSubmit={abgeben}
@@ -150,12 +152,12 @@ export default function App() {
                   <Stempel className="phasen-stempel" drehung={-7}>Zettel für {kurz(woche.dieserSonntag)} ist zu</Stempel>
                 )}
 
-                <motion.p key={`${woche.phase}-${wochenIndex}`} className="notiz hand" initial={{ opacity: 0, clipPath: 'inset(0 100% 0 0)' }} animate={{ opacity: 1, clipPath: 'inset(0 0% 0 0)' }} transition={{ duration: 1.2, ease: 'easeOut', delay: 0.3 }}>
+                <m.p key={`${woche.phase}-${wochenIndex}`} className="notiz hand" initial={{ opacity: 0, clipPath: 'inset(0 100% 0 0)' }} animate={{ opacity: 1, clipPath: 'inset(0 0% 0 0)' }} transition={{ duration: 1.2, ease: 'easeOut', delay: 0.3 }}>
                   {vorbestellt
                     ? `Schon für KW ${kalenderwoche(woche.bestellSonntag)} vormerken? Gern! Ändern geht bis zum Freitag davor.`
                     : notiz(woche.phase, jetzt, woche.bestellSonntag)}
                   <span className="unterschrift">– eure Radlbäckerin</span>
-                </motion.p>
+                </m.p>
 
                 {!vorbestellt && <Wochenuhr jetzt={jetzt} phase={woche.phase} />}
                 <p className="schluss">
@@ -174,9 +176,9 @@ export default function App() {
                 </div>
                 <AnimatePresence>
                   {hinweis && s.stueck === 0 && (
-                    <motion.p className="hand kuli hinweis" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                    <m.p className="hand kuli hinweis" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
                       Erst was aussuchen – dann kann der Zettel abgegeben werden.
-                    </motion.p>
+                    </m.p>
                   )}
                 </AnimatePresence>
                 <Bestellliste korb={korb} anteil={anteil} setzeMenge={(id, m) => { setzeMenge(id, m); setHinweis(false) }} />
@@ -219,20 +221,21 @@ export default function App() {
                   {spende && (<><dt>Spende</dt><dd>{euro(SPENDE)}</dd></>)}
                   <dt className="gesamt">Zusammen</dt><dd className="gesamt hand kuli"><Zahl wert={gesamt} /></dd>
                 </dl>
-                <motion.button type="submit" className="abgeben" whileTap={{ scale: 0.97 }}>
+                <m.button type="submit" className="abgeben" whileTap={{ scale: 0.97 }}>
                   Zettel abgeben
                   <small>für {kurz(woche.bestellSonntag)}</small>
-                </motion.button>
+                </m.button>
                 <p className="kleingedruckt">Mockup – es wird nichts bestellt und nichts verschickt.</p>
               </section>
               <div className="perforation" aria-hidden />
-            </motion.form>
+            </m.form>
           ) : (
             <Abriss key="abriss" nummer={stand.nummer} korb={stand.korb} spende={stand.spende} daten={stand.daten} sonntag={stand.sonntag} neu={neu} />
           )}
         </AnimatePresence>
 
         <div className="beiblaetter">
+          <AppHinweis />
           <section className="blatt runde-blatt">
             <h2>Unsere Runde</h2>
             <Runde fortschritt={rundenFortschritt(jetzt)} unterwegs={woche.phase === 'rad'} />
@@ -293,7 +296,7 @@ export default function App() {
 
       <AnimatePresence>
         {stand.art === 'zettel' && s.stueck > 0 && (
-          <motion.a
+          <m.a
             href="#abgeben-ziel"
             className="leiste"
             onClick={(e) => { e.preventDefault(); document.querySelector('.rechnung')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }}
@@ -304,7 +307,7 @@ export default function App() {
           >
             <span>{s.stueck} Stück · <Zahl wert={gesamt} /></span>
             <strong>zum Abgeben ↓</strong>
-          </motion.a>
+          </m.a>
         )}
       </AnimatePresence>
     </>

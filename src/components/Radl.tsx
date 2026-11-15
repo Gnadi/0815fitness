@@ -1,31 +1,72 @@
 /**
- * Lastenrad als Tuschezeichnung, fährt nach rechts:
- * Fahrerin am Sattel, Lenker, davor der Korb mit Gebäck über dem Vorderrad.
+ * Unser Lastenrad als Tuschezeichnung (kompakter Long John), fährt nach rechts:
+ * großes Hinterrad, Sattel, hohe Lenkstange direkt hinter der Ladebox mit Lochblech,
+ * Akku unter der Box, Lenkstange unten zum kleinen Vorderrad mit gelber Gabel.
  */
-const RADL_PFADE = (
-  <>
-    <path className="fahrtstriche" d="M1 38h8M3 46h6" stroke="var(--kuli)" />
-    {/* Rahmen, Sattel, Lenker */}
-    <path d="M24 54h28l-6-26M46 30l34-2M52 54l28-24M81 28l15 26M40 27h12M80 28l-2-8h-7" />
-    {/* Korb vorne über dem Vorderrad */}
-    <path d="M86 40l10 14M108 40l-12 14" />
-    <rect x="84" y="24" width="28" height="16" rx="2" fill="var(--kruste-hell)" />
-    <path d="M84 29.5h28M84 35h28M91 24v16M98 24v16M105 24v16" strokeWidth="1.2" />
-    <path d="M88 24q4-9 10-2M99 24q5-10 11-1" fill="var(--kruste)" />
-    {/* Fahrerin */}
-    <path d="M46 26l14-14M60 12l12 8M46 26l12 12-4 16" stroke="var(--kuli)" />
-    <circle cx="63" cy="7" r="4.5" stroke="var(--kuli)" />
-    {/* Räder */}
-    <g className="rad-dreh"><circle cx="24" cy="54" r="13" /><path d="M24 41v26M11 54h26" /></g>
-    <g className="rad-dreh"><circle cx="96" cy="54" r="13" /><path d="M96 41v26M83 54h26" /></g>
-  </>
-)
+export function RadlZeichnung() {
+  return (
+    <>
+      <defs>
+        <pattern id="lochblech" width="3" height="3" patternUnits="userSpaceOnUse">
+          <circle cx="1.5" cy="1.5" r=".55" fill="var(--tusche)" opacity=".35" />
+        </pattern>
+      </defs>
+      <path className="fahrtstriche" d="M0 36h6M1 43h5" stroke="var(--kuli)" />
+
+      {/* Schutzbleche */}
+      <path d="M4 47a14.5 14.5 0 0 1 22-9" strokeWidth="2" />
+      <path d="M96 47a11.5 11.5 0 0 1 17-2" strokeWidth="2" />
+
+      {/* Räder */}
+      <g className="rad-dreh">
+        <circle cx="18" cy="52" r="14" strokeWidth="2.6" />
+        <path d="M18 39v26M5 52h26M9 43l18 18M27 43L9 61" strokeWidth=".7" />
+      </g>
+      <g className="rad-dreh">
+        <circle cx="105" cy="54" r="10.5" strokeWidth="2.6" />
+        <path d="M105 44v20M95 54h20M98 47l14 14M112 47l-14 14" strokeWidth=".7" />
+      </g>
+
+      {/* Lenkstange unten zum Vorderrad */}
+      <path d="M55 57L101 53" strokeWidth="1.4" />
+
+      {/* Rahmen: mintfarbene Rohre mit Tuschekontur */}
+      <g stroke="var(--rad-rahmen)" strokeWidth="5">
+        <path d="M18 52L39 54L51 46H96L97 40M18 52L34 36M32 31L57 27M57 46V12" />
+      </g>
+      <g strokeWidth="1.3">
+        <path d="M18 52L39 54L51 46H96L97 40M18 52L34 36M32 31L57 27M57 46V12" />
+      </g>
+      {/* Sattelstütze und Sattel */}
+      <path d="M29 14L39 54" strokeWidth="2.6" />
+      <path d="M21 11q8-3 15 0" strokeWidth="3" />
+      {/* Lenker */}
+      <path d="M57 12l2-3h7" strokeWidth="2.4" />
+      {/* gelbe Gabel */}
+      <path d="M97 40L105 54" stroke="var(--rad-gabel)" strokeWidth="4.5" />
+      <path d="M97 40L105 54" strokeWidth="1.2" />
+      <circle cx="98" cy="37" r="1.6" fill="var(--papier)" strokeWidth="1.2" />
+
+      {/* Akku unter der Box */}
+      <rect x="50.5" y="33" width="6" height="12" rx="2" fill="var(--rad-stoff)" strokeWidth="1.2" />
+
+      {/* Ladebox: Lochblech, dunkle Stoffseiten, Griff */}
+      <rect x="58" y="21" width="38" height="25" rx="1.5" fill="var(--rad-blech)" strokeWidth="1.6" />
+      <rect x="58" y="21" width="38" height="25" rx="1.5" fill="url(#lochblech)" stroke="none" />
+      <path d="M58 23v22l4-2V25zM96 23v22l-4-2V25z" fill="var(--rad-stoff)" strokeWidth="1" />
+      <path d="M57 21h40" strokeWidth="2.2" />
+      <path d="M71 24h12l-1 3h-10z" fill="var(--papier)" strokeWidth="1.1" />
+      {/* ein bisschen Gebäck schaut raus */}
+      <path d="M64 21q4-7 9-1M78 21q5-8 11-1" fill="var(--kruste)" strokeWidth="1.4" />
+    </>
+  )
+}
 
 export function Radl({ className, fahrend = false }: { className?: string; fahrend?: boolean }) {
   return (
-    <svg viewBox="0 0 120 70" className={`radl ${fahrend ? 'fahrend' : ''} ${className ?? ''}`} aria-hidden style={{ filter: 'url(#krakel)' }}>
-      <g fill="none" stroke="var(--tusche)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-        {RADL_PFADE}
+    <svg viewBox="-2 0 122 70" className={`radl ${fahrend ? 'fahrend' : ''} ${className ?? ''}`} aria-hidden style={{ filter: 'url(#krakel)' }}>
+      <g fill="none" stroke="var(--tusche)" strokeLinecap="round" strokeLinejoin="round">
+        <RadlZeichnung />
       </g>
     </svg>
   )

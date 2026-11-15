@@ -1,0 +1,33 @@
+/*
+ * Zugeschnittene Schriften (scripts/schriften-zuschneiden.sh):
+ * Newsreader und Shantell Sans, SIL Open Font License 1.1.
+ * Nur Latein + deutsche Sonderzeichen, nur die genutzten Gewichte und Achsenwerte.
+ */
+@font-face {
+  font-family: 'Zettel Serif';
+  src: url('./zettel-serif.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Zettel Serif';
+  src: url('./zettel-serif-kursiv.woff2') format('woff2');
+  font-weight: 400 600;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Zettel Titel';
+  src: url('./zettel-titel.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Zettel Hand';
+  src: url('./zettel-hand.woff2') format('woff2');
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+}

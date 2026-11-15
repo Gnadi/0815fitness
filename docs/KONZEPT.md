@@ -1,174 +1,174 @@
-# Karriere-Simulator – Konzept & Architektur
+# Die Radlbäckerin · Linz – Konzept & Business Plan
 
-Privates, rein textbasiertes Fußball-Karriere-Spiel. Man schlüpft mit 16 in die Rolle eines Spielers und
-trifft bis zum Karriereende Entscheidungen: Vereinswechsel, Privatleben, Kabine, Medien, Moral.
-Läuft nur im Browser (mobile-first, PWA), alle Daten liegen lokal.
+> Stand: November 2026 · Arbeitsentwurf. Alle Zahlen sind **Planannahmen**, keine Marktdaten,
+> und in einem Probelauf zu überprüfen (siehe [Offene Punkte](#8-offene-punkte--vor-dem-start-zu-klären)).
 
-## Festlegungen
+## 1. Idee in einem Satz
 
-| Thema | Entscheidung |
+Wir backen **bei uns zuhause** Sonntagsgebäck, das die Nachbarschaft **bis Freitag online vorbestellt**,
+und bringen es **Sonntag früh zwischen 7 und 10 Uhr mit dem Lastenrad** an die Tür – nur in unserem Grätzl,
+nur so viel, wie bestellt wurde.
+
+## 2. Leitlinien
+
+- **Sehr lokal:** Liefergebiet rund **1,5 km um unser Zuhause** – alles, was in einer Sonntagsrunde mit dem Rad
+  bequem erreichbar ist. Lieber eine Gasse mehr Stammkundschaft als ein Stadtteil mehr Fläche.
+- **Klein und machbar:** Ein Haushalt, ein Ofen, ein Lastenrad. Wachstum nur bis zur Grenze dessen,
+  was wir selbst an einem Sonntagmorgen schaffen.
+- **Kein Abfall:** Gebacken wird nur, was bis Freitag 20:00 bestellt ist.
+- **Persönlich:** Man kennt die Bäckerin. Das ist das Verkaufsargument, nicht der Preis.
+
+## 3. Zielgruppe
+
+Die **direkte Nachbarschaft**: Familien, Paare und ältere Menschen in den umliegenden Gassen, die sich
+ein frisches Sonntagsfrühstück wünschen, ohne früh aufzustehen. Erreichbar über Flyer im Postkasten,
+den Aushang im Stiegenhaus und Mundpropaganda.
+
+Realistische Größe: Im Umkreis von 1,5 km wohnen in Linz grob 1.000–3.000 Haushalte.
+Das Ziel von **30–45 Bestellungen pro Sonntag** entspricht nur wenigen Prozent davon.
+
+## 4. Angebot
+
+### Sortiment
+Im Mockup (`src/data/produkte.ts`) stehen 12 Produkte. Für den Heimbetrieb wird das **auf 6–8 Produkte gekürzt**,
+die sich im eigenen Ofen gut in Serie backen lassen, zum Beispiel:
+
+- Kaisersemmel, Dinkelweckerl, Laugenbrezel
+- Bauernbrot (Sauerteig, kann am Samstag vorgebacken werden)
+- Sonntagszopf
+- Linzer Schnitte, Zimtschnecke (am Samstag vorbereitet)
+
+Croissants nur, wenn der Aufwand fürs Laminieren sich im Probelauf als machbar erweist.
+Einmal im Monat ein Saisonprodukt (Krampus, Osterpinze, Marillenkuchen) als Anlass, die Nachbarschaft zu erinnern.
+
+### Preise & Konditionen
+- Preisniveau Handwerksbäckerei (Semmel 0,60 €, Bauernbrot 4,90 €, Linzer Schnitte 2,90 €)
+- Zustellung **2,50 €**, **gratis ab 20 €** – vorerst wie im Mockup, im Probelauf testen, ob eine kleinere Pauschale besser ankommt
+- **Sonntags-Abo:** gleicher Korb jede Woche, bis Freitag pausierbar. Das macht die Planung leichter.
+- **Höchstmenge pro Sonntag:** Ist der Ofen voll, ist die Bestellung für diesen Sonntag geschlossen („ausverkauft“).
+
+## 5. Ablauf
+
+```
+Mo–Fr 20:00   Bestellungen über die Webseite
+Fr 20:00      Bestellschluss → Einkaufs- und Backliste, Reihenfolge der Lieferrunde
+Sa            Einkauf, Sauerteig, Vorteige, Brot und Süßes vorbacken (ca. 3 h)
+So 04:00      Gebäck backen (ca. 3 h)
+So 06:45      Packen: ein Papiersackerl pro Bestellung, Etikett mit Name + Zeitfenster
+So 07:00–10:00 Lieferrunde mit dem Lastenrad
+```
+
+- **Kapazität:** Eine Person liefert in diesem kleinen Gebiet rund 10–12 Stopps pro Stunde, also etwa 30–35
+  in drei Stunden. Ab ca. 35 Bestellungen braucht es eine zweite Person (Familie) oder eine zweite Runde.
+- **Ofen:** Ein normaler Haushaltsbackofen reicht für einen Probelauf mit ca. 15 Bestellungen. Für 30–45
+  Bestellungen braucht es einen kleinen **Heißluft-Profiofen** mit mehreren Blechen.
+- **Zustellung:** Sackerl an die Tür und kurze Nachricht „Dein Gebäck ist da“ – oder persönlich bei Barzahlung.
+
+## 6. Marketing (fast ohne Budget)
+
+| Maßnahme | Aufwand |
 |---|---|
-| Vereine/Ligen | Echte Vereine, kein Lizenzthema (privates Spiel); Stärken sind Näherungswerte |
-| Ton | Mix aus ernst und Boulevard, darf unterhaltsam und überzogen sein |
-| Darstellung | Rein textbasiert, kein Match-Visual, kein Avatar |
-| Spiele | Ergebnis + Schlüsselszenen, keine Minuten-Simulation |
-| Moral/Risiko | Doping, Wetten, Manipulation, Steuertricks – mit Konsequenzen, aber man kann damit durchkommen |
-| Sprache/Plattform | Nur Deutsch, nur mobil, als PWA |
-| Installation | Button „App installieren“ auf dem Startbildschirm (`ui/pwaInstall.ts`): Chrome/Edge/Android über `beforeinstallprompt`, iOS mit Anleitung „Teilen → Zum Home-Bildschirm“; ausgeblendet, sobald die App installiert ist |
-| Länder | Alle 55 UEFA-Verbände (937 Vereine in 68 Ligen) |
-| Speicherung | Nur Browser (localStorage), Export/Import als JSON; beendete Karrieren lassen sich als Zusammenfassung in der Hall of Fame archivieren (`storage/hof.ts`); Klick auf einen Eintrag zeigt den Karriereende-Screen |
+| Flyer in die Postkästen im Liefergebiet, mit Gratis-Linzer-Schnitte bei der ersten Bestellung | ca. 300 € |
+| Aushang in Stiegenhäusern, beim Greißler, im Kindergarten | gratis |
+| Das gebrandete Lastenrad – jede Runde ist Werbung | einmalig |
+| WhatsApp- oder Signal-Gruppe bzw. Newsletter: Donnerstag-Erinnerung „Morgen ist Bestellschluss“ | gratis |
+| „Nachbar:innen-Bonus“: Wer jemanden aus dem Haus mitbringt, bekommt eine Semmel geschenkt | geringe Warenkosten |
 
-## Spielablauf
+## 7. Business Plan
 
-Der Kalender einer Saison besteht aus Wochen: Ligaspieltage, eingestreute Pokal- und Europapokalwochen,
-Winterpause (Transferfenster), ggf. ein Turnier (EM/WM) und die Sommerpause (Transferfenster).
-Pro Woche: **Trainingsfokus wählen → Spiel (Ergebnis + Schlüsselszenen) → ggf. Ereignis mit Entscheidung.**
-Mit „⏩ Wochen simulieren“ lassen sich mehrere Wochen am Stück spielen (hält bei Ereignissen, Angeboten, Verletzungen).
+### 7.1 Annahmen
 
-### Karrierephasen
-- **Jugend (16–17):** U19 eines selbst gewählten Vereins (Stärke des Vereins −12), Jugendliga ohne Auf-/Abstieg.
-  Am Ende der zweiten Jugendsaison: Profivertrag (Angebote des Heimatvereins und anderer Klubs).
-- **Profi (ab 18):** Liga, nationaler Pokal, Europapokal (Champions/Europa/Conference League), Nationalmannschaft.
-- **Spätphase:** Alterung ab 29, Karriereende freiwillig ab 30, spätestens mit 40.
-- **Ende:** Ruhm-Punkte, Klassifizierung (Randnotiz … Jahrhundertspieler), Titel, Statistiken, Erfolge.
+| Kennzahl | Wert | Kommentar |
+|---|---|---|
+| Ø Bon inkl. Zustellung | 16,50 € | |
+| Umsatzsteuer | keine | **Kleinunternehmerregelung** (Umsatz unter der Grenze, derzeit 55.000 € brutto pro Jahr – prüfen) |
+| Zutaten | 28 % vom Bon = 4,62 € | |
+| Verpackung (Papiersackerl, Etikett) | 0,45 € | |
+| Zahlungsgebühren | 0,20 € | Viele zahlen bar oder per Überweisung |
+| **Variable Kosten pro Bestellung** | **5,27 €** | |
+| **Deckungsbeitrag pro Bestellung** | **11,23 €** | Die Zustellung machen wir selbst, daher keine Lohnkosten |
+| Liefersonntage pro Jahr | 50 | 2 Wochen Pause |
 
-### Charaktererstellung
-Heimatland, Name, Jugendverein, Position, starker Fuß, **Herkunft** (Arbeiterfamilie / Fußballer-Familie / Akademiker)
-und **Spielertyp** (Straßenfußballer / Akademie-Talent / Spätzünder). Das Potenzial bleibt verdeckt (nur eine unscharfe Sternewertung der Scouts).
+### 7.2 Mengen
 
-## Spielermodell
-- **Skills (1–100):** Tempo, Schuss, Pass, Dribbling, Defensive, Physis, Technik, Positionsspiel → positionsgewichtete Gesamtstärke.
-- **Traits (0–100):** Moral, Selbstvertrauen, Disziplin, Professionalität, Ehrgeiz, Ruf, Fans, Trainer-Beziehung, Kabine, Fitness, Gesundheit, Privatglück.
-- **Sonstiges:** Geld, Marktwert, Form, Spielpraxis, Verletzungen, Sperren, Berater-Güte, Lebensstil, Partner/Kinder.
+| | Probelauf (8 Sonntage) | Jahr 1 | Jahr 2 |
+|---|---:|---:|---:|
+| Ø Bestellungen pro Sonntag | 15 | 30 | 45 (Obergrenze) |
+| Bestellungen gesamt | 120 | 1.500 | 2.250 |
+| Ofen | Haushaltsofen | Heißluft-Profiofen | Heißluft-Profiofen |
+| Personen am Sonntag | 1 | 1 | 2 (Familie) |
 
-## Wochenschleife
-- **Training:** 7 Fokus-Optionen. Zuwachs hängt von Alter, Potenzial, Professionalität, Fitness, Spielpraxis und Positionsrelevanz ab.
-  Fitness wird durch Training und Spiele verbraucht und regeneriert sich teilweise; Müdigkeit senkt Leistung und erhöht das Verletzungsrisiko.
-- **Einsatz:** Startelf, Einwechslung oder nicht im Spiel, abhängig von Stärke vs. Mannschaft, Vertragsrolle, Trainer-Beziehung und Form.
-- **Spiel:** Basisergebnis (Poisson aus Teamstärken) + 0–2 Schlüsselszenen (12 Szenen, positionsabhängig) mit Risikostufen.
-  Szenen beeinflussen Tore, Vorlagen, Karten, Verletzungen und die Note. K.-o.-Spiele kennen Elfmeterschießen.
+### 7.3 Plan-Rechnung pro Jahr (in €)
 
-## Welt
-- **Ligen:** Jede Liga hat einen Doppel-/Mehrfachrundenspielplan. Nur die Liga des Spielers wird wöchentlich simuliert, alle anderen am Saisonende.
-- **Auf-/Abstieg** für alle Länder mit mehreren Ligastufen, Vereinsstärken entwickeln sich (Rückkehr zum Ankerwert + Zufall + Platzierung).
-- **Pokale:** nationaler K.-o.-Pokal; **Europa:** Ligaphase mit 8 Spielen (Punkteschwellen), dann K.-o.-Runden; Teilnehmer aus den Abschlusstabellen.
-- **Nationalmannschaft:** Nominierung per Ereignis, Länderspiele, EM/WM alle zwei Jahre (Gruppenphase + K.-o.).
-- **Wirtschaft:** Marktwert (Stärke, Alter, Potenzial, Ruf), Gehälter je Land/Liga/Vereinsstärke, Netto-Wocheneinkommen, Lebensstil-Kosten.
+| | Jahr 1 | Jahr 2 |
+|---|---:|---:|
+| **Umsatz** | **24.750** | **37.125** |
+| Zutaten, Verpackung, Zahlung | −7.905 | −11.858 |
+| Mehrverbrauch Strom (Ofen) | −800 | −1.100 |
+| Versicherung (Betriebshaftpflicht, Rad) | −600 | −600 |
+| Webseite: Domain, Hosting | −100 | −100 |
+| Steuerberatung bzw. Buchhaltung | −800 | −800 |
+| Kammer- und Gewerbegebühren | −300 | −300 |
+| Marketing (Flyer, Probierware) | −500 | −300 |
+| Sonstiges (Kleingeräte, Reparaturen) | −400 | −500 |
+| Abschreibung Lastenrad und Ofen (5 Jahre) | −1.600 | −1.600 |
+| **Überschuss vor Steuer und Sozialversicherung** | **11.745** | **19.967** |
+| Arbeitszeit pro Jahr (geschätzt) | 600 h | 750 h |
+| **Überschuss pro Arbeitsstunde** | **≈ 19,60 €** | **≈ 26,60 €** |
 
-## Verträge & Transfers
-- Transferfenster im Winter und Sommer erzeugen Angebote (Transfer, Leihe, Profivertrag, vereinslos).
-- Angebote lassen sich annehmen, ablehnen oder nachverhandeln (Gehalt/Rolle/Laufzeit, Absage-Risiko). Wechselwunsch erhöht die Angebotszahl, belastet aber Trainer und Kabine.
-- Vertragsende → vereinslos; zum Fensterende wird automatisch das beste Angebot gewählt.
-- **Pausenjahr (ein Jahr ohne Verein):** Im Sommerfenster ohne Vertrag kann der Spieler im Menü „Vertrag“ ein Jahr vereinslos bleiben (`flags.pausenjahrWunsch`).
-  Meldet sich außerdem kein Verein und ist der Spieler zu schwach (unter dem schwächsten Verein des Heimatlandes minus 6) oder mindestens 32, passiert das einmalig automatisch.
-  Die Saison läuft dann in der Liga des letzten Vereins ohne eigenes Team (kein Spiel, kein Pokal, kein Europapokal, Lebenshaltung ohne Gehalt, Historie „Vereinslos“).
-  Im Winter und im nächsten Sommer gibt es neue Angebote. Ein Angebot vorher anzunehmen beendet das Pausenjahr.
-- Ereignisse (Ausstiegsklausel, Deadline Day) erzwingen keinen Wechsel mehr: Die Aktionen `angebote-spitze` und `angebote-markt` legen Angebote ins Menü „Vertrag“.
-  Melden sich keine Vereine, steht das im Ereignis-Ergebnis. Nach einem angenommenen Transfer folgt mit 25 % das Ereignis „Medizincheck“.
-- Winterwechsel in andere Ligen: die neue Liga wird bis zum aktuellen Spieltag nachsimuliert.
+Arbeitszeit: Samstag 3 h, Sonntag 6–7 h, Bestellungen, Einkauf und Buchhaltung 2–3 h pro Woche.
+Davon gehen noch **Einkommensteuer und Sozialversicherung (SVS)** ab – diese hängen vom übrigen Einkommen ab.
 
-## Finanzen
-Tab „Finanzen“ mit vier Bereichen: **Übersicht** (Kontostand, Gesamtvermögen, Vermögensverteilung, ETF-Sparplan mit 30 % des Wochenverdiensts),
-**Geldanlagen**, **Immobilien** und **Start-ups**. Ältere Spielstände ohne neue Felder funktionieren weiter.
+### 7.4 Einordnung
 
-- **Geldanlagen (8 Klassen):** Tagesgeld (2,5 %), Staatsanleihen (3,5 %, ruhig), Dividenden-Aktien (6 %), Aktien-ETF (7 %), Immobilienfonds/REIT (5,5 %),
-  Gold (4 %), Einzelaktien/Tech (9 %, sehr volatil) und Krypto (hochriskant). Ein- und Auszahlen in Prozentschritten, Kurse bewegen sich jede Woche.
-- **Immobilien:** Alle 26 Wochen gibt es fünf Marktangebote (Studenten-Apartment, Eigentumswohnung, Mehrfamilienhaus, Gewerbeobjekt, Ferienhaus, Baugrundstück,
-  Eigenheim, Luxusvilla) in einfacher, guter oder Top-Lage. Kauf bar oder mit Kredit (20 % Eigenkapital, 3,8 % Zinsen, 2 % Tilgung, Kreditrahmen aus Gehalt und Depot),
-  6 % Kaufnebenkosten. Jede Woche laufen Miete (nach Auslastung), Nebenkosten, Zinsen und Tilgung in den Wocheneinkommen-Saldo ein;
-  Wert schwankt je Objekt, dazu Reparaturen und Mietausfälle. Modernisieren (+9 % Wert/Miete, einmal pro Jahr), Kredit tilgen, Verkaufen (6 % Kosten).
-  Eigenheim und Villa sind Wohnsitze (nur einer möglich): kein Mietaufwand, mehr Privatglück pro Woche, die Villa bringt zusätzlich Prestige.
-- **Venture Capital:** Alle 13 Wochen gibt es Start-up-Deals (ab 5.000 € auf dem Konto). Der Einsatz ist bis zum Exit gebunden;
-  wöchentlich gibt es Finanzierungsrunden, Down-Rounds, Pleiten (etwa jedes zweite Start-up) oder Exits/Börsengänge (Ø ca. 2× Einsatz bei hoher Streuung).
-  Vorzeitiger Verkauf am Zweitmarkt mit 40 % Abschlag.
-- **Exposé:** Jedes Immobilienangebot und jedes gekaufte Objekt hat ein Exposé wie in einem Immobilienportal (`engine/expose.ts`, `screens/game/Expose.tsx`, `ui/immo/`).
-  Die Daten (Wohnfläche, Zimmer, Baujahr, Energieklasse und -bedarf, Geschoss, Grundstück, Ausstattung, Abzeichen wie „Provisionsfrei“, Makler, Titel, Beschreibung, Lagetexte und Entfernungen)
-  werden aus der Objekt-ID abgeleitet, nicht aus dem Spielzufall. Der Spielstand bleibt unverändert und alte Spielstände funktionieren. Die Fläche ergibt sich aus dem Preis und einem ortsüblichen Quadratmeterpreis
-  (Typ, Lage, Stadt). Illustrationen sind reine SVG ohne Zusatzpakete: eine Außenansicht je Objektart (Stimmung nach Lage: bedeckt, sonnig, goldene Stunde), ein Grundriss (Treemap-Aufteilung, Erd- und
-  Obergeschoss, Regelgeschoss bei Mehrfamilienhaus und Gewerbe, Lageplan bei Bauland), eine stilisierte Lagekarte und die Energieskala A+ bis H. Die Karte in der Liste zeigt Titelbild, Preis, Kurzfakten und
-  Rendite, das Detail-Exposé öffnet als Vollbild mit wischbarer Galerie, Preis und Finanzierung, Eckdaten, Energieeffizienz, Ausstattung, Beschreibung, Lage und Makler sowie Kauf- bzw. Verkaufsbuttons.
-- **3D-Ansicht für Villa, Eigenheim, Mehrfamilienhaus und Ferienhaus (`ui/immo/villa3d/`):** Im Exposé dieser vier Objektarten öffnet der Knopf „🧊 3D-Ansicht“ einen Vollbild-Viewer mit Three.js (`Haus3DViewer`; `typen.ts` kennt die Objektarten ohne Three.js, `modelle.ts` wählt das Modell).
-  `mehrfamilienhaus.ts` baut ein drei- bis fünfgeschossiges Haus (Klinker oder Putz) mit zwei Treppenhaus-Eingängen, Balkonen, Gauben, Schornsteinen, Straße mit parkenden Autos, Straßenlaternen, Nachbargebäuden und Hinterhof; die Geschosse kommen aus dem Exposé, die Länge aus der Fläche.
-  `ferienhaus.ts` baut ein Holzhaus auf Pfählen am Strand mit Walmdach (Reet oder Ziegel), umlaufender Veranda, Hängematte, Surfbrettern, Lichterkette, Außendusche, Strandweg, Steg mit Boot, Meer (animiert), Strandschirmen, Kajak, Feuerstelle und Palmen.
-  Dach-, Fenster-, Wandtextur- und Walmdach-Baukästen liegen in `bausteine.ts`. Der Viewer ist ein eigener Chunk (rund 610 KB, 155 KB gzip), wird erst beim
-  Öffnen nachgeladen und liegt nicht im Offline-Paket der PWA, sondern im Laufzeit-Cache (`vite.config.ts`). `szene.ts` baut die Villa prozedural aus Objekt-Seed, Lage und Wohnfläche
-  (Geschosse mit Glasfronten und Holzblenden, Pool mit animiertem Wasser, Terrasse, Liegen, Schirm, Auto, Palmen, Zypressen, Hecken, Gartenleuchten, eingerichtetes Wohnzimmer).
-  `bausteine.ts` enthält die gemeinsamen Teile (Materialien, Pflanzen, Auto, Wasser, Aufräumen). `eigenheim.ts` baut ein Einfamilienhaus mit Satteldach (Ziegeltextur, Gaube, Schornstein), Fenstern mit Rahmen und optionalen Läden, Haustür mit Vordach, Garage (ein- oder zweitorig, Basketballkorb), Lattenzaun, Beeten, Holzterrasse mit Pergola, Trampolin, Schaukel, Sandkasten und Gartenhaus; die Länge folgt der Wohnfläche.
-  Der Viewer bietet vier Stimmungen (Bedeckt, Tag, Abend, Nacht) mit Himmelsverlauf, Sonne bzw. Mond, Nebel, Schatten, Umgebungsreflexion, leuchtenden Fenstern und Poolbeleuchtung; die Anfangsstimmung folgt der Lage.
-  Steuerung per Ziehen und Zoomen (OrbitControls, Auto-Rotation bis zur ersten Berührung, aus bei „Bewegung reduzieren“). Ohne WebGL erscheint ein Hinweis, die SVG-Illustration bleibt. Beim Schließen werden Geometrien, Texturen und der WebGL-Kontext freigegeben.
-- Dazu eine Sportinvaliditätsversicherung und rund 24 Finanz-Ereignisse (Börsencrash/-boom, Krypto, Start-up, Anlagebetrug, Casino, Immobilienboom/-crash,
-  Mietnomaden, Goldrausch, Zinswende, Dividenden, Tech-Hype …), die ins Depot und ins Immobilienportfolio eingreifen.
+- **Break-even:** Die jährlichen Fixkosten (ohne Zutaten) liegen bei rund 5.000 €. Bei 11,23 € Deckungsbeitrag
+  reichen **etwa 9 Bestellungen pro Sonntag**, um sie zu decken. Alles darüber bezahlt unsere Arbeitszeit.
+- Als **Nebenerwerb** ist das solide: ein ordentlicher Stundenlohn, geringes Risiko, kleine Investition.
+- Ein **Vollerwerb** ist in diesem Rahmen nicht das Ziel. Die Obergrenze setzen Ofen und Sonntagmorgen,
+  nicht die Nachfrage.
+- **Hebel ohne mehr Fläche:** höherer Bon durch Brunch-Pakete (Gebäck + Marmelade + Aufstrich, Ziel Ø 20 €)
+  und ein hoher Abo-Anteil, damit jeder Sonntag gut planbar ist.
 
-## Privatleben
-Eigener Tab „Privat“ (🏡) mit vier Bereichen:
+### 7.5 Startinvestition
 
-- **Übersicht:** Privatglück mit Einordnung (Rundum glücklich … Ausgebrannt), Beziehung, Kinder, Herkunft, bester Freund, Wohnsituation, Besitz und laufende Lebenshaltungskosten pro Jahr.
-- **Aktivitäten:** einmalige Ausgaben mit direkter Wirkung und Wartezeit (Date-Abend, Geschenk, Paarberatung, Wochenend-Trip, Luxusurlaub, Familienbesuch,
-  Familienfeier, Ausflug mit den Kindern, Freunde, Konzert, Spenden, Wellness, Sportpsychologe). Manche brauchen Partner oder Kinder.
-- **Besitz:** dauerhafte Anschaffungen mit Wochenwirkung und teils laufenden Kosten: Hund, Gitarre, Gaming-Setup, Golfclub, Segelboot, Mentalcoach, Physio-Abo,
-  Privatkoch, Kinderbetreuung, Haus für die Eltern, Autos (Kleinwagen/Sportwagen/Supersportwagen, ersetzen sich gegenseitig), Luxusuhr, Assistent, eigene Stiftung.
-  Abos lassen sich kündigen.
-- **Wohnen:** Mietwohnungen (schick, Penthouse) mit Kaution und Jahresmiete; sie ruhen, sobald man ein Eigenheim besitzt.
-- Fünf neue Privat-Ereignisse (Hund vor der Tür, Dach der Eltern, Jahrestag, Reise mit den Jungs, neues Hobby).
+| Posten | € |
+|---|---:|
+| E-Lastenrad (gebraucht oder gefördert; Förderung von Land OÖ bzw. Stadt Linz prüfen) | 5.000 |
+| Kleiner Heißluft-Profiofen (erst nach dem Probelauf) | 3.000 |
+| Bleche, Gärkörbe, Waage, Transportkisten | 800 |
+| Erster Vorrat Sackerl und Etiketten | 200 |
+| Gewerbeanmeldung, Registrierung, Hygieneschulung | 500 |
+| Flyer und Probierware zum Start | 500 |
+| **Summe** | **10.000** |
 
-## Ereignissystem
-Ereignisse sind datengetriebene Karten (`src/data/events/*`, rund 310 Stück) mit Bedingungen, Gewichtung, Abständen, Optionen,
-Würfen (Skills/Traits/feste Chance), Effekten und **Folgeereignissen** (verzögerte Ketten):
+Die Webseite basiert auf dem vorhandenen Mockup und verursacht nur Hosting-Kosten.
+Finanzierung aus Ersparnissen. Der Ofen wird erst gekauft, wenn der Probelauf zeigt, dass die Nachfrage da ist.
 
-- **Jugend, Kabine, Trainer, Privat, Familie, Medien, Karriere, Verein, Gesundheit**
-- **Risiko-Ketten:** Sportwetten → Sucht → Erpressung → Spielmanipulation → Ermittlungen; Doping-Angebot → Kontrolle;
-  Steuertrick → Razzia; Fremdgehen → Erpressung; Bestechung. Jede Ketten-Stufe hat einen Erwischt-Wurf – man kann damit durchkommen.
-- Folgen: Sperren, Ruf-/Fan-Verlust, Sponsor weg, Geldstrafen bis hin zum erzwungenen Karriereende.
+## 8. Offene Punkte – vor dem Start zu klären
 
-### Ereignis-Pakete
-Vier thematische Pakete erweitern die Grundkategorien (je eine Datei in `src/data/events/`):
+- **Gewerberecht:** Bäcker ist in Österreich ein reglementiertes Gewerbe. Bei der Wirtschaftskammer OÖ klären,
+  welche Gewerbeberechtigung für den Verkauf selbst gebackener Ware von zuhause nötig ist und welche Ausnahmen es gibt.
+- **Lebensmittelrecht:** Auch eine Heimküche, aus der verkauft wird, muss bei der Lebensmittelaufsicht registriert
+  werden und Hygienevorgaben erfüllen (u. a. Schulung, Trennung privat/gewerblich, Allergenkennzeichnung im Shop).
+- **Wohnung bzw. Haus:** Mietvertrag, Hausordnung oder Widmung können gewerbliche Nutzung einschränken.
+  Ofen und Geräusche um 4 Uhr früh mit den Nachbar:innen abstimmen.
+- **Steuer und Versicherung:** Kleinunternehmerregelung, SVS-Pflicht und Betriebshaftpflicht mit Steuerberatung klären.
+- **Probelauf:** 8 Sonntage mit Freund:innen und den nächsten Nachbar:innen, um Bon, Zeitbedarf und Nachfrage zu messen.
 
-- **Saison (`saison.ts`):** Trainerwechsel mit Trainer-Typ (Motivator, Taktiker, Diktator, Altmeister, Jugendförderer; Flag `trainerTyp`, gesetzt von der Aktion `trainer-wechsel`),
-  Interimstrainer, Abstiegskampf (Krisensitzung, Kasernierung, Sechs-Punkte-Spiel, Fanforderung), Titelrennen (Endspurt, Meisterschaft in Reichweite) und Pokalblamage.
-  Am Saisonende plant `beendeSaison` je nach Ergebnis Meisterkorso, verspielten Titel oder Rettung als Folgeereignis für die erste Woche der neuen Saison.
-- **Lebensphasen (`lebensphasen.ts`):** Hochzeitsplanung und Flitterwochen (Folge des Heiratsantrags), Ehekrise, Scheidung samt Rosenkrieg und Unterhalt,
-  Schlafentzug nach der Geburt, Kind kickt im Verein, Todesfall mit Trauerphase, Burnout, Lebensmitte-Krise und „Was kommt nach der Karriere?“.
-- **Social Media (`social.ts`, `social2.ts`, `engine/social.ts`):** Drei Kanäle mit eigenen Zählern in Tausend: Instagram (`flags.follower`), Twitch (`flags.twitch`, Kanal per `twitchKanal`)
-  und YouTube (`flags.abos`, Kanal per `youtube`). Sie werden über Ereignisse freigeschaltet (Account, Streaming-Kanal, Vlog-Kanal). Rund 40 Ereignisse: viraler Clip, Werbedeals mit Schleichwerbung,
-  Krypto-Werbung mit Sammelklage, alter Post, gekaufte Follower, Raid, Donation, toxischer Chat, Ausraster im Stream, Kanalsperre, Verein verbietet Streams, Kollab, Charity-Marathon, Partnerprogramm,
-  Streamer-Burnout, Clickbait, Monetarisierung, Shorts, Agentur, Beef, Ausrüster-Konflikt, TikTok-Challenge, Podcast, Autobiografie, Hackerangriff, Meme, Haltung, Hass-Nachrichten.
-  Im Privat-Tab gibt es den Bereich **Social** mit Einstellungen (Flags `postRate`, `streamRate`, `streamInhalt`, `socialTon`, `socialWerbung`): Posting-Häufigkeit, Stream-Häufigkeit (Pause bis täglich),
-  Inhalt (Gaming, Talk, Fußball, Alltag), Tonfall (brav bis provokant) und Werbung (keine bis viel). `socialWoche` wirkt jede Woche: Reichweite wächst oder schrumpft, Einnahmen fließen aufs Konto,
-  Fitness und Privatglück sinken bei viel Aktivität, ein provokanter Ton löst gelegentlich Aufregung aus. Reichweiten-Zähler fallen nie unter 0.
-  **Balancing:** Die Reichweite wächst auf eine Obergrenze zu, die aus der Bekanntheit folgt (`bekanntheit`: Ruf, Fans, Spielstärke, vor allem die Stärke des Vereins; `REICHWEITE_MAX`).
-  Ein Zweitligist erreicht so einige hundert Tausend Follower, ein Spieler bei einem Topklub mehrere Millionen. Ereignisse dürfen maximal bis 130 % der Obergrenze treiben, darüber pendelt es sich ein.
-  Einnahmen liegen in den Simulationen (zehn Profisaisons, Zweitligist und Topklub) meist bei 5 bis 30 % des Gehalts. Mit täglichem Streaming, Posten, provokantem Ton und viel Werbung sind es in den
-  ersten Profijahren deutlich mehr, dafür sinkt das Privatglück auf 20 bis 50.
-- **Vereinsleben (`vereinsleben.ts`):** Investor, Insolvenz (mögliche Folge der Finanzkrise), Präsidentenrücktritt, Stadion-Neubau, Fanproteste, Pyro-Strafe, Derby-Woche,
-  Rückennummer 10, Elfmeterschütze mit Serie, neuer Sportdirektor, Asien-Tour und Dubai-Trainingslager sowie **länderspezifische Ereignisse** (`la-*`) für Türkei, England, Italien,
-  warme und nordische Länder, Osteuropa, Deutschland, Frankreich, Alpenländer, Steueroasen und Niederlande/Dänemark/Belgien. Für Spieler im Ausland kommen Sprachbarriere,
-  Heimweh, Behördengang und die zweite Staatsbürgerschaft dazu.
-- **Transfer (`transfer.ts`):** Ausstiegsklausel, Kaufoption bei Leihe, Berater verhandelt hinter dem Rücken, Gerüchteküche, Deadline Day, Vertragspoker, Handgeld, Wiedersehen mit dem Ex-Klub, großer Abschied, Medizincheck.
-- **Verletzung (`verletzung.ts`):** Zweitmeinung, Reha-Motivation, Schmerzmittel-Kette (Spritze → Abhängigkeit → Kontrolle), früheres Comeback, Comeback-Ereignis nach mindestens vier Reha-Wochen
-  (`flags.rehaWochen`, geplant in `startWeek`), Angst im Zweikampf nach dem Kreuzbandriss, Liebe zur Physiotherapeutin.
-- **Nationalteam (`nationalteam.ts`):** Streit mit dem Nationaltrainer, Verein gegen Verband, Hymne, Kapitänsbinde, Turnierkader, Teamhotel, Elfmeterschießen, Fans im Turnierland, Rücktritt aus der Nationalmannschaft.
-- **Rivale (`rivale.ts`):** Kette über `flags.rivalitaet` (Duell → Fehde → Showdown → Versöhnung oder Eiszeit) plus Trainingswette, Foul und Wiedersehen als Mitspieler.
-- **Skandale (`skandale.ts`):** Berater-Betrug mit Prozess, Stalker, Einbruch, Clan-Erpressung, falsche Schlagzeile, Autounfall, Zoll, Klage des Ex-Vereins, Doping-Gerücht.
-- **Pausenjahr (`pausenjahr.ts`):** 14 Ereignisse nur für Spieler ohne Verein (`imPausenjahr`): Auftakt mit Planwahl, Probetraining beim Amateurklub, Showcase-Camp, Individualtraining,
-  Geldsorgen, Nebenjob, TV-Experte, vergessene Fans, Weltreise, letztes Angebot des Beraters, Familienzeit, Sinnkrise (inkl. freiwilligem Karriereende), Spielergewerkschaft, Jahresbilanz.
-  Die Aktionen `probetraining-vertrag` (Amateurklub) und `showcase-vertrag` (passender Verein) schließen mitten in der Saison einen Vertrag ab und beenden damit das Pausenjahr;
-  der Wechsel wird dabei wie ein Winterwechsel behandelt (neue Liga wird nachsimuliert).
-- Neuer Effekt `vereinsstaerke`: verändert die Stärke des aktuellen Vereins (Investor, Insolvenz, Krisenbewältigung).
+## 9. Roadmap
 
-## Erfolge & Ruhm
-50 Erfolge, Auszeichnungen (Weltfußballer, Spieler des Jahres), Ruhm-Punkte aus Titeln (gewichtet nach Einsatzzeit), Toren, Länderspielen,
-Spitzenstärke, Erfolgen, abzüglich Skandalen.
+| Phase | Zeitraum | Ziel |
+|---|---|---|
+| **0 · Mockup** | jetzt | Klick-Mockup (dieses Repo) zum Zeigen und Abstimmen. |
+| **1 · Klären** | 1–2 Monate | Gewerbe, Registrierung, Versicherung, Abstimmung mit dem Haus. |
+| **2 · Probelauf** | 8 Sonntage | Haushaltsofen, ca. 15 Bestellungen, Freund:innen und Nachbarschaft. |
+| **3 · Start** | danach | Profiofen, Flyer im ganzen Liefergebiet, Ziel 30 Bestellungen pro Sonntag. |
 
-## Technik
-- **Stack:** React 19, Vite, TypeScript, Zustand, React Router (HashRouter), vite-plugin-pwa, Vitest.
-- **Struktur:** `src/engine` (reine Spiellogik, getestet), `src/data` (Vereine, Namen, Szenen, Ereignisse), `src/storage` (Spielstände),
-  `src/store` (Zustand), `src/screens` (UI).
-- **Zufall:** Seed-basiert, Zustand liegt im Spielstand. Alle Spieleraktionen sind reine Funktionen (`src/engine/aktionen.ts`).
-- **Speichern:** localStorage hinter einem Interface, versioniertes Format (ältere Stände werden abgelehnt), Export/Import.
-- **Design:** Acht Themes über CSS-Variablen (Grün, Blau, Orange, Violett, Grau, Schwarz-Weiß, Hell) plus „Vereinsfarben“: Die Farben des aktuellen Vereins (`src/data/vereinsfarben.ts`, unbekannte Vereine bekommen eine stabile Farbe aus dem Namen) bilden Akzent und getönte Hintergründe und wechseln bei Transfers mit.
-- **Tests:** Daten-Integrität, Spielplan-/Welt-Invarianten, Karriere-Läufe für alle 55 Länder, Fuzzing mit zufälligen Entscheidungen.
-- **Bot/Simulation:** `src/engine/sim.ts` spielt Karrieren automatisch (Tests, Balancing).
+### Vom Mockup zur echten Webseite
 
-## Ideen für später
-Trainerkarriere nach dem Karriereende, weitere länderspezifische Ereignisse, Spielerrat-Streik als Kette, Transfers mit Kaufoption,
-echter Verbandswechsel nach der zweiten Staatsbürgerschaft, Saisonziele des Vereins, Dynastie (Kind wird Profi), IndexedDB bei sehr großen Spielständen.
+Für den Betrieb braucht die Webseite (React + Vite + PWA) nur wenig zusätzlich:
+1. Bestellungen speichern und per E-Mail an uns schicken (z. B. Formular-Dienst oder kleine Serverless-Funktion)
+2. **Back- und Packliste** für Freitagabend: Summe pro Produkt, ein Zettel pro Sackerl
+3. **Höchstmenge pro Sonntag** und pro Zeitfenster, danach „ausverkauft“
+4. Liefergebiet als Liste der Straßen bzw. Adressprüfung statt Postleitzahlen
+5. Optional: Online-Zahlung, Abo-Verwaltung, Erinnerung am Donnerstag

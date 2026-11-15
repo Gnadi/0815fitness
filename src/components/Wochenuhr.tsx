@@ -43,7 +43,7 @@ export function Wochenuhr({ jetzt, phase }: { jetzt: Date; phase: Phase }) {
             <span className="abschnitt-zeit">{a.zeit}</span>
           </div>
         ))}
-        <motion.div className="wochenuhr-zeiger" initial={false} animate={{ left: `${x}%` }} transition={{ type: 'spring', stiffness: 80, damping: 16 }}>
+        <motion.div className={`wochenuhr-zeiger ${x > 75 ? "rechts" : ""}`} initial={false} animate={{ left: `${x}%` }} transition={{ type: 'spring', stiffness: 80, damping: 16 }}>
           <span className="zeiger-text">du bist hier</span>
         </motion.div>
       </div>

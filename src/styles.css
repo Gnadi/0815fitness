@@ -45,14 +45,25 @@ a { color: inherit; }
 .kuli { color: var(--kuli); }
 .kleingedruckt { font-size: .8rem; color: var(--grau); text-align: center; margin: 10px 0 0; }
 
-/* Zeitmaschine (nur Mockup) */
-.zeitmaschine { display: flex; align-items: center; gap: 6px; padding: 8px 16px; overflow-x: auto; background: var(--tusche); color: var(--papier); font-size: .78rem; scrollbar-width: none; white-space: nowrap; }
+/* Zeitmaschine (nur Mockup, in der Fußzeile) */
+.zeitmaschine { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; margin-top: 14px; font-size: .78rem; }
 .zeitmaschine-label { opacity: .7; margin-right: 4px; font-style: italic; }
-.zeitmaschine button { border: 1px solid rgba(251,248,241,.35); background: none; border-radius: 999px; padding: 3px 11px; font-size: .78rem; }
-.zeitmaschine button.aktiv { background: var(--papier); color: var(--tusche); }
+.zeitmaschine button { border: 1px solid #b9ad99; background: none; border-radius: 999px; padding: 3px 11px; font-size: .78rem; color: #5b5248; }
+.zeitmaschine button.aktiv { background: var(--tusche); color: var(--papier); border-color: var(--tusche); }
+
+/* Kalenderwochen als Registerreiter */
+.reiter { display: flex; gap: 4px; padding: 0 22px; position: relative; z-index: 1; }
+.reiter-tab { position: relative; flex: 0 1 120px; border: 0; background: #efe7d6; border-radius: 8px 8px 0 0; padding: 8px 10px 9px; display: flex; flex-direction: column; align-items: center; line-height: 1.15; color: var(--grau); box-shadow: inset 0 -6px 8px -6px rgba(70,50,20,.25); transition: color .2s, transform .2s; }
+.reiter-tab:hover:not(.aktiv) { transform: translateY(-2px); color: var(--tusche); }
+.reiter-papier { position: absolute; inset: 0 0 -2px; background: var(--papier); border-radius: 8px 8px 0 0; box-shadow: 0 -3px 8px -4px rgba(70,50,20,.25); }
+.reiter-kw, .reiter-datum { position: relative; }
+.reiter-kw { font-weight: 600; font-size: 1rem; }
+.reiter-datum { font-size: .75rem; }
+.reiter-tab.aktiv { color: var(--tusche); }
+.reiter-tab.aktiv .reiter-kw { color: var(--kuli); font-family: var(--hand); font-variation-settings: 'INFM' 100; }
 
 /* Tisch & Zettel */
-.tisch { max-width: 760px; margin: 0 auto; padding: 36px 16px 40px; }
+.tisch { max-width: 760px; margin: 0 auto; padding: 28px 16px 40px; }
 .zettel {
   position: relative;
   background: var(--papier);
@@ -63,7 +74,7 @@ a { color: inherit; }
   transform-origin: 50% 0;
 }
 .klebestreifen { position: absolute; top: -14px; width: 110px; height: 30px; background: rgba(240,228,190,.75); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
-.klebestreifen.links { left: 40px; transform: rotate(-4deg); }
+.klebestreifen.links { display: none; }
 .klebestreifen.rechts { right: 40px; transform: rotate(3deg); }
 
 .kopf-zeile { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; border-bottom: 1.5px solid var(--tusche); padding-bottom: 14px; margin-bottom: 26px; }
@@ -93,6 +104,7 @@ a { color: inherit; }
 .wochenuhr-zeiger { position: absolute; top: -7px; width: 2px; height: 14px; background: var(--kuli); }
 .wochenuhr-zeiger::before { content: ''; position: absolute; left: -4px; top: 3px; width: 10px; height: 10px; border-radius: 50%; background: var(--kuli); box-shadow: 0 0 0 4px rgba(45,71,168,.15); }
 .zeiger-text { position: absolute; bottom: 16px; left: -10px; font-family: var(--hand); color: var(--kuli); font-size: .85rem; white-space: nowrap; transform: rotate(-4deg); }
+.wochenuhr-zeiger.rechts .zeiger-text { left: auto; right: -6px; transform: rotate(-4deg); }
 .schluss { margin: 18px 0 0; font-size: .98rem; }
 
 /* Abschnitte */
@@ -240,12 +252,15 @@ a { color: inherit; }
 
 @media (max-width: 720px) {
   body { font-size: 17px; }
-  .tisch { padding: 26px 8px 30px; }
+  .tisch { padding: 18px 8px 30px; }
+  .reiter { padding: 0 8px; gap: 3px; }
+  .reiter-tab { padding: 7px 4px 8px; flex: 1 1 0; }
+  .reiter-kw { font-size: .9rem; }
+  .reiter-datum { font-size: .68rem; }
   .zettel { padding: 32px 18px 24px; }
   .perforation { margin: 22px -18px -24px; }
   .klebestreifen { width: 80px; }
-  .klebestreifen.links { left: 18px; }
-  .klebestreifen.rechts { right: 18px; }
+  .klebestreifen.rechts { display: none; }
   .marke { font-size: 1.1rem; }
   .marke-radl { width: 62px; }
   .zeile { grid-template-columns: 56px 1fr auto; gap: 10px; padding: 10px 0; }

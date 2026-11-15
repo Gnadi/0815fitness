@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ausgabeNr, wochenStand } from './woche'
+import { ausgabeNr, kalenderwoche, wochenStand } from './woche'
 
 const ymd = (d: Date) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
 
@@ -26,5 +26,13 @@ describe('ausgabeNr', () => {
   it('zählt die Sonntage seit Jahresbeginn', () => {
     expect(ausgabeNr(new Date(2026, 0, 4))).toBe(1)
     expect(ausgabeNr(new Date(2026, 10, 22))).toBe(47)
+  })
+})
+
+describe('kalenderwoche', () => {
+  it('rechnet ISO-Wochen', () => {
+    expect(kalenderwoche(new Date(2026, 10, 22))).toBe(47)
+    expect(kalenderwoche(new Date(2026, 0, 4))).toBe(1)
+    expect(kalenderwoche(new Date(2027, 0, 3))).toBe(53)
   })
 })

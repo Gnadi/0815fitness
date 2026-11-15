@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Abriss } from './components/Abriss'
 import { Bestellliste } from './components/Bestellliste'
 import { KrakelFilter } from './components/Gebaeck'
+import { Kalenderwochen } from './components/Kalenderwochen'
 import { Haken } from './components/Kreis'
 import { LEERE_LIEFERDATEN, Lieferung, type Lieferdaten } from './components/Lieferung'
 import { Ofen } from './components/Ofen'
@@ -14,7 +15,7 @@ import { Zahl } from './components/Zahl'
 import { ZEITPUNKTE, Zeitmaschine } from './components/Zeitmaschine'
 import { ARCHIV, GRATIS_AB, KAPAZITAET, LETZTE_WOCHE, SCHON_SPENDIERT, SPENDE } from './data/produkte'
 import { bestellnummer, bestellschluss, euro, restzeit, summen, vergebeneKoerbe, type Warenkorb } from './lib/logik'
-import { ausgabeNr, backFortschritt, rundenFortschritt, wochenStand, type Phase } from './lib/woche'
+import { ausgabeNr, backFortschritt, kalenderwoche, plusWochen, rundenFortschritt, wochenStand, type Phase } from './lib/woche'
 
 function useJetzt(intervallMs = 30_000) {
   const [jetzt, setJetzt] = useState(() => new Date())
@@ -56,9 +57,17 @@ export default function App() {
   const echt = useJetzt()
   const [zeitId, setZeitId] = useState('jetzt')
   const jetzt = ZEITPUNKTE.find((z) => z.id === zeitId)?.zeit(echt) ?? echt
-  const woche = wochenStand(jetzt)
+  const [wochenIndex, setWochenIndex] = useState(0)
+  const stand0 = wochenStand(jetzt)
+  const vorbestellt = wochenIndex > 0
+  // Für spätere Wochen ist der Zettel einfach offen; die Phasen gelten nur für den nächsten Sonntag.
+  const woche = vorbestellt
+    ? { ...stand0, phase: 'offen' as Phase, bestellSonntag: plusWochen(stand0.bestellSonntag, wochenIndex) }
+    : stand0
   const nr = ausgabeNr(woche.bestellSonntag)
   const schluss = bestellschluss(woche.bestellSonntag)
+  // Mockup: für spätere Wochen sind erst die Abo-Sackerl vergeben
+  const anteil = vorbestellt ? 0.3 / wochenIndex : 1
 
   const [korb, setKorb] = useState<Warenkorb>({})
   const [spende, setSpende] = useState(false)
@@ -77,7 +86,7 @@ export default function App() {
 
   const s = summen(korb)
   const gesamt = s.gesamt + (spende ? SPENDE : 0)
-  const vergeben = vergebeneKoerbe(jetzt, KAPAZITAET)
+  const vergeben = vorbestellt ? Math.max(6, Math.round(vergebeneKoerbe(jetzt, KAPAZITAET) * anteil)) : vergebeneKoerbe(jetzt, KAPAZITAET)
 
   const abgeben = (e: FormEvent) => {
     e.preventDefault()
@@ -100,9 +109,11 @@ export default function App() {
   return (
     <>
       <KrakelFilter />
-      <Zeitmaschine aktiv={zeitId} waehle={setZeitId} />
 
       <main className="tisch">
+        {stand.art === 'zettel' && (
+          <Kalenderwochen ersterSonntag={stand0.bestellSonntag} gewaehlt={wochenIndex} waehle={(i) => { setWochenIndex(i); setHinweis(false) }} />
+        )}
         <AnimatePresence mode="wait">
           {stand.art === 'zettel' ? (
             <motion.form
@@ -125,7 +136,7 @@ export default function App() {
                   </div>
                   <div className="ausgabe">
                     <span>Sonntagszettel</span>
-                    <strong>Nr. {nr}</strong>
+                    <strong>KW {kalenderwoche(woche.bestellSonntag)}</strong>
                   </div>
                 </div>
 
@@ -135,16 +146,18 @@ export default function App() {
                   Dieser Zettel ist für <strong>{woche.bestellSonntag.toLocaleDateString('de-AT', { weekday: 'long', day: 'numeric', month: 'long' })}</strong>.
                 </p>
 
-                {(woche.phase === 'zu' || woche.phase === 'ofen' || woche.phase === 'rad') && (
+                {!vorbestellt && (woche.phase === 'zu' || woche.phase === 'ofen' || woche.phase === 'rad') && (
                   <Stempel className="phasen-stempel" drehung={-7}>Zettel für {kurz(woche.dieserSonntag)} ist zu</Stempel>
                 )}
 
-                <motion.p key={woche.phase} className="notiz hand" initial={{ opacity: 0, clipPath: 'inset(0 100% 0 0)' }} animate={{ opacity: 1, clipPath: 'inset(0 0% 0 0)' }} transition={{ duration: 1.2, ease: 'easeOut', delay: 0.3 }}>
-                  {notiz(woche.phase, jetzt, woche.bestellSonntag)}
+                <motion.p key={`${woche.phase}-${wochenIndex}`} className="notiz hand" initial={{ opacity: 0, clipPath: 'inset(0 100% 0 0)' }} animate={{ opacity: 1, clipPath: 'inset(0 0% 0 0)' }} transition={{ duration: 1.2, ease: 'easeOut', delay: 0.3 }}>
+                  {vorbestellt
+                    ? `Schon für KW ${kalenderwoche(woche.bestellSonntag)} vormerken? Gern! Ändern geht bis zum Freitag davor.`
+                    : notiz(woche.phase, jetzt, woche.bestellSonntag)}
                   <span className="unterschrift">– eure Radlbäckerin</span>
                 </motion.p>
 
-                <Wochenuhr jetzt={jetzt} phase={woche.phase} />
+                {!vorbestellt && <Wochenuhr jetzt={jetzt} phase={woche.phase} />}
                 <p className="schluss">
                   Abgeben bis <strong>{schluss.toLocaleDateString('de-AT', { weekday: 'long', day: 'numeric', month: 'numeric' })}, 20 Uhr</strong>
                   <span className="hand kuli"> noch {restzeit(jetzt, schluss)}</span>
@@ -166,7 +179,7 @@ export default function App() {
                     </motion.p>
                   )}
                 </AnimatePresence>
-                <Bestellliste korb={korb} setzeMenge={(id, m) => { setzeMenge(id, m); setHinweis(false) }} />
+                <Bestellliste korb={korb} anteil={anteil} setzeMenge={(id, m) => { setzeMenge(id, m); setHinweis(false) }} />
               </section>
 
               <section className="abschnitt-zettel">
@@ -262,7 +275,7 @@ export default function App() {
             <ul>
               {ARCHIV.map((a) => (
                 <li key={a.nr}>
-                  <span className="archiv-nr">Nr. {nr + a.nr}</span>
+                  <span className="archiv-nr">KW {kalenderwoche(plusWochen(stand0.bestellSonntag, a.nr))}</span>
                   <span className="hand">{a.notiz}</span>
                   <span className="archiv-zahl">{a.sackerl} Sackerl{a.neu && ` · neu: ${a.neu}`}</span>
                 </li>
@@ -275,6 +288,7 @@ export default function App() {
       <footer className="fuss">
         <p><strong>Die Radlbäckerin</strong> · Gebäck aus unserer Küche, sonntags 7–10 Uhr per Lastenrad</p>
         <p className="kleingedruckt">Klick-Mockup. Gassen, Preise und Zahlen sind Platzhalter.</p>
+        <Zeitmaschine aktiv={zeitId} waehle={(id) => { setZeitId(id); setWochenIndex(0) }} />
       </footer>
 
       <AnimatePresence>

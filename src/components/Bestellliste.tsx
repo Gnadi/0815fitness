@@ -6,15 +6,17 @@ import { Stempel } from './Stempel'
 
 interface Props {
   korb: Warenkorb
+  /** Mockup: Anteil der schon vergebenen Mengen (1 = nächster Sonntag, weniger für spätere Wochen) */
+  anteil?: number
   setzeMenge: (id: string, menge: number) => void
 }
 
-export function Bestellliste({ korb, setzeMenge }: Props) {
+export function Bestellliste({ korb, setzeMenge, anteil = 1 }: Props) {
   return (
     <ol className="liste">
       {PRODUKTE.map((p) => {
         const menge = korb[p.id] ?? 0
-        const rest = p.kontingent - p.vergeben
+        const rest = p.kontingent - Math.round(p.vergeben * anteil)
         const aus = rest <= 0
         return (
           <li key={p.id} className={`zeile ${aus ? 'aus' : ''} ${menge > 0 ? 'gewaehlt' : ''}`}>

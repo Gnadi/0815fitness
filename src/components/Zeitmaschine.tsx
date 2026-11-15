@@ -22,7 +22,7 @@ export const ZEITPUNKTE: Zeitpunkt[] = [
 export function Zeitmaschine({ aktiv, waehle }: { aktiv: string; waehle: (id: string) => void }) {
   return (
     <div className="zeitmaschine" role="group" aria-label="Mockup: Wochenzeit ansehen">
-      <span className="zeitmaschine-label">Mockup · Woche ansehen:</span>
+      <span className="zeitmaschine-label">Mockup · Wochenphase vorführen:</span>
       {ZEITPUNKTE.map((z) => (
         <button key={z.id} className={aktiv === z.id ? 'aktiv' : ''} onClick={() => waehle(z.id)}>{z.label}</button>
       ))}

@@ -48,3 +48,18 @@ export function backFortschritt(jetzt: Date): number {
   const h = jetzt.getHours() + jetzt.getMinutes() / 60
   return Math.min(1, Math.max(0, (h - 4) / 3))
 }
+
+/** ISO-Kalenderwoche (Montag als Wochenbeginn). */
+export function kalenderwoche(d: Date): number {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  const tag = t.getUTCDay() || 7
+  t.setUTCDate(t.getUTCDate() + 4 - tag)
+  const jahresbeginn = Date.UTC(t.getUTCFullYear(), 0, 1)
+  return Math.ceil(((t.getTime() - jahresbeginn) / 86_400_000 + 1) / 7)
+}
+
+export function plusWochen(d: Date, wochen: number): Date {
+  const n = new Date(d)
+  n.setDate(n.getDate() + wochen * 7)
+  return n
+}

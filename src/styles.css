@@ -269,3 +269,7 @@ a { color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+.radl .fahrtstriche { opacity: .0; transition: opacity .3s; }
+.radl.fahrend .fahrtstriche { opacity: .8; animation: fahrtwind .6s ease-in-out infinite alternate; }
+@keyframes fahrtwind { to { transform: translateX(-3px); } }

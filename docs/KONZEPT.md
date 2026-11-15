@@ -112,9 +112,9 @@ So 07:00–10:00 Lieferrunde mit dem Lastenrad
 | Marketing (Flyer, Probierware) | −500 | −300 |
 | Sonstiges (Kleingeräte, Reparaturen) | −400 | −500 |
 | Abschreibung Lastenrad und Ofen (5 Jahre) | −1.600 | −1.600 |
-| **Überschuss vor Steuer und Sozialversicherung** | **11.745** | **19.867** |
+| **Überschuss vor Steuer und Sozialversicherung** | **11.745** | **19.967** |
 | Arbeitszeit pro Jahr (geschätzt) | 600 h | 750 h |
-| **Überschuss pro Arbeitsstunde** | **≈ 19,60 €** | **≈ 26,50 €** |
+| **Überschuss pro Arbeitsstunde** | **≈ 19,60 €** | **≈ 26,60 €** |
 
 Arbeitszeit: Samstag 3 h, Sonntag 6–7 h, Bestellungen, Einkauf und Buchhaltung 2–3 h pro Woche.
 Davon gehen noch **Einkommensteuer und Sozialversicherung (SVS)** ab – diese hängen vom übrigen Einkommen ab.

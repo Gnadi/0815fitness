@@ -1,51 +1,51 @@
-export type Kategorie = 'gebaeck' | 'brot' | 'suesses'
+export type GebaeckForm =
+  | 'semmel' | 'dinkel' | 'brezel' | 'flesserl' | 'laib' | 'zopf' | 'linzer' | 'schnecke'
 
 export interface Produkt {
   id: string
   name: string
-  beschreibung: string
+  notiz: string // kurze Beschreibung, wie auf einem Zettel
   preis: number // Euro
-  kategorie: Kategorie
-  emoji: string
-  farbe: string // Hintergrund der Kachel
-  hinweis?: string
+  form: GebaeckForm
+  kontingent: number // so viele passen pro Sonntag in den Ofen
+  vergeben: number // Mockup: schon bestellt diese Woche
 }
 
-export const KATEGORIEN: { id: Kategorie | 'alle'; label: string }[] = [
-  { id: 'alle', label: 'Alles' },
-  { id: 'gebaeck', label: 'Gebäck' },
-  { id: 'brot', label: 'Brot' },
-  { id: 'suesses', label: 'Süßes' },
-]
-
+/** Bewusst klein: was ein Heimofen an einem Sonntagmorgen schafft. */
 export const PRODUKTE: Produkt[] = [
-  { id: 'semmel', name: 'Kaisersemmel', beschreibung: 'Handgeschlagen, resch und luftig.', preis: 0.6, kategorie: 'gebaeck', emoji: '🥯', farbe: '#f3dcb8' },
-  { id: 'brezel', name: 'Laugenbrezel', beschreibung: 'Mit grobem Salz, außen knusprig.', preis: 1.2, kategorie: 'gebaeck', emoji: '🥨', farbe: '#e8c7a0' },
-  { id: 'dinkel', name: 'Dinkelweckerl', beschreibung: '100 % Dinkel, mit Sonnenblumenkernen.', preis: 0.9, kategorie: 'gebaeck', emoji: '🌾', farbe: '#eadfc2', hinweis: 'Vollkorn' },
-  { id: 'mohnflesserl', name: 'Mohnflesserl', beschreibung: 'Geflochten und dick mit Mohn bestreut.', preis: 0.95, kategorie: 'gebaeck', emoji: '🥖', farbe: '#e6d7c3' },
-  { id: 'koerndl', name: 'Körndlweckerl', beschreibung: 'Roggen, Leinsamen, Kürbiskerne.', preis: 1.1, kategorie: 'gebaeck', emoji: '🌻', farbe: '#e9d9b0' },
-  { id: 'croissant', name: 'Buttercroissant', beschreibung: '27 Schichten, echte Butter.', preis: 1.6, kategorie: 'gebaeck', emoji: '🥐', farbe: '#f5d6a4' },
-  { id: 'bauernbrot', name: 'Bauernbrot', beschreibung: 'Roggensauerteig, 36 h Teigführung. 750 g.', preis: 4.9, kategorie: 'brot', emoji: '🍞', farbe: '#dcc0a0' },
-  { id: 'dinkelbrot', name: 'Dinkel-Walnuss-Laib', beschreibung: 'Saftig, mit Walnüssen. 500 g.', preis: 5.4, kategorie: 'brot', emoji: '🌰', farbe: '#e4cfb5', hinweis: 'Vegan' },
-  { id: 'zopf', name: 'Sonntagszopf', beschreibung: 'Butterzopf mit Hagelzucker. 400 g.', preis: 4.5, kategorie: 'brot', emoji: '🍯', farbe: '#f6e2b9', hinweis: 'Nur sonntags' },
-  { id: 'linzer', name: 'Linzer Schnitte', beschreibung: 'Mürbteig, Ribiselmarmelade, Gitter obendrauf.', preis: 2.9, kategorie: 'suesses', emoji: '🍓', farbe: '#f0c9b8', hinweis: 'Hausklassiker' },
-  { id: 'golatsche', name: 'Topfengolatsche', beschreibung: 'Blätterteig mit cremiger Topfenfülle.', preis: 2.3, kategorie: 'suesses', emoji: '🧈', farbe: '#f7e6c2' },
-  { id: 'zimtschnecke', name: 'Zimtschnecke', beschreibung: 'Hefeteig, Zimt, brauner Zucker.', preis: 2.4, kategorie: 'suesses', emoji: '🌀', farbe: '#ebcfae' },
+  { id: 'semmel', name: 'Kaisersemmel', notiz: 'handgeschlagen, resch', preis: 0.6, form: 'semmel', kontingent: 160, vergeben: 94 },
+  { id: 'dinkel', name: 'Dinkelweckerl', notiz: 'mit Sonnenblumenkernen', preis: 0.9, form: 'dinkel', kontingent: 80, vergeben: 41 },
+  { id: 'brezel', name: 'Laugenbrezel', notiz: 'grobes Salz obendrauf', preis: 1.2, form: 'brezel', kontingent: 60, vergeben: 52 },
+  { id: 'flesserl', name: 'Mohnflesserl', notiz: 'geflochten, dick Mohn', preis: 0.95, form: 'flesserl', kontingent: 60, vergeben: 23 },
+  { id: 'bauernbrot', name: 'Bauernbrot', notiz: 'Roggensauerteig, 750 g', preis: 4.9, form: 'laib', kontingent: 20, vergeben: 13 },
+  { id: 'zopf', name: 'Sonntagszopf', notiz: 'Butterzopf, Hagelzucker', preis: 4.5, form: 'zopf', kontingent: 14, vergeben: 11 },
+  { id: 'linzer', name: 'Linzer Schnitte', notiz: 'Ribiselmarmelade, Gitter', preis: 2.9, form: 'linzer', kontingent: 30, vergeben: 17 },
+  { id: 'zimt', name: 'Zimtschnecke', notiz: 'erst seit dieser Woche', preis: 2.4, form: 'schnecke', kontingent: 24, vergeben: 24 },
 ]
 
 export const PRODUKT_NACH_ID: Record<string, Produkt> = Object.fromEntries(PRODUKTE.map((p) => [p.id, p]))
 
-export const LIEFERGEBIET: { plz: string; ort: string }[] = [
-  { plz: '4020', ort: 'Linz Innenstadt & Süd' },
-  { plz: '4030', ort: 'Linz Ebelsberg / Pichling' },
-  { plz: '4040', ort: 'Linz Urfahr' },
-  { plz: '4060', ort: 'Leonding' },
-]
+/** Platzhalter: die paar Gassen rund ums Haus, die das Rad am Sonntag abfährt. */
+export const STRASSEN = ['Hauptstraße', 'Kirchengasse', 'Parkweg', 'Schulgasse', 'Am Bach']
 
-export const ZEITFENSTER = ['07:00 – 07:30', '07:30 – 08:00', '08:00 – 08:30', '08:30 – 09:00', '09:00 – 09:30', '09:30 – 10:00']
+export const ZEITFENSTER = ['7:00', '7:30', '8:00', '8:30', '9:00', '9:30']
 
 export const LIEFERGEBUEHR = 2.5
 export const GRATIS_AB = 20
+export const SPENDE = 5
 
-/** Höchstmenge pro Sonntag – mehr schafft der Ofen zuhause nicht. */
+/** Höchstmenge pro Sonntag – mehr Sackerl schafft der Ofen zuhause nicht. */
 export const KAPAZITAET = 45
+
+/** Mockup: so viele Sackerl haben Nachbar:innen diese Woche schon spendiert. */
+export const SCHON_SPENDIERT = 3
+
+/** Mockup: die Bestellung „wie letzte Woche“ einer Stammkundin. */
+export const LETZTE_WOCHE: Record<string, number> = { semmel: 4, bauernbrot: 1, linzer: 2 }
+
+export const ARCHIV = [
+  { nr: -1, notiz: 'Erster Frost. Die Zopf-Bleche waren um 6:40 leer.', sackerl: 41, neu: 'Sonntagszopf' },
+  { nr: -2, notiz: 'Regen ab 8 Uhr – danke fürs Warten an der Tür!', sackerl: 38, neu: '' },
+  { nr: -3, notiz: 'Kürbiskern-Weckerl als Gast. Kommt wieder.', sackerl: 35, neu: 'Kürbisweckerl' },
+  { nr: -4, notiz: 'Neues Lastenrad. Die Kiste passt genau 30 Sackerl.', sackerl: 29, neu: '' },
+]

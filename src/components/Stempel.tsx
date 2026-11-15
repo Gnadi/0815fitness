@@ -1,16 +1,16 @@
-/** Runder, rotierender Sticker mit Text im Kreis. */
-export function Stempel({ text, mitte, className }: { text: string; mitte: string; className?: string }) {
+import { motion } from 'motion/react'
+import type { ReactNode } from 'react'
+
+/** Roter Gummistempel, der mit einem kleinen Ruck aufs Papier kommt. */
+export function Stempel({ children, className = '', drehung = -6, verzoegerung = 0.2 }: { children: ReactNode; className?: string; drehung?: number; verzoegerung?: number }) {
   return (
-    <div className={`stempel ${className ?? ''}`} aria-hidden>
-      <svg viewBox="0 0 200 200" className="stempel-ring">
-        <defs>
-          <path id="stempel-kreis" d="M100,100 m-72,0 a72,72 0 1,1 144,0 a72,72 0 1,1 -144,0" />
-        </defs>
-        <text>
-          <textPath href="#stempel-kreis" startOffset="0">{text}</textPath>
-        </text>
-      </svg>
-      <span className="stempel-mitte">{mitte}</span>
-    </div>
+    <motion.span
+      className={`stempel ${className}`}
+      initial={{ scale: 1.8, opacity: 0, rotate: drehung - 8 }}
+      animate={{ scale: 1, opacity: 1, rotate: drehung }}
+      transition={{ delay: verzoegerung, type: 'spring', stiffness: 420, damping: 18 }}
+    >
+      {children}
+    </motion.span>
   )
 }

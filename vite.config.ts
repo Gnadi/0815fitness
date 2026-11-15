@@ -11,15 +11,15 @@ export default defineConfig({
       includeAssets: ['icon.svg'],
       workbox: {
         // Nur die lateinischen Schnitte der Schriften vorab cachen, damit die App offline gleich aussieht
-        globPatterns: ['**/*.{js,css,html,svg,png}', '**/*-latin-wght-normal-*.woff2'],
+        globPatterns: ['**/*.{js,css,html,svg,png}', '**/newsreader-latin-opsz-*.woff2', '**/shantell-sans-latin-full-normal-*.woff2'],
       },
       manifest: {
         name: 'Die Radlbäckerin · Linz',
         short_name: 'Radlbäckerin',
         description: 'Gebäck für Sonntag vorbestellen – geliefert mit dem Lastenrad in Linz.',
         lang: 'de',
-        theme_color: '#111111',
-        background_color: '#f4f1ea',
+        theme_color: '#e7dfcf',
+        background_color: '#e7dfcf',
         display: 'standalone',
         orientation: 'portrait',
         start_url: './',

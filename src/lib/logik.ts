@@ -57,3 +57,13 @@ export function bestellnummer(): string {
   for (let i = 0; i < 5; i++) s += zeichen[Math.floor(Math.random() * zeichen.length)]
   return `RB-${s}`
 }
+
+/**
+ * Mockup: wie viele Körbe für den nächsten Sonntag schon vergeben sind.
+ * Steigt im Lauf der Bestellwoche (Fr 20:00 → Fr 20:00) von 6 auf 40.
+ */
+export function vergebeneKoerbe(jetzt: Date, kapazitaet: number): number {
+  const schluss = bestellschluss(lieferSonntag(jetzt)).getTime()
+  const anteil = 1 - Math.min(1, Math.max(0, (schluss - jetzt.getTime()) / (7 * TAG)))
+  return Math.min(kapazitaet - 5, Math.round(6 + anteil * 34))
+}

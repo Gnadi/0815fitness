@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bestellschluss, lieferSonntag, summen } from './logik'
+import { bestellschluss, lieferSonntag, summen, vergebeneKoerbe } from './logik'
 
 const ymd = (d: Date) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
 
@@ -35,5 +35,14 @@ describe('summen', () => {
   })
   it('leerer Korb kostet nichts', () => {
     expect(summen({}).gesamt).toBe(0)
+  })
+})
+
+describe('vergebeneKoerbe', () => {
+  it('steigt im Lauf der Woche und bleibt unter der Kapazität', () => {
+    const frueh = vergebeneKoerbe(new Date(2026, 10, 14, 9), 45)
+    const spaet = vergebeneKoerbe(new Date(2026, 10, 20, 19), 45)
+    expect(frueh).toBeLessThan(spaet)
+    expect(spaet).toBeLessThanOrEqual(40)
   })
 })

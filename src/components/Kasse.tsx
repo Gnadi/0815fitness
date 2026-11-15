@@ -1,3 +1,4 @@
+import { motion } from 'motion/react'
 import { useState, type FormEvent } from 'react'
 import { LIEFERGEBIET, ZEITFENSTER } from '../data/produkte'
 import { datumLang, euro, summen, type Warenkorb } from '../lib/logik'
@@ -35,7 +36,8 @@ export function Kasse({ korb, sonntag, zurueck, absenden }: Props) {
   return (
     <div className="kasse">
       <button className="link-zurueck" onClick={zurueck}>← Zurück zum Sortiment</button>
-      <h1>Lieferung am {datumLang(sonntag)}</h1>
+      <p className="eyebrow">Schritt 2 von 2 · Lieferung</p>
+      <h1>Sonntag, wir kommen.<span className="h1-sub">{datumLang(sonntag)}</span></h1>
       <div className="kasse-raster">
         <form className="formular" onSubmit={senden}>
           <fieldset>
@@ -59,7 +61,8 @@ export function Kasse({ korb, sonntag, zurueck, absenden }: Props) {
               {ZEITFENSTER.map((z) => (
                 <label key={z} className={`chip ${d.zeitfenster === z ? 'aktiv' : ''}`}>
                   <input type="radio" name="zeit" value={z} checked={d.zeitfenster === z} onChange={() => feld('zeitfenster', z)} />
-                  {z}
+                  {d.zeitfenster === z && <motion.span layoutId="zeit-pille" className="chip-pille" transition={{ type: 'spring', stiffness: 400, damping: 30 }} />}
+                  <span className="chip-text">{z}</span>
                 </label>
               ))}
             </div>
@@ -75,6 +78,7 @@ export function Kasse({ korb, sonntag, zurueck, absenden }: Props) {
               ] as const).map(([wert, titel, sub]) => (
                 <label key={wert} className={`option ${d.zahlung === wert ? 'aktiv' : ''}`}>
                   <input type="radio" name="zahlung" checked={d.zahlung === wert} onChange={() => feld('zahlung', wert)} />
+                  {d.zahlung === wert && <motion.span layoutId="zahl-rahmen" className="option-rahmen" transition={{ type: 'spring', stiffness: 400, damping: 30 }} />}
                   <span><strong>{titel}</strong><small>{sub}</small></span>
                 </label>
               ))}
@@ -85,7 +89,7 @@ export function Kasse({ korb, sonntag, zurueck, absenden }: Props) {
             </label>
           </fieldset>
 
-          <button className="knopf breit gross" type="submit">Verbindlich vorbestellen · {euro(summen(korb).gesamt)}</button>
+          <motion.button className="knopf breit gross" type="submit" whileTap={{ scale: 0.97 }}>Verbindlich vorbestellen · {euro(summen(korb).gesamt)}</motion.button>
           <p className="kleingedruckt">Das ist ein Mockup – es wird keine echte Bestellung ausgelöst.</p>
         </form>
         <aside className="kasse-korb"><Korb korb={korb} setzeMenge={() => {}} kompakt /></aside>

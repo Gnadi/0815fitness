@@ -9,13 +9,17 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
+      workbox: {
+        // Nur die lateinischen Schnitte der Schriften vorab cachen, damit die App offline gleich aussieht
+        globPatterns: ['**/*.{js,css,html,svg,png}', '**/*-latin-wght-normal-*.woff2'],
+      },
       manifest: {
         name: 'Die Radlbäckerin · Linz',
         short_name: 'Radlbäckerin',
         description: 'Gebäck für Sonntag vorbestellen – geliefert mit dem Lastenrad in Linz.',
         lang: 'de',
-        theme_color: '#2f4a3a',
-        background_color: '#f6efe3',
+        theme_color: '#111111',
+        background_color: '#f4f1ea',
         display: 'standalone',
         orientation: 'portrait',
         start_url: './',

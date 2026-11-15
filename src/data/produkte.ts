@@ -46,3 +46,6 @@ export const ZEITFENSTER = ['07:00 – 07:30', '07:30 – 08:00', '08:00 – 08:
 
 export const LIEFERGEBUEHR = 2.5
 export const GRATIS_AB = 20
+
+/** Höchstmenge pro Sonntag – mehr schafft der Ofen zuhause nicht. */
+export const KAPAZITAET = 45

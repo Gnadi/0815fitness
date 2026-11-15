@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from 'motion/react'
 import { STRASSEN, ZEITFENSTER } from '../data/produkte'
 import { Haken, Kreis } from './Kreis'
 
@@ -11,9 +12,15 @@ export interface Lieferdaten {
   abo: boolean
 }
 
-export const LEERE_LIEFERDATEN: Lieferdaten = { name: '', strasse: STRASSEN[0], hausnummer: '', hinweis: '', zeit: '8:00', zahlung: 'karte', abo: false }
+export const LEERE_LIEFERDATEN: Lieferdaten = { name: '', strasse: '', hausnummer: '', hinweis: '', zeit: '8:00', zahlung: 'karte', abo: false }
 
 const ZAHLUNG: [Lieferdaten['zahlung'], string][] = [['karte', 'Karte an der Tür'], ['bar', 'bar an der Tür'], ['vorab', 'vorab überweisen']]
+
+/** Liegt die eingegebene Straße auf unserer Sonntagsrunde? (nur ein Hinweis, keine Sperre) */
+export function aufDerRunde(strasse: string): boolean {
+  const s = strasse.trim().toLowerCase().replace(/str\.?(?=\s|$)/, 'straße')
+  return STRASSEN.some((r) => s.startsWith(r.toLowerCase()))
+}
 
 export function Lieferung({ d, setze }: { d: Lieferdaten; setze: <K extends keyof Lieferdaten>(k: K, v: Lieferdaten[K]) => void }) {
   return (
@@ -26,16 +33,24 @@ export function Lieferung({ d, setze }: { d: Lieferdaten; setze: <K extends keyo
       </div>
       <div className="feld-reihe">
         <label className="feld">
-          <span>Gasse</span>
-          <select value={d.strasse} onChange={(e) => setze('strasse', e.target.value)}>
-            {STRASSEN.map((s) => <option key={s}>{s}</option>)}
-          </select>
+          <span>Straße</span>
+          <input required autoComplete="address-line1" list="runde-strassen" value={d.strasse} onChange={(e) => setze('strasse', e.target.value)} placeholder="z. B. Kirchengasse" />
+          <datalist id="runde-strassen">
+            {STRASSEN.map((s) => <option key={s} value={s} />)}
+          </datalist>
         </label>
         <label className="feld schmal">
           <span>Nr. / Tür</span>
           <input required value={d.hausnummer} onChange={(e) => setze('hausnummer', e.target.value)} inputMode="text" />
         </label>
       </div>
+      <AnimatePresence>
+        {d.strasse.trim().length > 3 && !aufDerRunde(d.strasse) && (
+          <motion.p className="hand kuli runde-hinweis" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+            Die liegt nicht auf unserer Runde – bestell trotzdem, wir melden uns, ob wir's schaffen.
+          </motion.p>
+        )}
+      </AnimatePresence>
       <label className="feld breit">
         <span>Notiz fürs Radl <em>(optional)</em></span>
         <input value={d.hinweis} onChange={(e) => setze('hinweis', e.target.value)} placeholder="z. B. Sackerl an die Tür, Hund bellt nur" />

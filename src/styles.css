@@ -142,10 +142,10 @@ a { color: inherit; }
 .feld.schmal { flex: 0 0 120px; }
 .feld > span { font-size: .78rem; text-transform: uppercase; letter-spacing: .1em; color: var(--grau); }
 .feld em, legend em, .ankreuzen em { font-style: italic; text-transform: none; letter-spacing: 0; color: var(--grau); font-weight: 400; }
-.feld input, .feld select { border: 0; border-bottom: 1.5px solid var(--tusche); background: transparent; padding: 6px 2px 4px; font-family: var(--hand); font-variation-settings: 'INFM' 100; color: var(--kuli); font-size: 1.2rem; border-radius: 0; width: 100%; }
-.feld select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--tusche) 50%), linear-gradient(135deg, var(--tusche) 50%, transparent 50%); background-position: calc(100% - 12px) 55%, calc(100% - 7px) 55%; background-size: 5px 5px; background-repeat: no-repeat; }
+.feld input { border: 0; border-bottom: 1.5px solid var(--tusche); background: transparent; padding: 6px 2px 4px; font-family: var(--hand); font-variation-settings: 'INFM' 100; color: var(--kuli); font-size: 1.2rem; border-radius: 0; width: 100%; }
+.runde-hinweis { margin: -8px 0 0; font-size: .95rem; overflow: hidden; }
 .feld input::placeholder { color: #b5ab9c; font-size: 1rem; }
-.feld input:focus, .feld select:focus { outline: none; border-bottom-color: var(--kuli); box-shadow: 0 1.5px 0 var(--kuli); }
+.feld input:focus { outline: none; border-bottom-color: var(--kuli); box-shadow: 0 1.5px 0 var(--kuli); }
 
 .kreis-gruppe { border: 0; padding: 0; margin: 0; min-width: 0; }
 .kreis-gruppe legend { padding: 0; font-weight: 600; margin-bottom: 8px; }

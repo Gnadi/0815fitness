@@ -9,18 +9,13 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
-      workbox: {
-        // Der 3D-Viewer (Three.js) ist groß und wird nur bei Bedarf geladen: nicht vorab cachen, sondern beim ersten Öffnen
-        globIgnores: ['**/Haus3DViewer-*.js'],
-        runtimeCaching: [{ urlPattern: /\/assets\/Haus3DViewer-.*\.js$/, handler: 'CacheFirst', options: { cacheName: 'viewer-3d', expiration: { maxEntries: 2 } } }],
-      },
       manifest: {
-        name: 'Karriere-Simulator',
-        short_name: 'Karriere',
-        description: 'Fußball-Karriere-Simulator: vom 16-jährigen Talent zur Legende.',
+        name: 'Die Radlbäckerin · Linz',
+        short_name: 'Radlbäckerin',
+        description: 'Gebäck für Sonntag vorbestellen – geliefert mit dem Lastenrad in Linz.',
         lang: 'de',
-        theme_color: '#0b1d12',
-        background_color: '#0b1d12',
+        theme_color: '#2f4a3a',
+        background_color: '#f6efe3',
         display: 'standalone',
         orientation: 'portrait',
         start_url: './',

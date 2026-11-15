@@ -14,7 +14,7 @@ npm run build   # Typecheck + Produktions-Build inkl. PWA
 Design: Kreuzberg-Startup-Look (Neo-Brutalismus) mit Bricolage Grotesque, Geist und Geist Mono
 (selbst gehostet über Fontsource) und Animationen mit [Motion](https://motion.dev).
 
-Konzept und Business Plan: [docs/KONZEPT.md](docs/KONZEPT.md).
+Konzept und Business Plan: [docs/KONZEPT.md](docs/KONZEPT.md) · UX-Recherche: [docs/UX-RECHERCHE.md](docs/UX-RECHERCHE.md).
 
 ## Ablauf
 

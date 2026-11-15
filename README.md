@@ -11,6 +11,8 @@ npm test        # Tests der Datums-/Preislogik
 npm run build   # Typecheck + Produktions-Build inkl. PWA
 ```
 
+Konzept und Business Plan: [docs/KONZEPT.md](docs/KONZEPT.md).
+
 ## Ablauf
 
 1. Sortiment durchstöbern, Gebäck in den Korb legen
